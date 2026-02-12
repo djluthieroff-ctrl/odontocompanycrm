@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="Sistema CRM completo para Odonto Company - Gestão de leads, pacientes, agendamentos e atendimentos">
+    <title>CRM Odonto Company - Sistema de Gestão Odontológica</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <!-- SheetJS Library for Excel Import/Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Chart.js for Reports -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <div class="logo-icon">🦷</div>
+                <div class="logo-text">
+                    <h1>Odonto Company</h1>
+                    <span>Sistema de Gestão</span>
+                </div>
+            </div>
+            <div class="header-actions">
+                <div class="search-box">
+                    <input type="text" id="globalSearch" placeholder="Buscar paciente, lead ou agendamento...">
+                    <span class="search-icon">🔍</span>
+                </div>
+                <div class="user-menu">
+                    <div class="user-avatar">👤</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <nav class="nav-menu">
+                <button class="nav-item active" data-module="dashboard">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-label">Dashboard</span>
+                </button>
+                <button class="nav-item" data-module="leads">
+                    <span class="nav-icon">💬</span>
+                    <span class="nav-label">Leads</span>
+                    <span class="nav-badge" id="leadsBadge">0</span>
+                </button>
+                <button class="nav-item" data-module="kanban">
+                    <span class="nav-icon">📋</span>
+                    <span class="nav-label">Kanban</span>
+                </button>
+                <button class="nav-item" data-module="patients">
+                    <span class="nav-icon">👥</span>
+                    <span class="nav-label">Pacientes</span>
+                </button>
+                <button class="nav-item" data-module="appointments">
+                    <span class="nav-icon">📅</span>
+                    <span class="nav-label">Agendamentos</span>
+                </button>
+                <button class="nav-item" data-module="reports">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-label">Relatórios</span>
+                </button>
+                <button class="nav-item" data-module="settings">
+                    <span class="nav-icon">⚙️</span>
+                    <span class="nav-label">Configurações</span>
+                </button>
+            </nav>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Dashboard Module -->
+            <section id="dashboard-module" class="module active">
+                <div class="module-header">
+                    <h2>Dashboard</h2>
+                    <p>Visão geral da clínica</p>
+                </div>
+                <div class="dashboard-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">💬</div>
+                        <div class="stat-content">
+                            <h3>Leads Ativos</h3>
+                            <p class="stat-number" id="totalLeads">0</p>
+                            <span class="stat-label">Novos hoje: <strong id="todayLeads">0</strong></span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-content">
+                            <h3>Pacientes</h3>
+                            <p class="stat-number" id="totalPatients">0</p>
+                            <span class="stat-label">Ativos no mês</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📅</div>
+                        <div class="stat-content">
+                            <h3>Agendamentos</h3>
+                            <p class="stat-number" id="totalAppointments">0</p>
+                            <span class="stat-label">Hoje: <strong id="todayAppointments">0</strong></span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">⚡</div>
+                        <div class="stat-content">
+                            <h3>Em Atendimento</h3>
+                            <p class="stat-number" id="inProgress">0</p>
+                            <span class="stat-label">Agora</span>
+                        </div>
+                    </div>
+
+                    <!-- CRC Metrics -->
+                    <div class="stat-card" style="background: linear-gradient(135deg, #dbeafe, #bfdbfe);">
+                        <div class="stat-icon">📈</div>
+                        <div class="stat-content">
+                            <h3>Taxa de Conversão</h3>
+                            <p class="stat-number" id="conversionRate">0%</p>
+                            <span class="stat-label">Leads → Agendados</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card" style="background: linear-gradient(135deg, #d1fae5, #a7f3d0);">
+                        <div class="stat-icon">✅</div>
+                        <div class="stat-content">
+                            <h3>Agendados Hoje</h3>
+                            <p class="stat-number" id="scheduledToday">0</p>
+                            <span class="stat-label">Marcados pelo CRC</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card" style="background: linear-gradient(135deg, #fef3c7, #fde68a);">
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-content">
+                            <h3>Comparecimentos</h3>
+                            <p class="stat-number" id="totalAttended">0</p>
+                            <span class="stat-label">Total</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card" style="background: linear-gradient(135deg, #d1fae5, #6ee7b7);">
+                        <div class="stat-icon">💰</div>
+                        <div class="stat-content">
+                            <h3>Comissão Acumulada</h3>
+                            <p class="stat-number" style="font-size: 1.75rem;" id="totalCommission">R$ 0,00</p>
+                            <span class="stat-label">Total a receber</span>
+                        </div>
+                    </div>
+
+                    <!-- Weekly Goals -->
+                    <div class="stat-card"
+                        style="background: linear-gradient(135deg, #f3e8ff, #e9d5ff); grid-column: 1 / -1;">
+                        <div style="flex: 1;">
+                            <h3
+                                style="font-size: 1.25rem; font-weight: 700; color: var(--gray-900); margin-bottom: var(--spacing-lg);">
+                                🎯 Metas da Semana
+                            </h3>
+                            <div id="monthlyGoalsContainer"
+                                style="display: flex; flex-direction: column; gap: var(--spacing-md);"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Leads Module -->
+            <section id="leads-module" class="module">
+                <div class="module-header">
+                    <div>
+                        <h2>Gerenciar Leads</h2>
+                        <p>Leads vindos do WhatsApp e outras fontes</p>
+                    </div>
+                    <div style="display: flex; gap: var(--spacing-sm);">
+                        <button class="btn btn-secondary" id="importLeadsBtn" title="Importar leads de planilha Excel">
+                            📥 Importar
+                        </button>
+                        <button class="btn btn-secondary" id="exportLeadsBtn" title="Exportar leads para Excel">
+                            📤 Exportar
+                        </button>
+                        <button class="btn btn-primary" id="newLeadBtn">
+                            <span>➕</span> Novo Lead
+                        </button>
+                    </div>
+                </div>
+                <div id="leadsContent"></div>
+            </section>
+
+            <!-- Kanban Module -->
+            <section id="kanban-module" class="module">
+                <div class="module-header">
+                    <div>
+                        <h2>Kanban de Atendimento</h2>
+                        <p>Acompanhe o fluxo de atendimento dos pacientes</p>
+                    </div>
+                </div>
+                <div id="kanbanBoard"></div>
+            </section>
+
+            <!-- Patients Module -->
+            <section id="patients-module" class="module">
+                <div class="module-header">
+                    <div>
+                        <h2>Fichas de Pacientes</h2>
+                        <p>Cadastro completo com anamnese odontológica</p>
+                    </div>
+                    <button class="btn btn-primary" id="newPatientBtn">
+                        <span>➕</span> Novo Paciente
+                    </button>
+                </div>
+                <div id="patientsContent"></div>
+            </section>
+
+            <!-- Appointments Module -->
+            <section id="appointments-module" class="module">
+                <div class="module-header">
+                    <div>
+                        <h2>Agendamentos</h2>
+                        <p>Gerencie consultas e procedimentos</p>
+                    </div>
+                    <button class="btn btn-primary" id="newAppointmentBtn">
+                        <span>➕</span> Novo Agendamento
+                    </button>
+                </div>
+                <div id="appointmentsContent"></div>
+            </section>
+
+            <!-- Reports Module -->
+            <section id="reports-module" class="module">
+                <div class="module-header">
+                    <div>
+                        <h2>Relatórios</h2>
+                        <p>Relatórios diários e controle de comparecimento</p>
+                    </div>
+                </div>
+                <div id="reportsContent"></div>
+            </section>
+
+            <!-- Settings Module -->
+            <section id="settings-module" class="module">
+                <div class="module-header">
+                    <div>
+                        <h2>Configurações</h2>
+                        <p>Configure suas metas e comissões</p>
+                    </div>
+                </div>
+                <div id="settingsContent"></div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal Container -->
+    <div id="modalContainer"></div>
+
+    <!-- Scripts -->
+    <script src="utils/whatsapp.js"></script>
+    <script src="utils/weekly-goals.js"></script>
+    <script src="utils/import-export.js"></script>
+    <script src="modules/leads.js"></script>
+    <script src="modules/kanban.js"></script>
+    <script src="modules/patients.js"></script>
+    <script src="modules/appointments.js"></script>
+    <script src="modules/reports.js"></script>
+    <script src="modules/settings.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>
