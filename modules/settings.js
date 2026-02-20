@@ -13,11 +13,13 @@ function renderSettingsView() {
     const settings = AppState.settings || {
         crcName: '',
         dailyGoal: 5,
-        commissionValue: 50
+        commissionValue: 50,
+        weeklyAppointmentsGoal: 80,
+        weeklyVisitsGoal: 40
     };
 
     container.innerHTML = `
-        <div class="card" style="max-width: 600px; padding: var(--spacing-xl);">
+        <div class="card" style="max-width: 700px; padding: var(--spacing-xl);">
             <h3 style="font-size: 1.25rem; font-weight: 600; color: var(--gray-900); margin-bottom: var(--spacing-xl);">
                 ⚙️ Configurações do CRC
             </h3>
@@ -25,7 +27,7 @@ function renderSettingsView() {
             <form id="settingsForm" onsubmit="saveSettings(event)">
                 <div class="form-group">
                     <label class="form-label">Nome do CRC</label>
-                    <input type="text" class="form-input" name="crcName" value="${settings.crcName || ''}" placeholder="Seu nome">
+                    <input type="text" class="form-input" name="crcName" value="${escapeHTML(settings.crcName || '')}" placeholder="Seu nome">
                 </div>
                 
                 <div class="form-group">
@@ -43,13 +45,30 @@ function renderSettingsView() {
                         Valor que você recebe por cada paciente que comparece
                     </p>
                 </div>
+
+                <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid var(--gray-200);">
+                <h4 style="margin-bottom: 1rem; color: var(--gray-700); font-size: 1.1rem;">🎯 Metas Semanais</h4>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label class="form-label">Meta de Agendamentos / Semana</label>
+                        <input type="number" class="form-input" name="weeklyAppointmentsGoal" value="${settings.weeklyAppointmentsGoal || 80}" min="1" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Meta de Visitas / Semana</label>
+                        <input type="number" class="form-input" name="weeklyVisitsGoal" value="${settings.weeklyVisitsGoal || 40}" min="1" required>
+                    </div>
+                </div>
                 
                 <button type="submit" class="btn btn-primary" style="margin-top: var(--spacing-lg);">
                     💾 Salvar Configurações
                 </button>
                 
                 <button type="button" class="btn btn-secondary" onclick="exportFullBackup()" style="margin-top: var(--spacing-lg); margin-left: var(--spacing-sm);">
-                    📦 Backup Completo (JSON)
+                    📦 Exportar Backup (JSON)
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="importBackupJSON()" style="margin-top: var(--spacing-lg); margin-left: var(--spacing-sm);">
+                    📥 Importar Backup (JSON)
                 </button>
             </form>
             
@@ -64,6 +83,7 @@ function renderSettingsView() {
                     <div>• Total de pacientes: <strong>${AppState.patients.length}</strong></div>
                     <div>• Total de agendamentos: <strong>${AppState.appointments.length}</strong></div>
                     <div>• Comparecimentos registrados: <strong>${AppState.appointments.filter(a => a.attended).length}</strong></div>
+                    <div>• Espaço LocalStorage: <strong id="storageUsage">calculando...</strong></div>
                 </div>
             </div>
 
@@ -94,6 +114,34 @@ function renderSettingsView() {
             </div>
         </div>
     `;
+
+    // Calculate storage usage
+    updateStorageUsage();
+}
+
+// Calculate and display LocalStorage usage
+function updateStorageUsage() {
+    try {
+        let total = 0;
+        for (let key in localStorage) {
+            if (localStorage.hasOwnProperty(key)) {
+                total += localStorage[key].length * 2;
+            }
+        }
+        const usedMB = (total / (1024 * 1024)).toFixed(2);
+        const maxMB = 5;
+        const pct = Math.round((total / (maxMB * 1024 * 1024)) * 100);
+        const el = document.getElementById('storageUsage');
+        if (el) {
+            el.textContent = `${usedMB} MB / ~${maxMB} MB (${pct}%)`;
+            if (pct > 80) {
+                el.style.color = '#dc2626';
+                showNotification('⚠️ Armazenamento local quase cheio! Faça um backup.', 'warning');
+            }
+        }
+    } catch (e) {
+        console.error('Error calculating storage:', e);
+    }
 }
 
 // Clear Data Function
@@ -132,7 +180,7 @@ function clearData(type) {
     if (type === 'patients') {
         AppState.patients = [];
         AppState.kanbanCards = [];
-        AppState.appointments = []; // Patients relate to appointments, so safer to clear
+        AppState.appointments = [];
         saveToStorage(STORAGE_KEYS.PATIENTS, []);
         saveToStorage(STORAGE_KEYS.KANBAN, []);
         saveToStorage(STORAGE_KEYS.APPOINTMENTS, []);
@@ -148,22 +196,23 @@ function clearData(type) {
 }
 
 
-// Save Settings
+// Save Settings (preserves ALL fields including weekly goals)
 function saveSettings(event) {
     event.preventDefault();
 
     const formData = new FormData(event.target);
 
     AppState.settings = {
+        ...AppState.settings,
         crcName: formData.get('crcName') || '',
         dailyGoal: parseInt(formData.get('dailyGoal')),
-        commissionValue: parseFloat(formData.get('commissionValue'))
+        commissionValue: parseFloat(formData.get('commissionValue')),
+        weeklyAppointmentsGoal: parseInt(formData.get('weeklyAppointmentsGoal')) || 80,
+        weeklyVisitsGoal: parseInt(formData.get('weeklyVisitsGoal')) || 40
     };
 
     saveToStorage(STORAGE_KEYS.SETTINGS, AppState.settings);
-
     showNotification('Configurações salvas com sucesso!', 'success');
-    alert('✅ Configurações salvas!');
 }
 
 // Export functions

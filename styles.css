@@ -1036,3 +1036,315 @@ body {
     }
 
 }
+
+/* Loading Spinner */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(2px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid var(--primary-100);
+    border-top: 4px solid var(--primary-600);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+
+/* Global Search Dropdown */
+.search-results-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: 350px;
+    background: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xl);
+    border: 1px solid var(--gray-200);
+    z-index: 2000;
+    max-height: 480px;
+    overflow-y: auto;
+    display: none;
+    animation: slideDown 200ms ease;
+    padding: var(--spacing-sm) 0;
+}
+
+.search-category {
+    padding: var(--spacing-sm) var(--spacing-lg);
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--gray-400);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: var(--gray-50);
+}
+
+.search-result-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md) var(--spacing-lg);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.search-result-item:hover {
+    background: var(--primary-50);
+}
+
+.result-icon {
+    font-size: 1.25rem;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--gray-100);
+    border-radius: var(--radius-md);
+}
+
+.search-result-item:hover .result-icon {
+    background: var(--primary-100);
+}
+
+.result-info {
+    flex: 1;
+}
+
+.result-name {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--gray-900);
+}
+
+.result-detail {
+    font-size: 0.8125rem;
+    color: var(--gray-500);
+}
+
+/* Toast Notifications - Slide In/Out */
+@keyframes toastSlideIn {
+    from {
+        transform: translateX(100%) scale(0.9);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0) scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes toastSlideOut {
+    from {
+        transform: translateX(0) scale(1);
+        opacity: 1;
+    }
+
+    to {
+        transform: translateX(100%) scale(0.9);
+        opacity: 0;
+    }
+}
+
+/* Dashboard & Patient Enhancements */
+.dash-widget {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dash-widget:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Patient Modal Tabs */
+.tab-btn {
+    padding: 1rem 1.5rem;
+    border: none;
+    background: none;
+    font-weight: 600;
+    color: var(--gray-500);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    font-family: 'Inter', sans-serif;
+}
+
+.tab-btn:hover {
+    color: var(--primary-600);
+}
+
+.tab-btn.active {
+    color: var(--primary-600);
+    border-bottom-color: var(--primary-600);
+    background: var(--primary-50);
+}
+
+/* Odontogram Styles */
+.odontogram-table {
+    display: grid;
+    grid-template-columns: repeat(16, 1fr);
+    gap: 8px;
+    margin-top: 1rem;
+}
+
+.tooth-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.tooth-viz {
+    width: 38px;
+    height: 48px;
+    background: white;
+    border: 2px solid var(--gray-300);
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: bold;
+    transition: all 0.2s;
+    user-select: none;
+}
+
+.tooth-viz:hover {
+    border-color: var(--primary-400);
+    transform: scale(1.05);
+}
+
+.tooth-viz.caries {
+    background: #fee2e2;
+    border-color: #ef4444;
+    color: #b91c1c;
+}
+
+.tooth-viz.restored {
+    background: #dbeafe;
+    border-color: #3b82f6;
+    color: #1e3a8a;
+}
+
+.tooth-viz.missing {
+    background: #334155;
+    border-color: #1e293b;
+    color: white;
+}
+
+@media (max-width: 1200px) {
+    .odontogram-table {
+        grid-template-columns: repeat(8, 1fr);
+    }
+}
+
+/* Monthly Report Enhancements */
+.report-week-card {
+    background: white;
+    border-radius: 16px;
+    border: 1px solid var(--gray-200);
+    overflow: hidden;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    margin-bottom: 2rem;
+}
+
+.report-week-header {
+    background: var(--gray-50);
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--gray-200);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.report-day-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 12px;
+    padding: 1.5rem;
+}
+
+.report-day-cell {
+    background: white;
+    border: 1px solid var(--gray-100);
+    border-radius: 12px;
+    padding: 12px;
+    text-align: center;
+    transition: all 0.2s;
+}
+
+.report-day-cell:hover {
+    border-color: var(--primary-200);
+    background: var(--primary-50);
+}
+
+.report-day-cell.today {
+    border-color: var(--primary-500);
+    background: var(--primary-50);
+    box-shadow: 0 0 0 2px var(--primary-100);
+}
+
+.report-nav-btn {
+    padding: 8px 16px;
+    border: 1px solid var(--gray-200);
+    background: white;
+    border-radius: 8px;
+    font-weight: 600;
+    color: var(--gray-700);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.report-nav-btn:hover {
+    background: var(--gray-50);
+    border-color: var(--gray-300);
+}
+
+.report-stat-pill {
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.report-day-cell:hover {
+    background: var(--primary-50);
+    border-color: var(--primary-200);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+}
+
+.report-day-cell:active {
+    transform: translateY(0);
+}

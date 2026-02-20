@@ -79,12 +79,6 @@ function renderLeadsList() {
     // 2. Handle Empty Data State
     if (AppState.leads.length === 0) {
         structureContainer.style.display = 'none';
-        // We reuse the main container for the global empty state or inject it
-        // To avoid conflict, we can just hide structure and show empty state
-        // But the original logic replaced everything. Let's keep it simple:
-        // If NO leads at all, we can replace content, but that breaks structure if leads are added later?
-        // Actually, if leads.length === 0, search doesn't matter much.
-        // Let's just use the emptyStateContainer
         emptyStateContainer.innerHTML = `
             <div class="empty-state">
                 <div class="empty-state-icon">💬</div>
@@ -104,11 +98,7 @@ function renderLeadsList() {
         gridContainer.style.display = 'grid';
     }
 
-    // 3. Update Filter Bar (Only update if needed to avoid flicker, or just innerHTML is fine as long as input is external? No, input IS IN filter bar)
-    // We need to Separate Search Input from the buttons if we want to redraw buttons without killing input focus.
-    // OR we checks if filter bar exists.
-
-    // Check if Filter Bar inputs exist, if not render them.
+    // 3. Update Filter Bar
     if (!document.getElementById('leads-search-input')) {
         filterBarContainer.innerHTML = `
             <div style="display: flex; gap: var(--spacing-md); margin-bottom: var(--spacing-lg); flex-wrap: wrap; align-items: center; justify-content: space-between; background: white; padding: 1rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
@@ -133,22 +123,17 @@ function renderLeadsList() {
         `;
     }
 
-    // Update Input Values (Sync State) - Only if not focused to avoid cursor jumps? 
-    // Actually, oninput updates state. We shouldn't write BACK to input while user types.
     const searchInput = document.getElementById('leads-search-input');
     if (searchInput && searchInput.value !== LeadsState.searchTerm) {
-        // Only update if different (e.g. cleared via code)
         searchInput.value = LeadsState.searchTerm;
     }
 
-    // Update Date Filter
     const dateInput = document.getElementById('dateFilter');
     if (dateInput) {
         dateInput.value = LeadsState.filterDate || '';
         document.getElementById('clearDateBtn').style.display = LeadsState.filterDate ? 'block' : 'none';
     }
 
-    // Update Filter Buttons Active State
     const filterButtonsContainer = document.getElementById('leads-filter-buttons');
     filterButtonsContainer.innerHTML = `
         <span style="font-weight: 600; color: var(--gray-700); font-size: 0.875rem;">Status:</span>
@@ -179,12 +164,10 @@ function renderLeadsList() {
     // 5. Filter and Render Grid Content
     let filteredLeads = AppState.leads;
 
-    // Status Filter
     if (LeadsState.filterStatus !== 'all') {
         filteredLeads = filteredLeads.filter(l => l.status === LeadsState.filterStatus);
     }
 
-    // Date Filter
     if (LeadsState.filterDate) {
         const filterDateStr = new Date(LeadsState.filterDate).toDateString();
         filteredLeads = filteredLeads.filter(l =>
@@ -192,7 +175,6 @@ function renderLeadsList() {
         );
     }
 
-    // Search Filter
     if (LeadsState.searchTerm) {
         const term = LeadsState.searchTerm.toLowerCase();
         filteredLeads = filteredLeads.filter(l =>
@@ -201,7 +183,6 @@ function renderLeadsList() {
         );
     }
 
-    // Sort leads by date (newest first)
     const sortedLeads = [...filteredLeads].sort((a, b) =>
         new Date(b.createdAt) - new Date(a.createdAt)
     );
@@ -210,6 +191,13 @@ function renderLeadsList() {
         const days = getDaysSince(lead.createdAt);
         const isSelected = LeadsState.selectedLeads.has(lead.id);
         const isExpanded = LeadsState.expandedLead === lead.id;
+
+        const safeName = escapeHTML(lead.name);
+        const safePhone = escapeHTML(lead.phone);
+        const safeEmail = escapeHTML(lead.email || '');
+        const safeChannel = escapeHTML(lead.channel || '');
+        const safeInterest = escapeHTML(lead.interest || '');
+        const safeMessage = escapeHTML(lead.message || '');
 
         return `
             <div class="lead-card ${isSelected ? 'lead-selected' : ''} ${isExpanded ? 'lead-expanded' : ''}" data-lead-id="${lead.id}">
@@ -221,15 +209,15 @@ function renderLeadsList() {
                                style="width: 20px; height: 20px; cursor: pointer;">
                         <div style="flex: 1;">
                             <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; flex-wrap: wrap;">
-                                <h4 style="font-size: 1.125rem; font-weight: 600; color: var(--gray-900); margin: 0;">${lead.name}</h4>
+                                <h4 style="font-size: 1.125rem; font-weight: 600; color: var(--gray-900); margin: 0;">${safeName}</h4>
                                 ${getStatusBadge(lead.status)}
                                 ${getUrgencyBadge(days)}
-                                ${lead.channel ? `<span class="badge badge-primary">📢 ${lead.channel}</span>` : ''}
+                                ${lead.channel ? `<span class="badge badge-primary">📢 ${safeChannel}</span>` : ''}
                                 ${lead.saleStatus === 'sold' ? '<span class="badge badge-success">💰 Venda</span>' : ''}
                                 ${lead.saleStatus === 'lost' ? '<span class="badge badge-error">❌ Perdido</span>' : ''}
                             </div>
                             <p style="color: var(--gray-600); font-size: 0.875rem; margin: 0;">
-                                📱 ${lead.phone} ${lead.email ? `• ✉️ ${lead.email}` : ''}
+                                📱 ${safePhone} ${lead.email ? `• ✉️ ${safeEmail}` : ''}
                             </p>
                         </div>
                     </div>
@@ -240,7 +228,6 @@ function renderLeadsList() {
 
                 ${isExpanded ? `
                     <div class="lead-details">
-                        <!-- Updated Status Pipeline -->
                         <div class="lead-status-pipeline">
                             <div class="status-step ${lead.status === 'new' ? 'active' : 'completed'}" onclick="updateLeadStatus('${lead.id}', 'new')">
                                 <div class="status-dot"></div>
@@ -269,15 +256,15 @@ function renderLeadsList() {
                         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: var(--spacing-lg); margin-top: var(--spacing-lg);">
                             <div class="form-group">
                                 <label class="form-label">Nome</label>
-                                <input type="text" class="form-input" value="${lead.name}" onchange="updateLeadField('${lead.id}', 'name', this.value)">
+                                <input type="text" class="form-input" value="${safeName}" onchange="updateLeadField('${lead.id}', 'name', this.value)">
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Telefone</label>
-                                <input type="text" class="form-input" value="${lead.phone}" onchange="updateLeadField('${lead.id}', 'phone', this.value)">
+                                <input type="text" class="form-input" value="${safePhone}" onchange="updateLeadField('${lead.id}', 'phone', this.value)">
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Email</label>
-                                <input type="email" class="form-input" value="${lead.email || ''}" onchange="updateLeadField('${lead.id}', 'email', this.value)">
+                                <input type="email" class="form-input" value="${safeEmail}" onchange="updateLeadField('${lead.id}', 'email', this.value)">
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Canal</label>
@@ -293,17 +280,24 @@ function renderLeadsList() {
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Interesse</label>
-                                <input type="text" class="form-input" value="${lead.interest || ''}" onchange="updateLeadField('${lead.id}', 'interest', this.value)" placeholder="Ex: Clareamento">
+                                <input type="text" class="form-input" value="${safeInterest}" onchange="updateLeadField('${lead.id}', 'interest', this.value)" placeholder="Ex: Clareamento">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" style="color: var(--primary-700);">📅 Data da Visita (Relatórios)</label>
+                                <input type="date" class="form-input" value="${lead.visitDate ? lead.visitDate.split('T')[0] : ''}" 
+                                       onchange="updateLeadField('${lead.id}', 'visitDate', this.value ? new Date(this.value + 'T12:00:00').toISOString() : null)"
+                                       style="border-color: var(--primary-200); background: var(--primary-50);">
+                                <small style="font-size: 0.7rem; color: var(--gray-500);">Ajuste esta data para corrigir o dia em que a visita aparece nos relatórios.</small>
                             </div>
                         </div>
 
                         <div class="form-group" style="margin-top: var(--spacing-md);">
                             <label class="form-label">Mensagem Inicial</label>
-                            <textarea class="form-textarea" rows="3" onchange="updateLeadField('${lead.id}', 'message', this.value)">${lead.message || ''}</textarea>
+                            <textarea class="form-textarea" rows="3" onchange="updateLeadField('${lead.id}', 'message', this.value)">${safeMessage}</textarea>
                         </div>
 
                         <div style="display: flex; gap: var(--spacing-sm); margin-top: var(--spacing-lg); flex-wrap: wrap;">
-                            <button class="btn btn-whatsapp btn-small" onclick="openWhatsApp('${lead.phone}', 'Olá ${lead.name}! Aqui é da Odonto Company.')">
+                            <button class="btn btn-whatsapp btn-small" onclick="openWhatsApp('${lead.phone}', 'Olá ${safeName}! Aqui é da Odonto Company.')">
                                 💬 Abrir WhatsApp
                             </button>
                             ${lead.status !== 'converted' ? `
@@ -322,6 +316,26 @@ function renderLeadsList() {
                             <button class="btn btn-secondary btn-small" onclick="deleteLead('${lead.id}')">
                                 🗑️ Deletar
                             </button>
+                        </div>
+
+                        <div style="margin-top: var(--spacing-xl); padding-top: var(--spacing-lg); border-top: 1px solid var(--gray-200);">
+                            <h5 style="margin-bottom: var(--spacing-md); font-weight: 600; color: var(--gray-700); display: flex; justify-content: space-between; align-items: center;">
+                                📜 Histórico de Interações
+                                <button class="btn btn-small btn-secondary" onclick="event.stopPropagation(); showAddInteractionModal('${lead.id}')">+ Adicionar Nota</button>
+                            </h5>
+                            <div class="interaction-timeline" style="display: flex; flex-direction: column; gap: var(--spacing-sm);">
+                                ${lead.interactions && lead.interactions.length > 0 ?
+                    lead.interactions.map(idx => `
+                                        <div class="interaction-item" style="background: var(--gray-50); padding: var(--spacing-sm) var(--spacing-md); border-radius: var(--radius-md); border-left: 3px solid var(--primary-300);">
+                                            <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--gray-500); margin-bottom: 0.25rem;">
+                                                <span>${formatDateTime(idx.date)}</span>
+                                            </div>
+                                            <p style="font-size: 0.875rem; color: var(--gray-700); margin: 0;">${escapeHTML(idx.note)}</p>
+                                        </div>
+                                    `).join('')
+                    : '<p style="font-size: 0.875rem; color: var(--gray-400); font-style: italic;">Nenhuma interação registrada.</p>'
+                }
+                            </div>
                         </div>
 
                         <div style="margin-top: var(--spacing-md); padding-top: var(--spacing-md); border-top: 1px solid var(--gray-200);">
@@ -398,10 +412,14 @@ function updateLeadField(leadId, field, value) {
 function updateLeadStatus(leadId, newStatus) {
     const lead = AppState.leads.find(l => l.id === leadId);
     if (lead) {
-        // If changing to 'scheduled', require appointment date/time
         if (newStatus === 'scheduled') {
             showScheduleAppointmentModal(leadId);
             return;
+        }
+
+        if (newStatus === 'visit') {
+            if (!lead.visitDate) lead.visitDate = new Date().toISOString();
+            if (typeof syncLeadVisitToAppointment === 'function') syncLeadVisitToAppointment(leadId);
         }
 
         lead.status = newStatus;
@@ -421,7 +439,6 @@ function updateLeadStatus(leadId, newStatus) {
 function bulkChangeStatus(newStatus) {
     if (newStatus === 'scheduled') {
         if (LeadsState.selectedLeads.size === 1) {
-            // Get the single ID
             const leadId = Array.from(LeadsState.selectedLeads)[0];
             showScheduleAppointmentModal(leadId);
             return;
@@ -538,7 +555,7 @@ function saveLead() {
     const phone = document.getElementById('leadPhone').value.trim();
 
     if (!name || !phone) {
-        alert('Nome e telefone são obrigatórios!');
+        showNotification('Nome e telefone são obrigatórios!', 'error');
         return;
     }
 
@@ -558,8 +575,47 @@ function saveLead() {
     AppState.leads.push(lead);
     saveToStorage(STORAGE_KEYS.LEADS, AppState.leads);
     closeModal();
-    renderLeadsList(); // Re-renders the list
+    renderLeadsList();
     showNotification('Lead criado com sucesso!', 'success');
+}
+
+// Convert Lead to Patient
+function convertLeadToPatient(leadId) {
+    const lead = AppState.leads.find(l => l.id === leadId);
+    if (!lead) return;
+
+    // Check if already a patient
+    let patient = AppState.patients.find(p => p.convertedFrom === leadId || p.name.toLowerCase() === lead.name.toLowerCase());
+
+    if (patient) {
+        showNotification('Este lead já é um paciente cadastrado.', 'info');
+        return;
+    }
+
+    if (!confirm(`Deseja converter o lead "${lead.name}" em paciente?`)) {
+        return;
+    }
+
+    patient = {
+        id: generateId(),
+        name: lead.name,
+        phone: lead.phone,
+        email: lead.email || '',
+        birthdate: '',
+        address: '',
+        createdAt: new Date().toISOString(),
+        convertedFrom: leadId
+    };
+
+    AppState.patients.push(patient);
+    lead.status = 'converted';
+    lead.updatedAt = new Date().toISOString();
+
+    saveToStorage(STORAGE_KEYS.PATIENTS, AppState.patients);
+    saveToStorage(STORAGE_KEYS.LEADS, AppState.leads);
+
+    renderLeadsList();
+    showNotification('Paciente cadastrado com sucesso!', 'success');
 }
 
 // Contact Lead
@@ -598,40 +654,31 @@ function deleteLead(leadId) {
         cascade = confirm(message);
     }
 
-    // Delete Leads
     const index = AppState.leads.findIndex(l => l.id === leadId);
     if (index > -1) {
         AppState.leads.splice(index, 1);
         saveToStorage(STORAGE_KEYS.LEADS, AppState.leads);
     }
 
-    // Cascade Delete
     if (cascade && relatedPatient) {
-        // Delete Patient
         const pIndex = AppState.patients.findIndex(p => p.id === relatedPatient.id);
         if (pIndex > -1) {
             AppState.patients.splice(pIndex, 1);
             saveToStorage(STORAGE_KEYS.PATIENTS, AppState.patients);
         }
 
-        // Delete Kanban Card
         const kIndex = AppState.kanbanCards.findIndex(k => k.patientId === relatedPatient.id);
         if (kIndex > -1) {
             AppState.kanbanCards.splice(kIndex, 1);
             saveToStorage(STORAGE_KEYS.KANBAN, AppState.kanbanCards);
         }
 
-        // Delete Appointments
-        const initialCount = AppState.appointments.length;
         AppState.appointments = AppState.appointments.filter(a => a.patientId !== relatedPatient.id);
-
-        if (AppState.appointments.length !== initialCount) {
-            saveToStorage(STORAGE_KEYS.APPOINTMENTS, AppState.appointments);
-        }
+        saveToStorage(STORAGE_KEYS.APPOINTMENTS, AppState.appointments);
 
         showNotification('Lead e dados vinculados deletados!', 'success');
     } else {
-        showNotification('Lead deletado (dados vinculados mantidos)', 'success');
+        showNotification('Lead deletado', 'success');
     }
 
     renderLeadsList();
@@ -655,7 +702,6 @@ function showScheduleAppointmentModal(leadId) {
     const lead = AppState.leads.find(l => l.id === leadId);
     if (!lead) return;
 
-    // Default sale date is today, but allow editing for past/future tracking
     const today = new Date().toISOString().split('T')[0];
 
     const formHTML = `
@@ -668,9 +714,6 @@ function showScheduleAppointmentModal(leadId) {
         <div style="background: #f0fdf4; padding: var(--spacing-md); border-radius: var(--radius-md); margin-bottom: var(--spacing-md); border: 1px solid #bbf7d0;">
             <label class="form-label" style="color: #166534;">📅 Data da Venda (Contagem de Meta)</label>
             <input type="date" id="appointmentSaleDate" class="form-input" required value="${today}" style="border-color: #86efac;">
-            <p style="font-size: 0.75rem; color: #166534; margin-top: 0.25rem;">
-                Data considerada para bater a meta da semana (útil para lançar retroativo).
-            </p>
         </div>
 
         <div class="form-row">
@@ -711,27 +754,21 @@ function confirmScheduleAppointment(leadId) {
     const notes = document.getElementById('appointmentNotes').value;
 
     if (!saleDate || !date || !time) {
-        alert('Datas e hora são obrigatórios!');
+        showNotification('Datas e hora são obrigatórios!', 'error');
         return;
     }
 
     const lead = AppState.leads.find(l => l.id === leadId);
     if (!lead) return;
 
-    // Create date-time string
     const dateTime = new Date(date + 'T' + time + ':00').toISOString();
-
-    // Sale Date (Creation Date override)
-    // We treat saleDate as noon (12:00) of that day to avoid timezone shifts affecting "same day" logic
     const saleDateObj = new Date(saleDate + 'T12:00:00');
     const creationISO = saleDateObj.toISOString();
 
-    // Update lead status
     lead.status = 'scheduled';
     lead.updatedAt = new Date().toISOString();
 
-    // Convert to patient if not already
-    let patient = AppState.patients.find(p => p.name.toLowerCase() === lead.name.toLowerCase());
+    let patient = AppState.patients.find(p => p.convertedFrom === leadId || p.name.toLowerCase() === lead.name.toLowerCase());
 
     if (!patient) {
         patient = {
@@ -741,39 +778,35 @@ function confirmScheduleAppointment(leadId) {
             email: lead.email || '',
             birthdate: '',
             address: '',
-            createdAt: creationISO, // Use sale date for patient creation too if meaningful
+            createdAt: creationISO,
             convertedFrom: leadId
         };
         AppState.patients.push(patient);
     }
 
-    // Create appointment
     const appointment = {
         id: generateId(),
         patientId: patient.id,
         patientName: patient.name,
         date: dateTime,
-        saleDate: creationISO, // Store explicit sale date
+        saleDate: creationISO,
         procedure: procedure,
         duration: 60,
         notes: notes || `Agendamento criado do lead - Canal: ${lead.channel || 'N/A'}`,
         status: 'scheduled',
         attended: false,
-        createdAt: creationISO // Ovewrride createdAt for metrics
+        createdAt: creationISO
     };
     AppState.appointments.push(appointment);
 
-    // Save all changes
     saveToStorage(STORAGE_KEYS.LEADS, AppState.leads);
     saveToStorage(STORAGE_KEYS.PATIENTS, AppState.patients);
     saveToStorage(STORAGE_KEYS.APPOINTMENTS, AppState.appointments);
 
     closeModal();
-    renderLeadsList(); // If in Leads view
-    if (typeof renderKanbanBoard === 'function') renderKanbanBoard(); // If in Kanban view
-
-    // Trigger Weekly Goals Update if function exists
-    if (typeof updateWeeklyGoalsUI === 'function') updateWeeklyGoalsUI();
+    renderLeadsList();
+    if (typeof renderKanbanBoard === 'function') renderKanbanBoard();
+    if (typeof updateWeeklyGoals === 'function') updateWeeklyGoals();
 
     showNotification(`Agendamento confirmado para ${date.split('-').reverse().join('/')}!`, 'success');
 }
@@ -786,15 +819,15 @@ function openEditLeadModal(leadId) {
     const formHTML = `
         <div class="form-group">
             <label class="form-label">Nome *</label>
-            <input type="text" id="editLeadName" class="form-input" value="${lead.name}" required>
+            <input type="text" id="editLeadName" class="form-input" value="${escapeHTML(lead.name)}" required>
         </div>
         <div class="form-group">
             <label class="form-label">Telefone *</label>
-            <input type="tel" id="editLeadPhone" class="form-input" value="${lead.phone}" required>
+            <input type="tel" id="editLeadPhone" class="form-input" value="${escapeHTML(lead.phone)}" required>
         </div>
         <div class="form-group">
             <label class="form-label">Email</label>
-            <input type="email" id="editLeadEmail" class="form-input" value="${lead.email || ''}">
+            <input type="email" id="editLeadEmail" class="form-input" value="${escapeHTML(lead.email || '')}">
         </div>
         <div class="form-group">
             <label class="form-label">Canal</label>
@@ -810,15 +843,15 @@ function openEditLeadModal(leadId) {
         </div>
         <div class="form-group">
             <label class="form-label">Fonte</label>
-            <input type="text" id="editLeadSource" class="form-input" value="${lead.source || ''}">
+            <input type="text" id="editLeadSource" class="form-input" value="${escapeHTML(lead.source || '')}">
         </div>
         <div class="form-group">
             <label class="form-label">Interesse</label>
-            <input type="text" id="editLeadInterest" class="form-input" value="${lead.interest || ''}">
+            <input type="text" id="editLeadInterest" class="form-input" value="${escapeHTML(lead.interest || '')}">
         </div>
         <div class="form-group">
             <label class="form-label">Mensagem Inicial</label>
-            <textarea id="editLeadMessage" class="form-textarea" rows="3">${lead.message || ''}</textarea>
+            <textarea id="editLeadMessage" class="form-textarea" rows="3">${escapeHTML(lead.message || '')}</textarea>
         </div>
     `;
 
@@ -837,7 +870,7 @@ function saveLeadChanges(leadId) {
     const phone = document.getElementById('editLeadPhone').value.trim();
 
     if (!name || !phone) {
-        alert('Nome e telefone são obrigatórios!');
+        showNotification('Nome e telefone são obrigatórios!', 'error');
         return;
     }
 
@@ -852,11 +885,8 @@ function saveLeadChanges(leadId) {
 
     saveToStorage(STORAGE_KEYS.LEADS, AppState.leads);
     closeModal();
-
-    // Refresh views
     renderLeadsList();
     if (typeof renderKanbanBoard === 'function') renderKanbanBoard();
-
     showNotification('Lead atualizado com sucesso!', 'success');
 }
 
@@ -874,6 +904,7 @@ window.bulkChangeStatus = bulkChangeStatus;
 window.bulkDeleteLeads = bulkDeleteLeads;
 window.showNewLeadForm = showNewLeadForm;
 window.saveLead = saveLead;
+window.convertLeadToPatient = convertLeadToPatient;
 window.contactLead = contactLead;
 window.deleteLead = deleteLead;
 window.filterByDate = filterByDate;
@@ -882,4 +913,38 @@ window.showScheduleAppointmentModal = showScheduleAppointmentModal;
 window.confirmScheduleAppointment = confirmScheduleAppointment;
 window.openEditLeadModal = openEditLeadModal;
 window.saveLeadChanges = saveLeadChanges;
-window.searchLeads = searchLeads; // Export new search function
+window.searchLeads = searchLeads;
+
+// Interaction History Helpers
+window.showAddInteractionModal = (leadId) => {
+    const formHTML = `
+        <div class="form-group">
+            <label class="form-label">Nota / Observação</label>
+            <textarea id="interactionNote" class="form-textarea" rows="4" placeholder="Descreva o que foi conversado ou o status atual..." required></textarea>
+        </div>
+    `;
+
+    openModal('Registrar Interação', formHTML, [
+        { label: 'Cancelar', class: 'btn-secondary', onclick: 'closeModal()' },
+        { label: 'Salvar Nota', class: 'btn-primary', onclick: `saveInteraction('${leadId}')` }
+    ]);
+};
+
+window.saveInteraction = (leadId) => {
+    const note = document.getElementById('interactionNote').value.trim();
+    if (!note) return;
+
+    const lead = AppState.leads.find(l => l.id === leadId);
+    if (lead) {
+        if (!lead.interactions) lead.interactions = [];
+        lead.interactions.unshift({
+            date: new Date().toISOString(),
+            note: note
+        });
+        lead.updatedAt = new Date().toISOString();
+        saveToStorage(STORAGE_KEYS.LEADS, AppState.leads);
+        closeModal();
+        renderLeadsList();
+        showNotification('Nota salva com sucesso', 'success');
+    }
+};

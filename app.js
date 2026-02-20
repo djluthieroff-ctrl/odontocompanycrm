@@ -34,9 +34,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize systems
     initializeNavigation();
     initializeGlobalSearch();
+    initializeLoadingOverlay();
 
     // Force initial dashboard update
     updateDashboard();
+
+    // Check for backup reminder
+    setTimeout(checkBackupReminder, 2000);
 
     console.log('🦷 CRM Odonto Company Initialized');
 
@@ -150,11 +154,26 @@ function switchModule(moduleName) {
 // Global Search
 function initializeGlobalSearch() {
     const searchInput = document.getElementById('globalSearch');
+    if (!searchInput) return;
+
+    // Create results container if it doesn't exist
+    let resultsContainer = document.getElementById('search-results-dropdown');
+    if (!resultsContainer) {
+        resultsContainer = document.createElement('div');
+        resultsContainer.id = 'search-results-dropdown';
+        resultsContainer.className = 'search-results-dropdown';
+        // Position it below the search input
+        searchInput.parentElement.style.position = 'relative';
+        searchInput.parentElement.appendChild(resultsContainer);
+    }
 
     searchInput.addEventListener('input', (e) => {
-        const query = e.target.value.toLowerCase();
+        const query = e.target.value.trim().toLowerCase();
 
-        if (query.length < 2) return;
+        if (query.length < 2) {
+            resultsContainer.style.display = 'none';
+            return;
+        }
 
         // Search in patients
         const patientResults = AppState.patients.filter(p =>
@@ -169,27 +188,110 @@ function initializeGlobalSearch() {
             l.phone?.includes(query)
         );
 
-        console.log('Search results:', { patients: patientResults.length, leads: leadResults.length });
+        if (patientResults.length === 0 && leadResults.length === 0) {
+            resultsContainer.innerHTML = '<div class="search-result-item">Nenhum resultado encontrado</div>';
+        } else {
+            let html = '';
+
+            if (patientResults.length > 0) {
+                html += '<div class="search-category">Pacientes</div>';
+                patientResults.slice(0, 5).forEach(p => {
+                    html += `
+                        <div class="search-result-item" onclick="navigateToPatient('${p.id}')">
+                            <span class="result-icon">👤</span>
+                            <div class="result-info">
+                                <div class="result-name">${escapeHTML(p.name)}</div>
+                                <div class="result-detail">${escapeHTML(p.phone || 'Sem telefone')}</div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            if (leadResults.length > 0) {
+                html += '<div class="search-category">Leads</div>';
+                leadResults.slice(0, 5).forEach(l => {
+                    html += `
+                        <div class="search-result-item" onclick="navigateToLead('${l.id}')">
+                            <span class="result-icon">💬</span>
+                            <div class="result-info">
+                                <div class="result-name">${escapeHTML(l.name)}</div>
+                                <div class="result-detail">${escapeHTML(l.phone || 'Sem telefone')}</div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            resultsContainer.innerHTML = html;
+        }
+
+        resultsContainer.style.display = 'block';
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!searchInput.contains(e.target) && !resultsContainer.contains(e.target)) {
+            resultsContainer.style.display = 'none';
+        }
     });
 }
+
+// Global search navigation helpers
+window.navigateToPatient = (id) => {
+    document.getElementById('search-results-dropdown').style.display = 'none';
+    document.getElementById('globalSearch').value = '';
+    switchModule('patients');
+    setTimeout(() => {
+        if (typeof showPatientDetails === 'function') {
+            showPatientDetails(id);
+        }
+    }, 100);
+};
+
+window.navigateToLead = (id) => {
+    document.getElementById('search-results-dropdown').style.display = 'none';
+    document.getElementById('globalSearch').value = '';
+    switchModule('leads');
+    setTimeout(() => {
+        if (typeof expandLead === 'function') {
+            expandLead(id);
+            // Scroll to the lead card if possible
+            const element = document.querySelector(`[data-lead-id="${id}"]`);
+            if (element) element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }, 300);
+};
 
 // Dashboard Updates
 function updateDashboard() {
     const metrics = calculateMetrics();
-
-    // Total leads
-    const totalLeadsEl = document.getElementById('totalLeads');
-    if (totalLeadsEl) totalLeadsEl.textContent = metrics.totalLeads;
-
-    // Today's leads
     const today = new Date().toDateString();
-    const todayLeads = AppState.leads.filter(l =>
-        new Date(l.createdAt).toDateString() === today
-    ).length;
-    const todayLeadsEl = document.getElementById('todayLeads');
-    if (todayLeadsEl) todayLeadsEl.textContent = todayLeads;
 
-    // Leads badge
+    // Populate Top Stats
+    const todayLeads = AppState.leads.filter(l => new Date(l.createdAt).toDateString() === today).length;
+    // Agendados Hoje (Marcados hoje para qualquer data)
+    const scheduledToday = AppState.appointments.filter(a => a.createdAt && new Date(a.createdAt).toDateString() === today).length;
+    const conversionRate = metrics.totalLeads > 0 ? Math.round((metrics.scheduled / metrics.totalLeads) * 100) : 0;
+
+    const elTodayLeads = document.getElementById('dashTodayLeads');
+    const elScheduledToday = document.getElementById('dashScheduledToday');
+    const elConvRate = document.getElementById('dashConvRate');
+
+    if (elTodayLeads) elTodayLeads.textContent = todayLeads;
+    if (elScheduledToday) elScheduledToday.textContent = scheduledToday;
+    if (elConvRate) elConvRate.textContent = conversionRate + '%';
+
+    // Populate Funnel Visual
+    renderDashboardFunnel(metrics);
+
+    // Populate Today's Timeline
+    renderDashboardTimeline();
+
+    // Populate Weekly Commission & Goals
+    renderDashboardWeeklyPerf();
+
+    // CRM Metrics Compatibility (Legacy badges if any)
     const leadsBadge = document.getElementById('leadsBadge');
     if (leadsBadge) {
         const newLeads = AppState.leads.filter(l => l.status === 'new').length;
@@ -197,35 +299,114 @@ function updateDashboard() {
         leadsBadge.style.display = newLeads > 0 ? 'block' : 'none';
     }
 
-    // Total patients
-    const totalPatientsEl = document.getElementById('totalPatients');
-    if (totalPatientsEl) totalPatientsEl.textContent = AppState.patients.length;
-
-    // Total appointments
-    const totalAppointmentsEl = document.getElementById('totalAppointments');
-    if (totalAppointmentsEl) totalAppointmentsEl.textContent = AppState.appointments.length;
-
-    // Today's appointments (Keep as Created At or Date? Logic said Created At for 'Agendados Hoje' context usually, but let's stick to standard)
-    const todayAppointments = AppState.appointments.filter(a =>
-        new Date(a.date).toDateString() === today
-    ).length;
-    const todayAppointmentsEl = document.getElementById('todayAppointments');
-    if (todayAppointmentsEl) todayAppointmentsEl.textContent = todayAppointments;
-
-    // In progress (from kanban)
-    const inProgress = AppState.kanbanCards.filter(k =>
-        k.status === 'in-treatment' || k.status === 'in-service'
-    ).length;
-    const inProgressEl = document.getElementById('inProgress');
-    if (inProgressEl) inProgressEl.textContent = inProgress;
-
-    // CRC Metrics
-    updateCRCMetrics(metrics);
-
     // If Reports module is active, update it too
     if (AppState.currentModule === 'reports' && typeof updateReportsStats === 'function') {
         updateReportsStats();
     }
+}
+
+function renderDashboardFunnel(metrics) {
+    const container = document.getElementById('funnelVisualContainer');
+    if (!container) return;
+
+    const stages = [
+        { label: 'Leads Totais', count: metrics.totalLeads, color: '#3b82f6' },
+        { label: 'Em Contato', count: metrics.contacted, color: '#2563eb' },
+        { label: 'Agendados', count: metrics.scheduled, color: '#10b981' },
+        { label: 'Compareceram', count: metrics.visits, color: '#8b5cf6' },
+        { label: 'Vendas', count: metrics.sales, color: '#166534' }
+    ];
+
+    const max = metrics.totalLeads || 1;
+    container.innerHTML = stages.map(stage => {
+        const width = Math.max((stage.count / max) * 100, 5);
+        return `
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="width: 120px; font-size: 0.8rem; font-weight: 500; color: var(--gray-600);">${stage.label}</div>
+                <div style="flex: 1; height: 24px; background: var(--gray-100); border-radius: 4px; overflow: hidden; position: relative;">
+                    <div style="width: ${width}%; height: 100%; background: ${stage.color}; transition: width 0.5s ease;"></div>
+                    <span style="position: absolute; right: 8px; top: 2px; font-size: 0.75rem; font-weight: 700; color: ${width > 50 ? 'white' : 'var(--gray-700)'}">${stage.count}</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderDashboardTimeline() {
+    const container = document.getElementById('dashAppointmentsTimeline');
+    if (!container) return;
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const todays = AppState.appointments
+        .filter(a => a.date.startsWith(todayStr))
+        .sort((a, b) => new Date(a.date) - new Date(b.date))
+        .slice(0, 4); // Show only top 4
+
+    if (todays.length === 0) {
+        container.innerHTML = '<p style="color: var(--gray-400); text-align: center; padding: 1rem; border: 1px dashed var(--gray-200); border-radius: 8px;">Nenhum agendamento para hoje.</p>';
+        return;
+    }
+
+    container.innerHTML = todays.map(apt => {
+        const time = new Date(apt.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        const patient = AppState.patients.find(p => p.id === apt.patientId);
+        const name = patient ? patient.name : apt.patientName;
+        return `
+            <div style="display: flex; align-items: center; gap: 12px; padding: 10px; background: var(--gray-50); border-radius: 8px; border-left: 3px solid var(--primary-500);">
+                <div style="font-weight: 700; color: var(--primary-700); font-size: 0.9rem; min-width: 45px;">${time}</div>
+                <div style="flex: 1;">
+                    <div style="font-weight: 600; font-size: 0.9rem; color: var(--gray-900);">${escapeHTML(name)}</div>
+                    <div style="font-size: 0.75rem; color: var(--gray-500);">${escapeHTML(apt.procedure)}</div>
+                </div>
+                <div class="badge" style="font-size: 0.7rem;">${apt.status}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderDashboardWeeklyPerf() {
+    const weeklyPerf = calculateWeeklyPerformance();
+    const aptGoal = AppState.settings?.weeklyAppointmentsGoal || 80;
+    const visitGoal = AppState.settings?.weeklyVisitsGoal || 40;
+
+    let commission = 0;
+    let metGoals = 0;
+    if (weeklyPerf.appointments >= aptGoal) { commission += 100; metGoals++; }
+    if (weeklyPerf.visits >= visitGoal) { commission += 100; metGoals++; }
+
+    // Update Commission UI
+    const elCommission = document.getElementById('dashWeeklyCommission');
+    const elBonus = document.getElementById('dashCommissionBonus');
+    if (elCommission) elCommission.textContent = `R$ ${commission.toFixed(2)}`;
+    if (elBonus) {
+        if (metGoals === 2) elBonus.textContent = "🚀 Parabéns! Metas batidas!";
+        else if (metGoals === 1) elBonus.textContent = "🎯 Metade do caminho! Falta só uma.";
+        else elBonus.textContent = "📈 Faltam R$ 200,00 de bônus! Vamos lá!";
+    }
+
+    // Update Goals Progress
+    const container = document.getElementById('dashWeeklyGoalsProgress');
+    if (!container) return;
+
+    const renderGoalBar = (label, current, goal, color) => {
+        const percent = Math.min((current / goal) * 100, 100);
+        return `
+            <div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 4px;">
+                    <span style="font-weight: 600; color: var(--gray-700);">${label}</span>
+                    <span style="color: var(--gray-500); font-weight: 700;">${current}/${goal}</span>
+                </div>
+                <div style="height: 10px; background: var(--gray-100); border-radius: 10px; overflow: hidden;">
+                    <div style="width: ${percent}%; height: 100%; background: ${color}; transition: width 0.5s ease;"></div>
+                </div>
+            </div>
+        `;
+    };
+
+    container.innerHTML = `
+        ${renderGoalBar('🛒 Agendamentos (Novos Leads)', weeklyPerf.appointments, aptGoal, '#3b82f6')}
+        ${renderGoalBar('👥 Comparecimentos (Visitas)', weeklyPerf.visits, visitGoal, '#8b5cf6')}
+    `;
 }
 
 // Unified Metrics Calculation
@@ -243,17 +424,23 @@ function calculateMetrics() {
     // Sales
     const sales = AppState.leads.filter(l => l.saleStatus === 'sold').length;
 
+    // Contacted (assuming any lead not 'new' has been contacted)
+    const contacted = AppState.leads.filter(l => l.status !== 'new').length;
+
     return {
         totalLeads,
         scheduled,
         visits,
-        sales
+        sales,
+        contacted
     };
 }
 
-// CRC Metrics for Dashboard
+// CRC Metrics for Dashboard (Legacy/Consistency)
 function updateCRCMetrics(metrics) {
     if (!metrics) metrics = calculateMetrics();
+    // Use the values already calculated in updateDashboard or recalculate if needed
+    // This is now slightly redundant but keeps compatibility
 
     const today = new Date().toDateString();
 
@@ -267,8 +454,20 @@ function updateCRCMetrics(metrics) {
         ? Math.round((metrics.scheduled / metrics.totalLeads) * 100)
         : 0;
 
-    // Commission (Based on Visits)
-    const commission = metrics.visits * (AppState.settings?.commissionValue || 50);
+    // New Weekly Commission Logic
+    const weeklyPerf = calculateWeeklyPerformance();
+    let totalCommission = 0;
+
+    // Check if goals were met this week
+    if (weeklyPerf.appointments >= (AppState.settings?.weeklyAppointmentsGoal || 80)) {
+        totalCommission += 100;
+    }
+    if (weeklyPerf.visits >= (AppState.settings?.weeklyVisitsGoal || 40)) {
+        totalCommission += 100;
+    }
+
+    // Add previous commissions if we wanted historical, but user said "ganho 200" per week logic.
+    // For now let's show the current week "potential" or "accrued" commission.
 
     // Update UI if elements exist
     const conversionEl = document.getElementById('conversionRate');
@@ -278,11 +477,72 @@ function updateCRCMetrics(metrics) {
 
     if (conversionEl) conversionEl.textContent = conversionRate + '%';
     if (scheduledTodayEl) scheduledTodayEl.textContent = scheduledToday;
-    if (attendedEl) attendedEl.textContent = metrics.visits; // Use Visits from Funnel for Consistency
-    if (commissionEl) commissionEl.textContent = 'R$ ' + commission.toFixed(2);
+    if (attendedEl) attendedEl.textContent = weeklyPerf.visits;
+    if (commissionEl) commissionEl.textContent = 'R$ ' + totalCommission.toFixed(2);
 
     // Weekly Goals
     updateWeeklyGoals();
+}
+
+// Calculate Weekly Performance (Appointments Created and Visits Completed)
+function calculateWeeklyPerformance() {
+    const now = new Date();
+    const day = now.getDay();
+    const diff = now.getDate() - day + (day === 0 ? -6 : 1); // Adjust to start of week (Monday)
+    const startOfWeek = new Date(now.setDate(diff));
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(endOfWeek.getDate() + 6);
+    endOfWeek.setHours(23, 59, 59, 999);
+
+    // 1. Agendamentos (Created In Week) - Tracks intent/sales performance
+    const weeklyAppointmentsCount = AppState.appointments.filter(a => {
+        const d = new Date(a.createdAt);
+        return d >= startOfWeek && d <= endOfWeek;
+    }).length;
+
+    // 2. Visitas (Attended In Week) - Tracks clinic movement
+    // Uses a Set to deduplicate by patientId + date
+    const uniqueVisitKeys = new Set();
+    let totalVisitsCount = 0;
+
+    // A. From Agenda (The primary source)
+    AppState.appointments.forEach(a => {
+        const d = new Date(a.date);
+        if (d >= startOfWeek && d <= endOfWeek && (a.status === 'completed' || a.attended)) {
+            const key = `${a.patientId}_${d.toDateString()}`;
+            if (!uniqueVisitKeys.has(key)) {
+                uniqueVisitKeys.add(key);
+                totalVisitsCount++;
+            }
+        }
+    });
+
+    // B. From Leads (For leads that reached visit/sold stages without a formal agenda entry)
+    AppState.leads.forEach(l => {
+        // Fallback Priority: Locked visitDate > createdAt (Legacy)
+        const d = new Date(l.visitDate || l.createdAt);
+        if (d >= startOfWeek && d <= endOfWeek) { // Use startOfWeek and endOfWeek for this function
+            if (l.status === 'visit' || ['sold', 'lost'].includes(l.saleStatus)) {
+                const patient = AppState.patients.find(p => p.convertedFrom === l.id);
+                const entityId = patient ? patient.id : l.id;
+                const key = `${entityId}_${d.toDateString()}`;
+
+                if (!uniqueVisitKeys.has(key)) {
+                    uniqueVisitKeys.add(key);
+                    totalVisitsCount++; // Keep original variable name
+                }
+            }
+        }
+    });
+
+    return {
+        appointments: weeklyAppointmentsCount,
+        visits: totalVisitsCount,
+        start: startOfWeek,
+        end: endOfWeek
+    };
 }
 
 // Update Weekly Goals
@@ -318,6 +578,11 @@ function openModal(title, content, actions = []) {
     `;
 
     modalContainer.classList.add('active');
+
+    // Initialize masks for the new content
+    if (typeof initMasks === 'function') {
+        initMasks(modalContainer);
+    }
 
     // Close on background click
     modalContainer.addEventListener('click', (e) => {
@@ -360,15 +625,113 @@ function formatDateTime(dateString) {
     });
 }
 
+// Helper to sync Lead Visit to Agenda
+function syncLeadVisitToAppointment(leadId) {
+    const lead = AppState.leads.find(l => l.id === leadId);
+    if (!lead) return;
+
+    // 1. Ensure Patient exists
+    let patient = AppState.patients.find(p => p.convertedFrom === leadId || p.name.toLowerCase() === lead.name.toLowerCase());
+    if (!patient) {
+        patient = {
+            id: generateId(),
+            name: lead.name,
+            phone: lead.phone,
+            email: lead.email || '',
+            birthdate: '',
+            address: '',
+            createdAt: new Date().toISOString(),
+            convertedFrom: leadId
+        };
+        AppState.patients.push(patient);
+        saveToStorage(STORAGE_KEYS.PATIENTS, AppState.patients);
+    }
+
+    // 2. Check for an open appointment to "give low" (dar baixa)
+    // Priority: Most recent non-completed/non-cancelled appointment
+    const openAppts = AppState.appointments.filter(a =>
+        a.patientId === patient.id &&
+        a.status !== 'completed' &&
+        a.status !== 'cancelled'
+    ).sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    if (openAppts.length > 0) {
+        // Use the most relevant open appointment
+        const apt = openAppts[0];
+        apt.status = 'completed';
+        apt.attended = true;
+        // Keep the original appointment date, but mark as completed today
+        apt.notes = (apt.notes || '') + `\n⚠️ Baixa automática via Lead (Visita em ${new Date().toLocaleDateString('pt-BR')})`;
+
+        saveToStorage(STORAGE_KEYS.APPOINTMENTS, AppState.appointments);
+        showNotification(`Agenda atualizada: Agendamento de ${patient.name} marcado como concluído.`, 'success');
+    } else {
+        // Only create a new one if NO open appointment exists
+        const todayStr = new Date().toISOString().split('T')[0];
+        const alreadyHasCompletedToday = AppState.appointments.find(a =>
+            a.patientId === patient.id &&
+            a.date.startsWith(todayStr) &&
+            a.status === 'completed'
+        );
+
+        if (!alreadyHasCompletedToday) {
+            const appointment = {
+                id: generateId(),
+                patientId: patient.id,
+                patientName: patient.name,
+                date: new Date().toISOString(),
+                procedure: lead.interest || 'Avaliação',
+                duration: 60,
+                notes: `⚠️ Sincronizado automaticamente (Lead: ${lead.source})`,
+                status: 'completed',
+                attended: true,
+                createdAt: new Date().toISOString()
+            };
+            AppState.appointments.push(appointment);
+            saveToStorage(STORAGE_KEYS.APPOINTMENTS, AppState.appointments);
+        }
+    }
+
+    if (typeof renderAppointmentsView === 'function') renderAppointmentsView();
+}
+
 function generateId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
 }
 
 function showNotification(message, type = 'info') {
-    // Simple console notification for now
-    console.log(`[${type.toUpperCase()}] ${message}`);
+    // Create toast container if it doesn't exist
+    let container = document.getElementById('toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        container.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 10000; display: flex; flex-direction: column; gap: 10px; max-width: 400px;';
+        document.body.appendChild(container);
+    }
 
-    // TODO: Implement toast notifications
+    const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
+    const colors = {
+        success: { bg: '#f0fdf4', border: '#86efac', text: '#166534' },
+        error: { bg: '#fef2f2', border: '#fca5a5', text: '#991b1b' },
+        info: { bg: '#eff6ff', border: '#93c5fd', text: '#1e40af' },
+        warning: { bg: '#fffbeb', border: '#fcd34d', text: '#92400e' }
+    };
+    const c = colors[type] || colors.info;
+
+    const toast = document.createElement('div');
+    toast.style.cssText = `background: ${c.bg}; border: 1px solid ${c.border}; color: ${c.text}; padding: 12px 16px; border-radius: 10px; font-size: 0.9rem; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: flex; align-items: center; gap: 10px; animation: toastSlideIn 0.3s ease; cursor: pointer; font-family: 'Inter', sans-serif;`;
+    toast.innerHTML = `<span style="font-size: 1.2em;">${icons[type] || icons.info}</span><span>${escapeHTML(message)}</span>`;
+    toast.onclick = () => { toast.style.animation = 'toastSlideOut 0.3s ease forwards'; setTimeout(() => toast.remove(), 300); };
+
+    container.appendChild(toast);
+
+    // Auto dismiss after 4 seconds
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.style.animation = 'toastSlideOut 0.3s ease forwards';
+            setTimeout(() => toast.remove(), 300);
+        }
+    }, 4000);
 }
 
 // Export to global scope
@@ -383,3 +746,40 @@ window.formatDate = formatDate;
 window.formatDateTime = formatDateTime;
 window.generateId = generateId;
 window.showNotification = showNotification;
+window.capitalize = capitalize;
+window.showLoading = (message = 'Carregando...') => {
+    const overlay = document.getElementById('loadingOverlay');
+    const text = document.getElementById('loadingText');
+    if (overlay && text) {
+        text.textContent = message;
+        overlay.style.display = 'flex';
+    }
+};
+window.hideLoading = () => {
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) overlay.style.display = 'none';
+};
+
+function initializeLoadingOverlay() {
+    if (!document.getElementById('loadingOverlay')) {
+        const overlay = document.createElement('div');
+        overlay.id = 'loadingOverlay';
+        overlay.className = 'loading-overlay';
+        overlay.innerHTML = `
+            <div class="spinner"></div>
+            <p id="loadingText" style="font-weight: 600; color: var(--primary-800);">Carregando...</p>
+        `;
+        document.body.appendChild(overlay);
+    }
+}
+
+function checkBackupReminder() {
+    const lastBackup = localStorage.getItem('last_backup_date');
+    const threeDays = 3 * 24 * 60 * 60 * 1000;
+    const now = Date.now();
+
+    if (!lastBackup || (now - parseInt(lastBackup)) > threeDays) {
+        showNotification('🚀 Lembrete: Faça um backup dos seus dados nas configurações!', 'warning');
+    }
+}
+

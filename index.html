@@ -13,8 +13,8 @@
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
-    <!-- SheetJS Library for Excel Import/Export -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- xlsx-js-style for Excel Import/Export with Styling -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style/dist/xlsx.bundle.js"></script>
     <!-- Chart.js for Reports -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -82,92 +82,130 @@
         <main class="main-content">
             <!-- Dashboard Module -->
             <section id="dashboard-module" class="module active">
-                <div class="module-header">
-                    <h2>Dashboard</h2>
-                    <p>Visão geral da clínica</p>
+                <div class="module-header" style="margin-bottom: 2rem;">
+                    <div>
+                        <h2>Olá, <span id="userName">CRC</span></h2>
+                        <p>Aqui está o que está acontecendo na odontologia hoje.</p>
+                    </div>
                 </div>
-                <div class="dashboard-grid">
-                    <div class="stat-card">
-                        <div class="stat-icon">💬</div>
-                        <div class="stat-content">
-                            <h3>Leads Ativos</h3>
-                            <p class="stat-number" id="totalLeads">0</p>
-                            <span class="stat-label">Novos hoje: <strong id="todayLeads">0</strong></span>
+
+                <div class="dashboard-custom-grid" style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem;">
+
+                    <!-- Left Column: Main Stats and Timeline -->
+                    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+
+                        <!-- Quick Stats Row -->
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                            <div class="dash-widget"
+                                style="background: white; padding: 1.5rem; border-radius: 12px; border: 1px solid var(--gray-200);">
+                                <div style="display: flex; align-items: center; gap: 1rem;">
+                                    <div style="font-size: 2rem;">📞</div>
+                                    <div>
+                                        <div
+                                            style="font-size: 0.75rem; color: var(--gray-500); font-weight: 600; text-transform: uppercase;">
+                                            Leads Novos</div>
+                                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--gray-900);"
+                                            id="dashTodayLeads">0</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="dash-widget"
+                                style="background: white; padding: 1.5rem; border-radius: 12px; border: 1px solid var(--gray-200);">
+                                <div style="display: flex; align-items: center; gap: 1rem;">
+                                    <div style="font-size: 2rem;">📅</div>
+                                    <div>
+                                        <div
+                                            style="font-size: 0.75rem; color: var(--gray-500); font-weight: 600; text-transform: uppercase;">
+                                            Agendados</div>
+                                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--gray-900);"
+                                            id="dashScheduledToday">0</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="dash-widget"
+                                style="background: white; padding: 1.5rem; border-radius: 12px; border: 1px solid var(--gray-200);">
+                                <div style="display: flex; align-items: center; gap: 1rem;">
+                                    <div style="font-size: 2rem;">💰</div>
+                                    <div>
+                                        <div
+                                            style="font-size: 0.75rem; color: var(--gray-500); font-weight: 600; text-transform: uppercase;">
+                                            Taxa Conv.</div>
+                                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--gray-900);"
+                                            id="dashConvRate">0%</div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">👥</div>
-                        <div class="stat-content">
-                            <h3>Pacientes</h3>
-                            <p class="stat-number" id="totalPatients">0</p>
-                            <span class="stat-label">Ativos no mês</span>
+
+                        <!-- Funnel Visual -->
+                        <div class="dash-widget"
+                            style="background: white; padding: 1.5rem; border-radius: 12px; border: 1px solid var(--gray-200);">
+                            <h4 style="margin-bottom: 1.5rem;">Funil de Vendas</h4>
+                            <div id="funnelVisualContainer" style="display: flex; flex-direction: column; gap: 8px;">
+                                <!-- Will be populated by JS -->
+                            </div>
                         </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">📅</div>
-                        <div class="stat-content">
-                            <h3>Agendamentos</h3>
-                            <p class="stat-number" id="totalAppointments">0</p>
-                            <span class="stat-label">Hoje: <strong id="todayAppointments">0</strong></span>
+
+                        <!-- Today's Timeline Preview -->
+                        <div class="dash-widget"
+                            style="background: white; padding: 1.5rem; border-radius: 12px; border: 1px solid var(--gray-200);">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <h4 style="margin: 0;">Próximas Consultas</h4>
+                                <button class="btn btn-small" onclick="switchModule('appointments')">Ver Agenda
+                                    completa</button>
+                            </div>
+                            <div id="dashAppointmentsTimeline"
+                                style="display: flex; flex-direction: column; gap: 10px;">
+                                <p style="color: var(--gray-400); text-align: center; padding: 1rem;">Buscando
+                                    agendamentos...</p>
+                            </div>
                         </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">⚡</div>
-                        <div class="stat-content">
-                            <h3>Em Atendimento</h3>
-                            <p class="stat-number" id="inProgress">0</p>
-                            <span class="stat-label">Agora</span>
-                        </div>
+
                     </div>
 
-                    <!-- CRC Metrics -->
-                    <div class="stat-card" style="background: linear-gradient(135deg, #dbeafe, #bfdbfe);">
-                        <div class="stat-icon">📈</div>
-                        <div class="stat-content">
-                            <h3>Taxa de Conversão</h3>
-                            <p class="stat-number" id="conversionRate">0%</p>
-                            <span class="stat-label">Leads → Agendados</span>
-                        </div>
-                    </div>
+                    <!-- Right Column: Goals & Actions -->
+                    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
 
-                    <div class="stat-card" style="background: linear-gradient(135deg, #d1fae5, #a7f3d0);">
-                        <div class="stat-icon">✅</div>
-                        <div class="stat-content">
-                            <h3>Agendados Hoje</h3>
-                            <p class="stat-number" id="scheduledToday">0</p>
-                            <span class="stat-label">Marcados pelo CRC</span>
+                        <!-- Commission Tracker -->
+                        <div class="dash-widget"
+                            style="background: linear-gradient(135deg, var(--primary-600), var(--primary-700)); color: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);">
+                            <h4
+                                style="margin: 0; color: rgba(255,255,255,0.8); font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">
+                                Minha Comissão (Semana)</h4>
+                            <div id="dashWeeklyCommission"
+                                style="font-size: 2.5rem; font-weight: 700; margin: 0.5rem 0;">R$ 0,00</div>
+                            <div id="dashCommissionBonus"
+                                style="font-size: 0.85rem; background: rgba(255,255,255,0.2); display: inline-block; padding: 4px 10px; border-radius: 20px;">
+                                🎯 Continue focado nas metas!
+                            </div>
                         </div>
-                    </div>
 
-                    <div class="stat-card" style="background: linear-gradient(135deg, #fef3c7, #fde68a);">
-                        <div class="stat-icon">👥</div>
-                        <div class="stat-content">
-                            <h3>Comparecimentos</h3>
-                            <p class="stat-number" id="totalAttended">0</p>
-                            <span class="stat-label">Total</span>
+                        <!-- Goals Widget -->
+                        <div class="dash-widget"
+                            style="background: white; padding: 1.25rem; border-radius: 12px; border: 1px solid var(--gray-200);">
+                            <h4 style="margin-bottom: 1rem; font-size: 1rem;">Progresso das Metas</h4>
+                            <div id="dashWeeklyGoalsProgress" style="display: flex; flex-direction: column; gap: 1rem;">
+                                <!-- Will be populated by JS -->
+                            </div>
                         </div>
-                    </div>
 
-                    <div class="stat-card" style="background: linear-gradient(135deg, #d1fae5, #6ee7b7);">
-                        <div class="stat-icon">💰</div>
-                        <div class="stat-content">
-                            <h3>Comissão Acumulada</h3>
-                            <p class="stat-number" style="font-size: 1.75rem;" id="totalCommission">R$ 0,00</p>
-                            <span class="stat-label">Total a receber</span>
+                        <!-- Quick Actions -->
+                        <div class="dash-widget"
+                            style="background: white; padding: 1.25rem; border-radius: 12px; border: 1px solid var(--gray-200);">
+                            <h4 style="margin-bottom: 1rem; font-size: 1rem;">Ações Rápidas</h4>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                                <button class="btn btn-secondary btn-small" onclick="showNewLeadForm()">➕ Novo
+                                    Lead</button>
+                                <button class="btn btn-secondary btn-small" onclick="showNewPatientForm()">👤 Novo
+                                    Paciente</button>
+                                <button class="btn btn-secondary btn-small" onclick="showNewAppointmentForm()">📅
+                                    Agendar</button>
+                                <button class="btn btn-secondary btn-small" onclick="switchModule('reports')">📊
+                                    Relatórios</button>
+                            </div>
                         </div>
-                    </div>
 
-                    <!-- Weekly Goals -->
-                    <div class="stat-card"
-                        style="background: linear-gradient(135deg, #f3e8ff, #e9d5ff); grid-column: 1 / -1;">
-                        <div style="flex: 1;">
-                            <h3
-                                style="font-size: 1.25rem; font-weight: 700; color: var(--gray-900); margin-bottom: var(--spacing-lg);">
-                                🎯 Metas da Semana
-                            </h3>
-                            <div id="monthlyGoalsContainer"
-                                style="display: flex; flex-direction: column; gap: var(--spacing-md);"></div>
-                        </div>
                     </div>
                 </div>
             </section>
@@ -261,6 +299,8 @@
     <div id="modalContainer"></div>
 
     <!-- Scripts -->
+    <script src="utils/sanitize.js"></script>
+    <script src="utils/masks.js"></script>
     <script src="utils/whatsapp.js"></script>
     <script src="utils/weekly-goals.js"></script>
     <script src="utils/import-export.js"></script>

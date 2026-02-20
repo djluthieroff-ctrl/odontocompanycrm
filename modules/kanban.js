@@ -108,7 +108,10 @@ function renderCardsForColumn(status) {
         // Calculate days since creation
         const days = Math.floor((new Date() - new Date(lead.createdAt)) / (1000 * 60 * 60 * 24));
         const daysBadge = days === 0 ? 'Hoje' : `${days}d atrás`;
-        const isUrgent = days > 3 && status !== 'scheduled' && status !== 'completed' && status !== 'visit'; // Urgent logic
+        const isUrgent = days > 3 && status !== 'scheduled' && status !== 'completed' && status !== 'visit';
+        const safeName = typeof escapeHTML === 'function' ? escapeHTML(lead.name) : lead.name;
+        const safePhone = typeof escapeHTML === 'function' ? escapeHTML(lead.phone) : lead.phone;
+        const safeChannel = lead.channel ? (typeof escapeHTML === 'function' ? escapeHTML(lead.channel) : lead.channel) : '';
 
         // Colors & Badges
         const statusColors = {
@@ -124,7 +127,8 @@ function renderCardsForColumn(status) {
         if (isUrgent) { badgeBg = '#fee2e2'; badgeColor = '#991b1b'; badgeBorder = '1px solid #fca5a5'; }
 
         // WhatsApp Link
-        const message = `Olá ${lead.name.split(' ')[0]}, tudo bem? Sou da Odonto Company.`;
+        const firstName = lead.name.split(' ')[0];
+        const message = `Olá ${firstName}, tudo bem? Sou da Odonto Company.`;
         const waLink = typeof generateWhatsAppLink === 'function' ? generateWhatsAppLink(lead.phone, message) : '#';
 
         // Sales Status (Only for Visit Column)
@@ -191,7 +195,7 @@ function renderCardsForColumn(status) {
                         color: #1e40af;
                         border: 1px solid #dbeafe;
                     ">
-                        ${lead.channel}
+                        ${safeChannel}
                     </span>` : ''}
                     
                     ${lead.saleStatus === 'sold' ? '<span style="font-size: 11px; padding: 2px 8px; border-radius: 99px; background: #dcfce7; color: #15803d; border: 1px solid #86efac; font-weight: 700;">💰 Venda</span>' : ''}
@@ -199,11 +203,11 @@ function renderCardsForColumn(status) {
                 </div>
 
                 <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                    <h4 style="font-size: 14px; font-weight: 600; color: #1e293b; margin: 0; line-height: 1.4;">${lead.name}</h4>
+                    <h4 style="font-size: 14px; font-weight: 600; color: #1e293b; margin: 0; line-height: 1.4;">${safeName}</h4>
                 </div>
                 
                 <div style="font-size: 12px; color: #64748b; display: flex; align-items: center; gap: 4px;">
-                    <span>📱 ${formatPhoneNumber(lead.phone)}</span>
+                    <span>📱 ${formatPhoneNumber(safePhone)}</span>
                 </div>
 
                 ${salesActions}
@@ -251,14 +255,24 @@ function markSale(leadId, isSold) {
     const lead = AppState.leads.find(l => l.id === leadId);
     if (!lead) return;
 
-    lead.saleStatus = isSold ? 'sold' : 'lost';
-    lead.updatedAt = new Date().toISOString();
+    if (isSold) {
+        const value = prompt(`Digite o valor do fechamento para "${lead.name}":`, lead.saleValue || "0");
+        if (value === null) return; // Cancelled prompt
+        lead.saleValue = parseFloat(value.replace(',', '.')) || 0;
+        lead.saleStatus = 'sold';
+    } else {
+        if (!confirm(`Confirmar que a venda para "${lead.name}" não foi fechada?`)) return;
+        lead.saleStatus = 'lost';
+        lead.saleValue = 0;
+    }
 
-    // If sold, maybe create a patient record if not exists? (Already done in scheduling usually)
+    lead.updatedAt = new Date().toISOString();
 
     saveToStorage(STORAGE_KEYS.LEADS, AppState.leads);
     renderKanbanBoard();
-    showNotification(isSold ? 'Venda registrada! 🎉' : 'Venda marcada como perdida.', isSold ? 'success' : 'info');
+    if (typeof updateDashboard === 'function') updateDashboard();
+
+    showNotification(isSold ? `Venda de R$ ${lead.saleValue.toFixed(2)} registrada! 🎉` : 'Venda marcada como perdida.', isSold ? 'success' : 'info');
 }
 
 // Helper: Format Phone
@@ -273,9 +287,11 @@ function formatPhoneNumber(phone) {
 
 // Show Appointment Details 
 function showAppointmentDetails(leadId) {
-    const patient = AppState.patients.find(p => p.name.toLowerCase() === AppState.leads.find(l => l.id === leadId)?.name.toLowerCase());
+    const lead = AppState.leads.find(l => l.id === leadId);
+    if (!lead) return;
+    const patient = AppState.patients.find(p => p.name.toLowerCase() === lead.name.toLowerCase());
     if (patient) {
-        switchTab('appointments');
+        switchModule('appointments');
     }
 }
 
@@ -286,7 +302,7 @@ function showLeadDetails(leadId) {
     if (typeof searchLeads === 'function') searchLeads('');
 
     // 2. Switch Tab
-    switchTab('leads');
+    switchModule('leads');
 
     // 3. Expand and Scroll
     setTimeout(() => {
@@ -375,6 +391,12 @@ function updateLeadStatusViaKanban(leadId, newStatus) {
     }
 
     // Update status
+    // If moving to visit status, record the date and sync to Agenda
+    if (newStatus === 'visit') {
+        if (!lead.visitDate) lead.visitDate = new Date().toISOString();
+        if (typeof syncLeadVisitToAppointment === 'function') syncLeadVisitToAppointment(leadId);
+    }
+
     lead.status = newStatus;
     lead.updatedAt = new Date().toISOString();
 
@@ -397,3 +419,5 @@ function updateLeadStatusViaKanban(leadId, newStatus) {
 window.initKanbanModule = initKanbanModule;
 window.renderKanbanBoard = renderKanbanBoard;
 window.markSale = markSale;
+window.showLeadDetails = showLeadDetails;
+window.showAppointmentDetails = showAppointmentDetails;
