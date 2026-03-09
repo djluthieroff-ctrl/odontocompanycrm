@@ -677,7 +677,7 @@ function importBackupJSON() {
         if (!file) return;
 
         const reader = new FileReader();
-        reader.onload = (event) => {
+        reader.onload = async (event) => {
             try {
                 const backup = JSON.parse(event.target.result);
 
@@ -686,32 +686,39 @@ function importBackupJSON() {
                     throw new Error('Formato de backup inválido.');
                 }
 
-                if (!confirm(`⚠️ ATENÇÃO: Importar este backup substituirá TODOS os dados atuais. Deseja continuar?`)) {
+                if (!confirm(`⚠️ ATENÇÃO: Isso substituirá todos os dados na nuvem pelos dados do backup. Deseja continuar?`)) {
                     return;
                 }
 
-                // Update AppState
+                showLoading('Importando e sincronizando com a nuvem...');
+
+                // 1. Update AppState
                 if (backup.data.leads) AppState.leads = backup.data.leads;
                 if (backup.data.patients) AppState.patients = backup.data.patients;
                 if (backup.data.appointments) AppState.appointments = backup.data.appointments;
                 if (backup.data.kanbanCards) AppState.kanbanCards = backup.data.kanbanCards;
                 if (backup.data.settings) AppState.settings = backup.data.settings;
 
-                // Save to Storage
-                saveToStorage(STORAGE_KEYS.LEADS, AppState.leads);
-                saveToStorage(STORAGE_KEYS.PATIENTS, AppState.patients);
-                saveToStorage(STORAGE_KEYS.APPOINTMENTS, AppState.appointments);
-                saveToStorage(STORAGE_KEYS.KANBAN, AppState.kanbanCards);
-                saveToStorage(STORAGE_KEYS.SETTINGS, AppState.settings);
+                // 2. Save to Supabase (This will also update LocalStorage)
+                const syncTasks = [
+                    saveToSupabase('leads', AppState.leads),
+                    saveToSupabase('patients', AppState.patients),
+                    saveToSupabase('appointments', AppState.appointments),
+                    saveToSupabase('settings', AppState.settings)
+                ];
 
-                showNotification('Backup importado com sucesso! O sistema será reiniciado.', 'success');
+                await Promise.all(syncTasks);
+
+                hideLoading();
+                showNotification('Backup importado e sincronizado com a nuvem!', 'success');
 
                 setTimeout(() => {
                     location.reload();
-                }, 1500);
+                }, 1000);
 
             } catch (error) {
                 console.error('Error importing backup:', error);
+                hideLoading();
                 alert('Erro ao importar backup: ' + error.message);
             }
         };
