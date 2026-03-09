@@ -692,14 +692,50 @@ function importBackupJSON() {
 
                 showLoading('Importando e sincronizando com a nuvem...');
 
-                // 1. Update AppState
+                // 🔥 CRITICAL: Fix relationship IDs (Legacy -> UUID)
+                const idMap = new Map();
+
+                // Helper to generate UUIDs for items that don't have one
+                const ensureUUID = (item) => {
+                    if (!item.id) item.id = generateId();
+                    if (typeof item.id === 'string' && !item.id.includes('-')) {
+                        const newId = generateId();
+                        idMap.set(item.id, newId);
+                        item.id = newId;
+                    }
+                    return item.id;
+                };
+
+                // 1. Process Leads and Patients first to build the ID Map
+                if (backup.data.leads) backup.data.leads.forEach(ensureUUID);
+                if (backup.data.patients) backup.data.patients.forEach(ensureUUID);
+
+                // 2. Update references in Patients and Appointments
+                if (backup.data.patients) {
+                    backup.data.patients.forEach(p => {
+                        if (p.convertedFrom && idMap.has(p.convertedFrom)) {
+                            p.convertedFrom = idMap.get(p.convertedFrom);
+                        }
+                    });
+                }
+
+                if (backup.data.appointments) {
+                    backup.data.appointments.forEach(a => {
+                        ensureUUID(a);
+                        if (a.patientId && idMap.has(a.patientId)) {
+                            a.patientId = idMap.get(a.patientId);
+                        }
+                    });
+                }
+
+                // 3. Update AppState
                 if (backup.data.leads) AppState.leads = backup.data.leads;
                 if (backup.data.patients) AppState.patients = backup.data.patients;
                 if (backup.data.appointments) AppState.appointments = backup.data.appointments;
                 if (backup.data.kanbanCards) AppState.kanbanCards = backup.data.kanbanCards;
                 if (backup.data.settings) AppState.settings = backup.data.settings;
 
-                // 2. Save to Supabase (This will also update LocalStorage)
+                // 4. Save to Supabase
                 console.log('🚀 Iniciando sincronização do backup...');
 
                 // Sequencial para melhor controle de erro

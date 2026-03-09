@@ -87,6 +87,33 @@ function onAuthStateChange(callback) {
 }
 
 // ─── Field Name Mapping (camelCase ↔ snake_case) ────────────────────────
+// DEFINITIVE LIST OF DB COLUMNS TO PREVENT 400 ERRORS
+const DB_COLUMNS = {
+    leads: [
+        'id', 'legacy_id', 'user_id', 'name', 'phone', 'email', 'channel', 'source',
+        'interest', 'message', 'status', 'sale_status', 'sale_value', 'interactions',
+        'visit_date', 'scheduled_at', 'contacted_at', 'attended', 'created_at', 'updated_at'
+    ],
+    patients: [
+        'id', 'legacy_id', 'user_id', 'name', 'cpf', 'birth_date', 'phone', 'email',
+        'address', 'main_complaint', 'medical_history', 'medications', 'allergies',
+        'dental_conditions', 'previous_treatments', 'notes', 'odontogram', 'history',
+        'converted_from', 'created_at', 'updated_at'
+    ],
+    appointments: [
+        'id', 'legacy_id', 'user_id', 'patient_id', 'patient_name', 'date', 'procedure',
+        'duration', 'notes', 'status', 'attended', 'sale_date', 'created_at', 'updated_at'
+    ],
+    settings: [
+        'id', 'user_id', 'crc_name', 'daily_goal', 'commission_value',
+        'weekly_appointments_goal', 'weekly_visits_goal', 'updated_at'
+    ],
+    old_patients: [
+        'id', 'user_id', 'name', 'phone', 'last_consultation', 'interest',
+        'status', 'notes', 'created_at', 'updated_at'
+    ]
+};
+
 const FIELD_MAP = {
     leads: {
         toDb: {
@@ -180,42 +207,40 @@ const FIELD_MAP = {
         toApp: {
             last_consultation: 'lastConsultation',
             created_at: 'createdAt',
-            updated_at: 'updatedAt'
+            updated_at: 'updated_at'
         }
     }
 };
 
 function mapToDb(table, obj) {
     const map = FIELD_MAP[table]?.toDb || {};
+    const allowedColumns = DB_COLUMNS[table] || [];
     const result = {};
+
     for (let [key, value] of Object.entries(obj)) {
         // Skip the old string id for Supabase (UUID is auto-generated)
         if (key === 'id' && typeof value === 'string' && !value.includes('-')) {
-            result['legacy_id'] = value; // Preserve old ID for reference
+            result['legacy_id'] = value;
             continue;
         }
 
         // 🔥 CRITICAL FIX: Convert empty strings to null
-        // Postgres fails with "invalid input syntax for type date" when receiving ""
         if (value === "") {
             value = null;
         }
 
         const dbKey = map[key] || key;
-        result[dbKey] = value;
+
+        // 🔥 STRICT FILTER: Only add if column exists in Supabase
+        if (allowedColumns.includes(dbKey)) {
+            result[dbKey] = value;
+        }
     }
+
     // Add user_id
     if (currentUser) {
         result['user_id'] = currentUser.id;
     }
-
-    // Double check: remove common camelCase leftovers that aren't mapped
-    const forbidden = ['birthDate', 'saleDate', 'saleValue', 'saleStatus', 'scheduledAt', 'contactedAt', 'visitDate', 'birthdate', 'saledate'];
-    forbidden.forEach(key => {
-        if (key in result && !(key in map)) {
-            delete result[key];
-        }
-    });
 
     return result;
 }
