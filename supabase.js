@@ -4,10 +4,11 @@
 // Falls back to localStorage if Supabase is unavailable (offline mode).
 
 // ─── Configuration ──────────────────────────────────────────────────────
-// TODO: Replace with your Supabase project credentials
-// Find them at: https://supabase.com/dashboard → Settings → API
-const SUPABASE_URL = 'https://klnhjmbwtaijodvlsiff.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtsbmhqbWJ3dGFpam9kdmxzaWZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwNTMyMjQsImV4cCI6MjA4ODYyOTIyNH0.LRILFYE-S5t1M0rxZk2S6qiRCUBuai_t3kiRdGGdbyI';
+// Fill credentials in config.js (window.__APP_CONFIG__)
+// Supabase dashboard: Settings > API
+const appConfig = window.__APP_CONFIG__ || {};
+const SUPABASE_URL = (appConfig.SUPABASE_URL || '').trim();
+const SUPABASE_ANON_KEY = (appConfig.SUPABASE_ANON_KEY || '').trim();
 
 // ─── State ──────────────────────────────────────────────────────────────
 let supabaseClient = null;

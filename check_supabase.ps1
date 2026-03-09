@@ -1,13 +1,23 @@
-$apikey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5hdHR6bXpuZndrbmVqbndqZHJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2MDQ2NjIsImV4cCI6MjA4NzE4MDY2Mn0.fGAVN3823nXVPUuS2ISJzf9BGFJny2fviwLWgP4i6LU'
-$base = 'https://nattzmznfwknejnwjdrd.supabase.co/rest/v1'
-$h = @{apikey=$apikey}
+param(
+    [Parameter(Mandatory = $true)]
+    [string]$SupabaseUrl,
+
+    [Parameter(Mandatory = $true)]
+    [string]$SupabaseAnonKey
+)
+
+$base = "$SupabaseUrl/rest/v1"
+$h = @{
+    apikey        = $SupabaseAnonKey
+    Authorization = "Bearer $SupabaseAnonKey"
+}
 
 Write-Output "=== Checking Supabase tables ==="
+Write-Output "URL: $SupabaseUrl"
 
 try {
     $leads = Invoke-RestMethod -Uri "$base/leads?select=id,name&limit=3" -Headers $h
     Write-Output "Leads: $($leads.Count) records found"
-    if ($leads.Count -gt 0) { $leads | Format-Table }
 } catch {
     Write-Output "Leads error: $($_.Exception.Message)"
 }
