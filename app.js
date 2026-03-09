@@ -28,10 +28,8 @@ const STORAGE_KEYS = {
 
 // Initialize App
 document.addEventListener('DOMContentLoaded', async () => {
-    // 1. Initialize loading overlay first
     initializeLoadingOverlay();
 
-    // 2. Try to initialize Supabase
     const supabaseOk = typeof initSupabase === 'function' && initSupabase();
 
     if (supabaseOk) {
@@ -44,15 +42,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log('🦷 CRM Odonto Company Initialized');
 });
 
-// Initialize App UI (shared between cloud and local mode)
+// Initialize App UI
 function initializeAppUI() {
     initializeNavigation();
     initializeGlobalSearch();
 
-    // Force initial dashboard update
     updateDashboard();
 
-    // Update connection indicator
     if (typeof updateConnectionIndicator === 'function') {
         updateConnectionIndicator();
     }
@@ -69,6 +65,14 @@ function initializeAppUI() {
             }
         };
     }
+
+    // Start external sync loop (Unisoft/n8n)
+    setTimeout(() => {
+        if (typeof processUnprocessedSyncRecords === 'function') {
+            processUnprocessedSyncRecords();
+            setInterval(processUnprocessedSyncRecords, 5 * 60 * 1000);
+        }
+    }, 5000);
 }
 
 // Load Data from LocalStorage

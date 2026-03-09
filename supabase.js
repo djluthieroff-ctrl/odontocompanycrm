@@ -229,14 +229,12 @@ function mapToApp(table, obj) {
 // Load ALL data from Supabase into AppState
 async function loadDataFromSupabase() {
     if (!isSupabaseReady || !currentUser) {
-        console.log('⚠️ Supabase not ready, falling back to localStorage');
         return false;
     }
 
     try {
         console.log('📡 Loading data from Supabase...');
 
-        // Helper to fetch but not fail the whole sync if one table is missing (404)
         async function fetchTable(name) {
             try {
                 let query = supabaseClient.from(name).select('*').eq('user_id', currentUser.id);
@@ -262,47 +260,11 @@ async function loadDataFromSupabase() {
             fetchTable('old_patients')
         ]);
 
-        // Helper to merge two arrays of objects by ID using Last-Writer-Wins
-        function mergeData(local, cloud) {
-            const merged = new Map();
-            // Load local first
-            local.forEach(item => merged.set(item.id, item));
-            // Overwrite with cloud only if newer
-            cloud.forEach(cloudItem => {
-                const localItem = merged.get(cloudItem.id);
-                if (!localItem || new Date(cloudItem.updatedAt || 0) > new Date(localItem.updatedAt || 0)) {
-                    merged.set(cloudItem.id, cloudItem);
-                }
-            });
-            return Array.from(merged.values());
-        }
-
-        // Get local versions for merging
-        const localLeads = JSON.parse(localStorage.getItem(STORAGE_KEYS.LEADS) || '[]');
-        const localPatients = JSON.parse(localStorage.getItem(STORAGE_KEYS.PATIENTS) || '[]');
-        const localAppointments = JSON.parse(localStorage.getItem(STORAGE_KEYS.APPOINTMENTS) || '[]');
-        const localOldPatients = JSON.parse(localStorage.getItem('odontocrm_old_patients') || '[]');
-
-        // Map and Merge snake_case → camelCase
-        if (leadsRes.data) {
-            const cloudLeads = leadsRes.data.map(row => mapToApp('leads', row));
-            AppState.leads = mergeData(localLeads, cloudLeads);
-        }
-        if (patientsRes.data) {
-            const cloudPatients = patientsRes.data.map(row => mapToApp('patients', row));
-            AppState.patients = mergeData(localPatients, cloudPatients);
-        }
-        if (appointmentsRes.data) {
-            const cloudAppointments = appointmentsRes.data.map(row => mapToApp('appointments', row));
-            AppState.appointments = mergeData(localAppointments, cloudAppointments);
-        }
-        if (settingsRes.data) {
-            AppState.settings = mapToApp('settings', settingsRes.data);
-        }
-        if (oldPatientsRes.data) {
-            const cloudOld = oldPatientsRes.data.map(row => mapToApp('old_patients', row));
-            AppState.oldPatients = mergeData(localOldPatients, cloudOld);
-        }
+        if (leadsRes.data) AppState.leads = leadsRes.data.map(row => mapToApp('leads', row));
+        if (patientsRes.data) AppState.patients = patientsRes.data.map(row => mapToApp('patients', row));
+        if (appointmentsRes.data) AppState.appointments = appointmentsRes.data.map(row => mapToApp('appointments', row));
+        if (settingsRes.data) AppState.settings = mapToApp('settings', settingsRes.data);
+        if (oldPatientsRes.data) AppState.oldPatients = oldPatientsRes.data.map(row => mapToApp('old_patients', row));
 
         // Validate
         if (!Array.isArray(AppState.leads)) AppState.leads = [];
@@ -310,13 +272,13 @@ async function loadDataFromSupabase() {
         if (!Array.isArray(AppState.appointments)) AppState.appointments = [];
         if (!Array.isArray(AppState.oldPatients)) AppState.oldPatients = [];
 
-        console.log('✅ Data merged from Supabase:', {
+        console.log('✅ Data loaded from Supabase:', {
             leads: AppState.leads.length,
             patients: AppState.patients.length,
             appointments: AppState.appointments.length
         });
 
-        // Sync back to localStorage to keep them in sync
+        // Sync to localStorage as cache
         localStorage.setItem(STORAGE_KEYS.LEADS, JSON.stringify(AppState.leads));
         localStorage.setItem(STORAGE_KEYS.PATIENTS, JSON.stringify(AppState.patients));
         localStorage.setItem(STORAGE_KEYS.APPOINTMENTS, JSON.stringify(AppState.appointments));
@@ -330,21 +292,8 @@ async function loadDataFromSupabase() {
     }
 }
 
-// Save data to Supabase (with localStorage fallback)
+// Save data to Supabase
 async function saveToSupabase(table, data) {
-    // Always save to localStorage as backup
-    const storageKeyMap = {
-        leads: STORAGE_KEYS.LEADS,
-        patients: STORAGE_KEYS.PATIENTS,
-        appointments: STORAGE_KEYS.APPOINTMENTS,
-        settings: STORAGE_KEYS.SETTINGS,
-        old_patients: 'odontocrm_old_patients'
-    };
-    const localKey = storageKeyMap[table];
-    if (localKey) {
-        localStorage.setItem(localKey, JSON.stringify(data));
-    }
-
     if (!isSupabaseReady || !currentUser) {
         updateDashboard();
         return;
@@ -352,7 +301,6 @@ async function saveToSupabase(table, data) {
 
     try {
         if (table === 'settings') {
-            // Settings is a single row per user — upsert
             const dbData = mapToDb('settings', data);
             dbData.updated_at = new Date().toISOString();
             const { error } = await supabaseClient
@@ -360,12 +308,7 @@ async function saveToSupabase(table, data) {
                 .upsert(dbData, { onConflict: 'user_id' });
             if (error) throw error;
         } else {
-            // For arrays (leads, patients, appointments):
-            // We do a full sync — delete all user rows and re-insert
-            // This is simpler for the current architecture; we'll optimize later
             const dbRows = data.map(item => mapToDb(table, item));
-
-            // Ensure unique IDs to avoid 23505 errors in batch
             const uniqueRows = [];
             const ids = new Set();
             dbRows.forEach(row => {
@@ -375,7 +318,6 @@ async function saveToSupabase(table, data) {
                 }
             });
 
-            // Use upsert for efficiency
             if (uniqueRows.length > 0) {
                 const { error } = await supabaseClient
                     .from(table)
@@ -383,17 +325,9 @@ async function saveToSupabase(table, data) {
                 if (error) throw error;
             }
         }
-
-        console.log(`✅ Saved ${table} to Supabase`);
     } catch (error) {
         console.error(`❌ Error saving ${table} to Supabase:`, error);
-
-        let message = 'Dados salvos localmente (erro no servidor)';
-        if (error.code === '42703' || error.message?.includes('column')) {
-            message = '⚠️ Erro de Banco de dados: Rode o SQL no painel Supabase para liberar as colunas!';
-        }
-
-        showNotification(message, 'warning');
+        showNotification('Erro ao salvar na nuvem', 'error');
     }
 
     updateDashboard();

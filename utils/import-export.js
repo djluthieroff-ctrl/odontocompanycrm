@@ -480,15 +480,23 @@ function exportLeads() {
 }
 
 /**
- * Export appointments to XLSX
+ * Export appointments to XLSX (Filtered by period)
  */
 function exportAppointments() {
-    if (AppState.appointments.length === 0) {
-        alert('Não há agendamentos para exportar.');
+    const { start, end } = typeof getReportDateRange === 'function' ? getReportDateRange() : { start: null, end: null };
+
+    let filteredAppointments = AppState.appointments;
+
+    if (start || end) {
+        filteredAppointments = filterByDateRange(AppState.appointments, 'date', start, end);
+    }
+
+    if (filteredAppointments.length === 0) {
+        alert('Não há agendamentos para exportar no período selecionado.');
         return;
     }
 
-    const data = AppState.appointments.map(apt => {
+    const data = filteredAppointments.map(apt => {
         const patient = AppState.patients.find(p => p.id === apt.patientId);
         return {
             'Paciente': patient?.name || apt.patientName || '',
@@ -502,7 +510,8 @@ function exportAppointments() {
         };
     });
 
-    const filename = `agendamentos_${new Date().toISOString().split('T')[0]}.xlsx`;
+    const periodLabel = start && end ? `${start.toISOString().split('T')[0]}_a_${end.toISOString().split('T')[0]}` : 'geral';
+    const filename = `agendamentos_${periodLabel}.xlsx`;
     exportToXLSX(data, filename, 'Agendamentos');
 }
 
