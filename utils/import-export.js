@@ -700,14 +700,22 @@ function importBackupJSON() {
                 if (backup.data.settings) AppState.settings = backup.data.settings;
 
                 // 2. Save to Supabase (This will also update LocalStorage)
-                const syncTasks = [
-                    saveToSupabase('leads', AppState.leads),
-                    saveToSupabase('patients', AppState.patients),
-                    saveToSupabase('appointments', AppState.appointments),
-                    saveToSupabase('settings', AppState.settings)
-                ];
+                console.log('🚀 Iniciando sincronização do backup...');
 
-                await Promise.all(syncTasks);
+                // Sequencial para melhor controle de erro
+                try {
+                    await saveToSupabase('leads', AppState.leads);
+                    await saveToSupabase('patients', AppState.patients);
+                    await saveToSupabase('appointments', AppState.appointments);
+                    await saveToSupabase('settings', AppState.settings);
+
+                    if (backup.data.oldPatients) {
+                        await saveToSupabase('old_patients', backup.data.oldPatients);
+                    }
+                } catch (syncError) {
+                    console.error('❌ Erro durante a sincronização:', syncError);
+                    throw syncError;
+                }
 
                 hideLoading();
                 showNotification('Backup importado e sincronizado com a nuvem!', 'success');
