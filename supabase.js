@@ -188,12 +188,19 @@ const FIELD_MAP = {
 function mapToDb(table, obj) {
     const map = FIELD_MAP[table]?.toDb || {};
     const result = {};
-    for (const [key, value] of Object.entries(obj)) {
+    for (let [key, value] of Object.entries(obj)) {
         // Skip the old string id for Supabase (UUID is auto-generated)
         if (key === 'id' && typeof value === 'string' && !value.includes('-')) {
             result['legacy_id'] = value; // Preserve old ID for reference
             continue;
         }
+
+        // 🔥 CRITICAL FIX: Convert empty strings to null
+        // Postgres fails with "invalid input syntax for type date" when receiving ""
+        if (value === "") {
+            value = null;
+        }
+
         const dbKey = map[key] || key;
         result[dbKey] = value;
     }
