@@ -35,16 +35,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const supabaseOk = typeof initSupabase === 'function' && initSupabase();
 
     if (supabaseOk) {
-        // Cloud mode: Auth flow handles data loading and app initialization
         console.log('☁️ Cloud mode — starting auth flow');
-        // initAuth() will handle session check → login screen or auto-load
-        // After successful login, onLoginSuccess() in auth.js calls initializeAppUI()
         initAuth();
     } else {
-        // Local mode: Load from localStorage as before
-        console.log('💾 Local mode — loading from localStorage');
-        loadDataFromStorage();
-        initializeAppUI();
+        console.error('❌ Cloud mode failed — Supabase not ready');
     }
 
     console.log('🦷 CRM Odonto Company Initialized');
@@ -70,36 +64,10 @@ function initializeAppUI() {
             if (confirm('Deseja realmente sair?')) {
                 if (typeof supabaseSignOut === 'function') {
                     await supabaseSignOut();
-                    location.reload(); // Hard reload to clear state and show login
+                    location.reload();
                 }
             }
         };
-    }
-
-    // Check for backup reminder (only in local mode)
-    if (!isCloudConnected || !isCloudConnected()) {
-        setTimeout(checkBackupReminder, 2000);
-    } else {
-        // Cloud mode: Start external sync loop (Unisoft/n8n)
-        setTimeout(() => {
-            if (typeof processUnprocessedSyncRecords === 'function') {
-                processUnprocessedSyncRecords();
-                // Schedule every 5 minutes
-                setInterval(processUnprocessedSyncRecords, 5 * 60 * 1000);
-            }
-        }, 5000);
-    }
-
-    // Recovery check: If leads are empty, try loading again after a small delay
-    if (AppState.leads.length === 0) {
-        setTimeout(() => {
-            console.log('Retry loading data...');
-            loadDataFromStorage();
-            if (AppState.leads.length > 0) {
-                updateDashboard();
-                if (typeof renderLeadsList === 'function') renderLeadsList();
-            }
-        }, 500);
     }
 }
 
