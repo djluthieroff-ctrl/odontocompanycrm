@@ -243,6 +243,13 @@ function renderCardsForColumn(status) {
                          " title="Ver Agendamento">
                             📅 Ver
                         </button>
+                        <button onclick="event.stopPropagation(); editVisitDate('${lead.id}')" style="
+                           flex: 1; font-size: 11px; padding: 6px; border-radius: 4px; border: none; cursor: pointer; font-weight: 500;
+                           display: flex; align-items: center; justify-content: center; gap: 4px;
+                           background: #fef3c7; color: #92400e;
+                        " title="Trocar Data">
+                           📅 Data
+                       </button>
                     ` : ''}
                 </div>
             </div>
@@ -250,30 +257,7 @@ function renderCardsForColumn(status) {
     }).join('');
 }
 
-// Mark sale status
-function markSale(leadId, isSold) {
-    const lead = AppState.leads.find(l => l.id === leadId);
-    if (!lead) return;
-
-    if (isSold) {
-        const value = prompt(`Digite o valor do fechamento para "${lead.name}":`, lead.saleValue || "0");
-        if (value === null) return; // Cancelled prompt
-        lead.saleValue = parseFloat(value.replace(',', '.')) || 0;
-        lead.saleStatus = 'sold';
-    } else {
-        if (!confirm(`Confirmar que a venda para "${lead.name}" não foi fechada?`)) return;
-        lead.saleStatus = 'lost';
-        lead.saleValue = 0;
-    }
-
-    lead.updatedAt = new Date().toISOString();
-
-    saveToStorage(STORAGE_KEYS.LEADS, AppState.leads);
-    renderKanbanBoard();
-    if (typeof updateDashboard === 'function') updateDashboard();
-
-    showNotification(isSold ? `Venda de R$ ${lead.saleValue.toFixed(2)} registrada! 🎉` : 'Venda marcada como perdida.', isSold ? 'success' : 'info');
-}
+// Mark sale status removed - now using unified window.markSale from leads.js
 
 // Helper: Format Phone
 function formatPhoneNumber(phone) {

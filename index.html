@@ -17,6 +17,9 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style/dist/xlsx.bundle.js"></script>
     <!-- Chart.js for Reports -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="auth.css">
 </head>
 
 <body>
@@ -35,8 +38,10 @@
                     <input type="text" id="globalSearch" placeholder="Buscar paciente, lead ou agendamento...">
                     <span class="search-icon">🔍</span>
                 </div>
-                <div class="user-menu">
-                    <div class="user-avatar">👤</div>
+                <div class="user-menu" style="display: flex; align-items: center; gap: 1rem;">
+                    <div class="user-avatar" id="userAvatar" title="Perfil">👤</div>
+                    <button id="logoutBtn" class="btn btn-secondary btn-small"
+                        style="background: var(--error-500); color: white;">Sair</button>
                 </div>
             </div>
         </div>
@@ -45,6 +50,12 @@
     <div class="app-container">
         <!-- Sidebar Navigation -->
         <aside class="sidebar">
+            <div style="padding: 1.5rem 1rem 1rem 1rem;">
+                <button class="btn btn-primary" onclick="showNewLeadForm()"
+                    style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0.75rem; font-weight: 600; border-radius: 8px; box-shadow: 0 4px 6px rgba(37, 99, 235, 0.2);">
+                    <span>➕</span> Novo Lead
+                </button>
+            </div>
             <nav class="nav-menu">
                 <button class="nav-item active" data-module="dashboard">
                     <span class="nav-icon">📊</span>
@@ -66,6 +77,14 @@
                 <button class="nav-item" data-module="appointments">
                     <span class="nav-icon">📅</span>
                     <span class="nav-label">Agendamentos</span>
+                </button>
+                <button class="nav-item" data-module="red-folder">
+                    <span class="nav-icon">🚩</span>
+                    <span class="nav-label" style="color: var(--error-500);">Pasta Vermelha</span>
+                </button>
+                <button class="nav-item" data-module="old-patients">
+                    <span class="nav-icon">🗂️</span>
+                    <span class="nav-label">Pacientes Antigos</span>
                 </button>
                 <button class="nav-item" data-module="reports">
                     <span class="nav-icon">📊</span>
@@ -95,7 +114,7 @@
                     <div style="display: flex; flex-direction: column; gap: 1.5rem;">
 
                         <!-- Quick Stats Row -->
-                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;">
                             <div class="dash-widget"
                                 style="background: white; padding: 1.5rem; border-radius: 12px; border: 1px solid var(--gray-200);">
                                 <div style="display: flex; align-items: center; gap: 1rem;">
@@ -103,7 +122,7 @@
                                     <div>
                                         <div
                                             style="font-size: 0.75rem; color: var(--gray-500); font-weight: 600; text-transform: uppercase;">
-                                            Leads Novos</div>
+                                            Total de Leads</div>
                                         <div style="font-size: 1.5rem; font-weight: 700; color: var(--gray-900);"
                                             id="dashTodayLeads">0</div>
                                     </div>
@@ -126,6 +145,19 @@
                                 style="background: white; padding: 1.5rem; border-radius: 12px; border: 1px solid var(--gray-200);">
                                 <div style="display: flex; align-items: center; gap: 1rem;">
                                     <div style="font-size: 2rem;">💰</div>
+                                    <div>
+                                        <div
+                                            style="font-size: 0.75rem; color: var(--gray-500); font-weight: 600; text-transform: uppercase;">
+                                            Total Vendas</div>
+                                        <div style="font-size: 1.25rem; font-weight: 700; color: var(--success-600);"
+                                            id="dashTotalSales">R$ 0,00</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="dash-widget"
+                                style="background: white; padding: 1.5rem; border-radius: 12px; border: 1px solid var(--gray-200);">
+                                <div style="display: flex; align-items: center; gap: 1rem;">
+                                    <div style="font-size: 2rem;">📈</div>
                                     <div>
                                         <div
                                             style="font-size: 0.75rem; color: var(--gray-500); font-weight: 600; text-transform: uppercase;">
@@ -282,6 +314,32 @@
                 <div id="reportsContent"></div>
             </section>
 
+            <!-- Pasta Vermelha Module -->
+            <section id="red-folder-module" class="module">
+                <div class="module-header">
+                    <div>
+                        <h2 style="color: var(--error-500);">Pasta Vermelha</h2>
+                        <p>Pacientes que compareceram mas não fecharam tratamento</p>
+                    </div>
+                </div>
+                <div id="redFolderContent"></div>
+            </section>
+
+            <!-- Old Patients Module -->
+            <section id="old-patients-module" class="module">
+                <div class="module-header">
+                    <div>
+                        <h2>Pacientes Antigos (Fichas Físicas)</h2>
+                        <p>Gestão de pacientes de gestões anteriores</p>
+                    </div>
+                    <div style="display: flex; gap: var(--spacing-sm);">
+                        <button class="btn btn-secondary" id="exportOldPatientsBtn">📤 Exportar</button>
+                        <button class="btn btn-primary" id="newOldPatientBtn">➕ Novo Registro</button>
+                    </div>
+                </div>
+                <div id="oldPatientsContent"></div>
+            </section>
+
             <!-- Settings Module -->
             <section id="settings-module" class="module">
                 <div class="module-header">
@@ -304,11 +362,15 @@
     <script src="utils/whatsapp.js"></script>
     <script src="utils/weekly-goals.js"></script>
     <script src="utils/import-export.js"></script>
+    <script src="supabase.js"></script>
+    <script src="auth.js"></script>
     <script src="modules/leads.js"></script>
     <script src="modules/kanban.js"></script>
     <script src="modules/patients.js"></script>
     <script src="modules/appointments.js"></script>
     <script src="modules/reports.js"></script>
+    <script src="modules/red-folder.js"></script>
+    <script src="modules/old-patients.js"></script>
     <script src="modules/settings.js"></script>
     <script src="app.js"></script>
 </body>

@@ -68,8 +68,9 @@ function showImportPreview(data) {
             </div>
             
             <div class="form-group">
-                <label class="form-label">Coluna de Telefone *</label>
+                <label class="form-label">Coluna de Telefone (opcional)</label>
                 <select id="phoneColumn" class="form-select">
+                    <option value="">Nenhuma</option>
                     ${columns.map(col => `<option value="${col}">${col}</option>`).join('')}
                 </select>
             </div>
@@ -86,9 +87,17 @@ function showImportPreview(data) {
                 <label class="form-label">Coluna de Agendamento (opcional)</label>
                 <select id="appointmentColumn" class="form-select">
                     <option value="">Nenhuma</option>
-                    ${columns.map(col => `<option value="${col}">${col}</option>`).join('')}
+                    ${columns.map(col => `<option value="${col}" ${col === 'Data' ? 'selected' : ''}>${col}</option>`).join('')}
                 </select>
                 <small class="form-text text-muted">Formato esperado: DD/MM/AAAA - HH:MM</small>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Coluna de Ação/Resultado (opcional)</label>
+                <select id="actionColumn" class="form-select">
+                    <option value="">Nenhuma</option>
+                    ${columns.map(col => `<option value="${col}" ${col === 'Ação/Resultado' ? 'selected' : ''}>${col}</option>`).join('')}
+                </select>
             </div>
             
             <h4 style="margin-top: var(--spacing-lg); margin-bottom: var(--spacing-sm);">Preview (primeiras 5 linhas):</h4>
@@ -163,24 +172,26 @@ function confirmImportLeads(data) {
     const phoneCol = document.getElementById('phoneColumn').value;
     const channelCol = document.getElementById('channelColumn').value;
     const appointmentCol = document.getElementById('appointmentColumn').value;
+    const actionCol = document.getElementById('actionColumn').value;
 
     let imported = 0;
     let updated = 0;
     let scheduled = 0;
     let skipped = 0;
+    let salesCount = 0;
 
     data.forEach(row => {
         const name = row[nameCol];
-        const phone = row[phoneCol];
+        const phone = phoneCol ? row[phoneCol] : '';
 
-        // Validate required fields
-        if (!name || !phone) {
+        // Validate required fields (Only name is strictly required now)
+        if (!name) {
             skipped++;
             return;
         }
 
         const cleanName = name.toString().trim();
-        const cleanPhone = phone.toString().trim();
+        const cleanPhone = phone ? phone.toString().trim() : '';
 
         // Check if lead already exists (by name)
         const existingLead = AppState.leads.find(l =>
@@ -189,18 +200,36 @@ function confirmImportLeads(data) {
 
         const appointmentDateTime = appointmentCol ? parseAppointmentDateTime(row[appointmentCol]) : null;
 
+        // Specific mapping for the user's "Ação/Resultado" column
+        const actionValue = actionCol && row[actionCol] ? row[actionCol].toString().trim() : '';
+        const isSale = actionValue === 'Venda Fechada';
+        const isAttended = isSale || actionValue === 'Comparecimento' || actionValue === 'Compareceu';
+        const procedure = row['Procedimento/Interesse'] || 'Avaliação';
+        const saleValue = row['Valor Venda'] ? parseFloat(row['Valor Venda']) : 0;
+
         if (existingLead) {
             // UPDATE existing lead with new information
             existingLead.phone = cleanPhone;
             if (channelCol && row[channelCol]) {
                 existingLead.channel = row[channelCol].toString().trim();
             }
+
+            if (isSale) {
+                existingLead.saleStatus = 'sold';
+                existingLead.status = 'visit';
+                salesCount++;
+            } else if (isAttended) {
+                existingLead.status = 'visit';
+            }
+
             existingLead.updatedAt = new Date().toISOString();
 
             // If has appointment date, convert to patient and schedule
             if (appointmentDateTime) {
-                // Update status
-                existingLead.status = 'scheduled';
+                // Update status if not already visited/sold
+                if (existingLead.status === 'new') {
+                    existingLead.status = 'scheduled';
+                }
 
                 // Convert to patient if not already
                 let patient = AppState.patients.find(p => p.name.toLowerCase() === cleanName.toLowerCase());
@@ -211,22 +240,12 @@ function confirmImportLeads(data) {
                         name: cleanName,
                         phone: cleanPhone,
                         email: existingLead.email || '',
-                        birthdate: '',
+                        birthDate: '',
                         address: '',
                         createdAt: new Date().toISOString(),
                         convertedFrom: existingLead.id
                     };
                     AppState.patients.push(patient);
-
-                    // Add to kanban
-                    const kanbanCard = {
-                        id: generateId(),
-                        patientId: patient.id,
-                        patientName: patient.name,
-                        status: 'waiting',
-                        createdAt: new Date().toISOString()
-                    };
-                    AppState.kanbanCards.push(kanbanCard);
                 }
 
                 // Create appointment
@@ -234,12 +253,14 @@ function confirmImportLeads(data) {
                     id: generateId(),
                     patientId: patient.id,
                     patientName: patient.name,
-                    date: appointmentDateTime,
-                    procedure: 'Avaliação',
+                    date: appointmentDateTime || new Date().toISOString(),
+                    procedure: procedure,
                     duration: 60,
-                    notes: `Importado de planilha - Canal: ${existingLead.channel || 'N/A'}`,
-                    status: 'scheduled',
-                    attended: false,
+                    notes: `Recuperado de Backup FEV 2026`,
+                    status: isSale || isAttended ? 'completed' : 'scheduled',
+                    attended: isAttended || isSale,
+                    isSale: isSale,
+                    saleValue: isSale ? saleValue : 0,
                     createdAt: new Date().toISOString()
                 };
                 AppState.appointments.push(appointment);
@@ -258,20 +279,23 @@ function confirmImportLeads(data) {
                 source: 'importacao',
                 message: '',
                 interest: '',
-                status: appointmentDateTime ? 'scheduled' : 'new',
+                status: (isSale || isAttended) ? 'visit' : (appointmentDateTime ? 'scheduled' : 'new'),
+                saleStatus: isSale ? 'sold' : null,
                 createdAt: new Date().toISOString()
             };
+
+            if (isSale) salesCount++;
 
             AppState.leads.push(lead);
 
             // If has appointment date, convert to patient and schedule
-            if (appointmentDateTime) {
+            if (appointmentDateTime || isAttended || isSale) {
                 const patient = {
                     id: generateId(),
                     name: cleanName,
                     phone: cleanPhone,
                     email: '',
-                    birthdate: '',
+                    birthDate: '',
                     address: '',
                     createdAt: new Date().toISOString(),
                     convertedFrom: lead.id
@@ -283,7 +307,7 @@ function confirmImportLeads(data) {
                     id: generateId(),
                     patientId: patient.id,
                     patientName: patient.name,
-                    status: 'waiting',
+                    status: isSale ? 'finished' : (isAttended ? 'treatment' : 'waiting'),
                     createdAt: new Date().toISOString()
                 };
                 AppState.kanbanCards.push(kanbanCard);
@@ -293,12 +317,14 @@ function confirmImportLeads(data) {
                     id: generateId(),
                     patientId: patient.id,
                     patientName: patient.name,
-                    date: appointmentDateTime,
-                    procedure: 'Avaliação',
+                    date: appointmentDateTime || new Date().toISOString(),
+                    procedure: procedure,
                     duration: 60,
-                    notes: `Importado de planilha - Canal: ${lead.channel || 'N/A'}`,
-                    status: 'scheduled',
-                    attended: false,
+                    notes: `Recuperado de Backup FEV 2026`,
+                    status: (isSale || isAttended) ? 'completed' : 'scheduled',
+                    attended: isAttended || isSale,
+                    isSale: isSale,
+                    saleValue: isSale ? saleValue : 0,
                     createdAt: new Date().toISOString()
                 };
                 AppState.appointments.push(appointment);
@@ -326,6 +352,9 @@ function confirmImportLeads(data) {
     message += `Leads atualizados: ${updated}\n`;
     if (scheduled > 0) {
         message += `Agendamentos criados: ${scheduled}\n`;
+    }
+    if (salesCount > 0) {
+        message += `Vendas registradas: ${salesCount}\n`;
     }
     if (skipped > 0) {
         message += `Ignorados (sem nome/telefone): ${skipped}`;

@@ -767,6 +767,24 @@ body {
     background: var(--success-500);
 }
 
+/* Lead Workflow Enhancements */
+.lead-workflow-item {
+    transition: all 0.2s ease;
+}
+
+.lead-workflow-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.lead-card {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.lead-card:hover {
+    border-color: var(--primary-300);
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .sidebar {

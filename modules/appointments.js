@@ -747,13 +747,34 @@ function deleteAppointment(appointmentId) {
     if (!confirm('Tem certeza que deseja desmarcar este agendamento?')) return;
 
     const index = AppState.appointments.findIndex(a => a.id === appointmentId);
-    if (index > -1) {
-        AppState.appointments.splice(index, 1);
-        saveToStorage(STORAGE_KEYS.APPOINTMENTS, AppState.appointments);
-        renderAppointmentsView();
-        showNotification('Agendamento removido', 'success');
-        if (typeof updateDashboard === 'function') updateDashboard();
+    if (index === -1) return;
+
+    const apt = AppState.appointments[index];
+    const patientId = apt.patientId;
+
+    AppState.appointments.splice(index, 1);
+    saveToStorage(STORAGE_KEYS.APPOINTMENTS, AppState.appointments);
+
+    // Integrafão: Se o paciente veio de um lead, e não tem mais agendamentos, volta o status do lead
+    const patient = AppState.patients.find(p => p.id === patientId);
+    if (patient && patient.convertedFrom) {
+        const lead = AppState.leads.find(l => l.id === patient.convertedFrom);
+        const hasOtherAppts = AppState.appointments.some(a => a.patientId === patientId);
+
+        if (lead && !hasOtherAppts && lead.status === 'scheduled') {
+            lead.status = 'in-contact';
+            lead.scheduledAt = null;
+            lead.visitDate = null;
+            lead.updatedAt = new Date().toISOString();
+            saveToStorage(STORAGE_KEYS.LEADS, AppState.leads);
+            showNotification('Status do lead revertido para "Em Contato"', 'info');
+        }
     }
+
+    renderAppointmentsView();
+    showNotification('Agendamento removido', 'success');
+    if (typeof updateDashboard === 'function') updateDashboard();
+    if (typeof renderLeadsList === 'function' && AppState.currentModule === 'leads') renderLeadsList();
 }
 
 // Export functions

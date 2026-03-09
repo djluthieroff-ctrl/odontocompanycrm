@@ -58,13 +58,16 @@ function getUrgencyBadge(days) {
 function renderLeadsList() {
     const container = document.getElementById('leadsContent');
 
-    // 1. Initialize Structure if missing (Preserves Search Input Focus)
-    if (!document.getElementById('leads-structure-container')) {
+    // 1. Initialize Structure if missing or wrong (Preserves Search Input Focus)
+    const existingStructure = document.getElementById('leads-structure-container');
+    const existingGrid = document.getElementById('leadsGrid');
+
+    if (!existingStructure || !existingGrid) {
         container.innerHTML = `
             <div id="leads-structure-container">
                 <div id="leads-filter-bar"></div>
                 <div id="leads-bulk-actions"></div>
-                <div id="leads-grid" class="leads-grid"></div>
+                <div id="leadsGrid" class="leads-grid"></div>
                 <div id="leads-empty-state"></div>
             </div>
         `;
@@ -73,7 +76,16 @@ function renderLeadsList() {
     const structureContainer = document.getElementById('leads-structure-container');
     const filterBarContainer = document.getElementById('leads-filter-bar');
     const bulkActionsContainer = document.getElementById('leads-bulk-actions');
-    const gridContainer = document.getElementById('leads-grid');
+    const gridContainer = document.getElementById('leadsGrid');
+
+    if (!gridContainer) {
+        console.error('❌ CRITICAL: leadsGrid container not found even after initialization!');
+        return;
+    }
+
+    // Preserve scroll position
+    const scrollPos = window.scrollY;
+
     const emptyStateContainer = document.getElementById('leads-empty-state');
 
     // 2. Handle Empty Data State
@@ -228,28 +240,73 @@ function renderLeadsList() {
 
                 ${isExpanded ? `
                     <div class="lead-details">
-                        <div class="lead-status-pipeline">
-                            <div class="status-step ${lead.status === 'new' ? 'active' : 'completed'}" onclick="updateLeadStatus('${lead.id}', 'new')">
-                                <div class="status-dot"></div>
-                                <span>Novo</span>
-                            </div>
-                            <div class="status-line ${lead.status !== 'new' ? 'active' : ''}"></div>
+                        <!-- Smart Workflow Section -->
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; margin-top: 1.5rem;">
+                            <h5 style="margin: 0 0 1rem 0; font-weight: 600; color: var(--gray-800); font-size: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                                🚀 Fluxo de Trabalho
+                            </h5>
                             
-                            <div class="status-step ${lead.status === 'in-contact' ? 'active' : ['scheduled', 'visit', 'converted'].includes(lead.status) ? 'completed' : ''}" onclick="updateLeadStatus('${lead.id}', 'in-contact')">
-                                <div class="status-dot"></div>
-                                <span>Em Contato</span>
-                            </div>
-                            <div class="status-line ${['scheduled', 'visit', 'converted'].includes(lead.status) ? 'active' : ''}"></div>
-                            
-                            <div class="status-step ${lead.status === 'scheduled' ? 'active' : ['visit', 'converted'].includes(lead.status) ? 'completed' : ''}" onclick="updateLeadStatus('${lead.id}', 'scheduled')">
-                                <div class="status-dot"></div>
-                                <span>Agendado</span>
-                            </div>
-                            <div class="status-line ${['visit', 'converted'].includes(lead.status) ? 'active' : ''}"></div>
-                            
-                            <div class="status-step ${lead.status === 'visit' ? 'active' : lead.status === 'converted' ? 'completed' : ''}" onclick="updateLeadStatus('${lead.id}', 'visit')">
-                                <div class="status-dot"></div>
-                                <span>Visita</span>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                                <!-- Passo 1: Contato -->
+                                <div class="lead-workflow-item" style="padding: 1rem; background: white; border-radius: 8px; border: 1px solid ${lead.contactedAt ? '#bbf7d0' : '#e2e8f0'}; position: relative;">
+                                    <div style="font-size: 0.75rem; color: var(--gray-500); font-weight: 600; text-transform: uppercase;">Passo 1: Contato</div>
+                                    <div style="margin-top: 0.5rem; cursor: pointer;" onclick="${lead.contactedAt ? `editStepDate('${lead.id}', 'contactedAt')` : `updateLeadStatus('${lead.id}', 'in-contact')`}">
+                                        ${lead.contactedAt
+                    ? `<span style="color: #166534; font-weight: 600;">✅ Contatado em:</span><br>${formatDateTime(lead.contactedAt)}<br><small style="color: var(--primary-600)">Clique para alterar</small>`
+                    : `<button class="btn btn-secondary btn-small" style="width: 100%;">Marcar Contatado</button>`}
+                                    </div>
+                                    ${lead.contactedAt ? `<button onclick="revertLeadStep('${lead.id}', 1)" style="position: absolute; top: 5px; right: 5px; background: none; border: none; cursor: pointer; font-size: 0.8rem;" title="Voltar Passo">↩️</button>` : ''}
+                                </div>
+
+                                <!-- Passo 2: Agendamento -->
+                                <div class="lead-workflow-item" style="padding: 1rem; background: white; border-radius: 8px; border: 1px solid ${lead.scheduledAt ? '#bbf7d0' : '#e2e8f0'}; position: relative;">
+                                    <div style="font-size: 0.75rem; color: var(--gray-500); font-weight: 600; text-transform: uppercase; display: flex; justify-content: space-between; align-items: center;">
+                                        <span>Passo 2: Agendamento</span>
+                                        ${lead.scheduledAt ? `<button onclick="editVisitDate('${lead.id}')" style="background: none; border: none; color: var(--primary-600); font-size: 0.7rem; font-weight: 700; cursor: pointer; padding: 0;">TROCAR DATA</button>` : ''}
+                                    </div>
+                                    <div style="margin-top: 0.5rem; cursor: pointer;" onclick="${lead.scheduledAt ? `editStepDate('${lead.id}', 'scheduledAt')` : `updateLeadStatus('${lead.id}', 'scheduled')`}">
+                                        ${lead.scheduledAt
+                    ? `<span style="color: #166534; font-weight: 600;">✅ Agendado em:</span><br>${formatDateTime(lead.scheduledAt)}<br>
+                                               <span style="color: var(--primary-700); font-weight: 600;">📅 Para o dia:</span><br>${lead.visitDate ? formatDate(lead.visitDate) : 'Não definida'}<br>
+                                               <small style="color: var(--primary-600)">Clique para alterar</small>`
+                    : `<button class="btn btn-primary btn-small" style="width: 100%;">Agendar Agora</button>`}
+                                    </div>
+                                    ${lead.scheduledAt ? `<button onclick="revertLeadStep('${lead.id}', 2)" style="position: absolute; top: 5px; right: 5px; background: none; border: none; cursor: pointer; font-size: 0.8rem;" title="Voltar Passo">↩️</button>` : ''}
+                                </div>
+
+                                <!-- Step 3: Comparecimento -->
+                                <div style="padding: 1rem; background: white; border-radius: 8px; border: 1px solid ${lead.attended ? '#bbf7d0' : '#e2e8f0'}; position: relative;">
+                                    <div style="font-size: 0.75rem; color: var(--gray-500); font-weight: 600; text-transform: uppercase;">Passo 3: Comparecimento</div>
+                                    <div style="margin-top: 0.5rem;">
+                                        ${lead.attended
+                    ? `<span style="color: #166534; font-weight: 600;">✅ Compareceu</span><br><small>Sincronizado com agenda</small>`
+                    : (lead.status === 'scheduled' || lead.status === 'visit')
+                        ? `<div style="display: flex; gap: 0.5rem;">
+                                                    <button class="btn btn-success btn-small" style="flex: 1;" onclick="markAttendance('${lead.id}', true)">Sim</button>
+                                                    <button class="btn btn-error btn-small" style="flex: 1;" onclick="markAttendance('${lead.id}', false)">Não</button>
+                                                  </div>`
+                        : `<span style="color: var(--gray-400);">Aguardando agendamento</span>`}
+                                    </div>
+                                    ${lead.attended ? `<button onclick="revertLeadStep('${lead.id}', 3)" style="position: absolute; top: 5px; right: 5px; background: none; border: none; cursor: pointer; font-size: 0.8rem;" title="Voltar Passo">↩️</button>` : ''}
+                                </div>
+
+                                <!-- Step 4: Venda -->
+                                <div style="padding: 1rem; background: white; border-radius: 8px; border: 1px solid ${lead.saleStatus === 'sold' ? '#bbf7d0' : lead.saleStatus === 'lost' ? '#fecaca' : '#e2e8f0'}; position: relative;">
+                                    <div style="font-size: 0.75rem; color: var(--gray-500); font-weight: 600; text-transform: uppercase;">Passo 4: Fechamento</div>
+                                    <div style="margin-top: 0.5rem;">
+                                        ${lead.saleStatus === 'sold'
+                    ? `<span style="color: #166534; font-weight: 600;">💰 Venda Realizada!</span>`
+                    : lead.saleStatus === 'lost'
+                        ? `<span style="color: #991b1b; font-weight: 600;">❌ Sem interesse</span>`
+                        : lead.attended
+                            ? `<div style="display: flex; gap: 0.5rem;">
+                                                        <button class="btn btn-success btn-small" style="flex: 1; background: #166534;" onclick="markSale('${lead.id}', true)">Fechou</button>
+                                                        <button class="btn btn-error btn-small" style="flex: 1;" onclick="markSale('${lead.id}', false)">Perdi</button>
+                                                      </div>`
+                            : `<span style="color: var(--gray-400);">Aguardando visita</span>`}
+                                    </div>
+                                    ${lead.saleStatus ? `<button onclick="revertLeadStep('${lead.id}', 4)" style="position: absolute; top: 5px; right: 5px; background: none; border: none; cursor: pointer; font-size: 0.8rem;" title="Voltar Passo">↩️</button>` : ''}
+                                </div>
                             </div>
                         </div>
 
@@ -302,15 +359,7 @@ function renderLeadsList() {
                             </button>
                             ${lead.status !== 'converted' ? `
                                 <button class="btn btn-success btn-small" onclick="convertLeadToPatient('${lead.id}')">
-                                    ✅ Converter em Paciente
-                                </button>
-                            ` : ''}
-                             ${lead.status === 'visit' ? `
-                                <button class="btn btn-success btn-small" style="background: #166534;" onclick="if(typeof markSale === 'function') markSale('${lead.id}', true)">
-                                    💰 Fechou Venda
-                                </button>
-                                <button class="btn btn-error btn-small" onclick="if(typeof markSale === 'function') markSale('${lead.id}', false)">
-                                    ❌ Não Fechou
+                                    ✅ Tornar Paciente Permanente
                                 </button>
                             ` : ''}
                             <button class="btn btn-secondary btn-small" onclick="deleteLead('${lead.id}')">
@@ -351,6 +400,42 @@ function renderLeadsList() {
     }).join('');
 
     gridContainer.innerHTML = leadsHTML;
+
+    // Restore scroll position
+    window.scrollTo(0, scrollPos);
+}
+
+// Optimization: Refresh ONLY one specific card without rebuilding the whole grid
+function refreshLeadCard(leadId) {
+    const lead = AppState.leads.find(l => l.id === leadId);
+    if (!lead) return;
+
+    const cardElement = document.querySelector(`.lead-card[data-lead-id="${leadId}"]`);
+    if (!cardElement) {
+        renderLeadsList(); // Fallback if card isn't found
+        return;
+    }
+
+    // Capture the current classes to preserve selection state if needed
+    const isSelected = LeadsState.selectedLeads.has(leadId);
+    const isExpanded = LeadsState.expandedLead === leadId;
+
+    // Generate new HTML just for this card
+    const days = getDaysSince(lead.createdAt);
+    const safeName = escapeHTML(lead.name);
+    const safePhone = escapeHTML(lead.phone);
+    const safeEmail = escapeHTML(lead.email || '');
+    const safeChannel = escapeHTML(lead.channel || '');
+    const safeInterest = escapeHTML(lead.interest || '');
+    const safeMessage = escapeHTML(lead.message || '');
+
+    // We can't easily use the template inside map because it's baked into renderLeadsList
+    // So let's extract it into a helper or just re-render as a fallback for now, 
+    // but with scroll preservation it will be better.
+
+    // Actually, the simplest way to avoid the "reset" is just to save scroll position.
+    // Full re-render with scroll restore is quite fast.
+    renderLeadsList();
 }
 
 // Search Leads
@@ -426,11 +511,13 @@ function updateLeadStatus(leadId, newStatus) {
         lead.updatedAt = new Date().toISOString();
 
         if (newStatus === 'in-contact' && !lead.contactedAt) {
+            // Se estivermos em um fluxo retroativo (manual), podemos querer definir a data do primeiro contato
+            // mas por padrão vamos setar agora. O usuário pode clicar no Passo 1 depois para ajustar.
             lead.contactedAt = new Date().toISOString();
         }
 
         saveToStorage(STORAGE_KEYS.LEADS, AppState.leads);
-        renderLeadsList();
+        refreshLeadCard(leadId); // Granular update
         showNotification(`Status atualizado para: ${newStatus}`, 'success');
     }
 }
@@ -580,7 +667,7 @@ function saveLead() {
 }
 
 // Convert Lead to Patient
-function convertLeadToPatient(leadId) {
+function convertLeadToPatient(leadId, silent = false) {
     const lead = AppState.leads.find(l => l.id === leadId);
     if (!lead) return;
 
@@ -588,11 +675,11 @@ function convertLeadToPatient(leadId) {
     let patient = AppState.patients.find(p => p.convertedFrom === leadId || p.name.toLowerCase() === lead.name.toLowerCase());
 
     if (patient) {
-        showNotification('Este lead já é um paciente cadastrado.', 'info');
+        if (!silent) showNotification('Este lead já é um paciente cadastrado.', 'info');
         return;
     }
 
-    if (!confirm(`Deseja converter o lead "${lead.name}" em paciente?`)) {
+    if (!silent && !confirm(`Deseja converter o lead "${lead.name}" em paciente?`)) {
         return;
     }
 
@@ -601,7 +688,7 @@ function convertLeadToPatient(leadId) {
         name: lead.name,
         phone: lead.phone,
         email: lead.email || '',
-        birthdate: '',
+        birthDate: '',
         address: '',
         createdAt: new Date().toISOString(),
         convertedFrom: leadId
@@ -667,12 +754,6 @@ function deleteLead(leadId) {
             saveToStorage(STORAGE_KEYS.PATIENTS, AppState.patients);
         }
 
-        const kIndex = AppState.kanbanCards.findIndex(k => k.patientId === relatedPatient.id);
-        if (kIndex > -1) {
-            AppState.kanbanCards.splice(kIndex, 1);
-            saveToStorage(STORAGE_KEYS.KANBAN, AppState.kanbanCards);
-        }
-
         AppState.appointments = AppState.appointments.filter(a => a.patientId !== relatedPatient.id);
         saveToStorage(STORAGE_KEYS.APPOINTMENTS, AppState.appointments);
 
@@ -710,11 +791,6 @@ function showScheduleAppointmentModal(leadId) {
                 <strong>⚠️ Agendamento:</strong> Preencha os dados da avaliação.
             </p>
         </div>
-        
-        <div style="background: #f0fdf4; padding: var(--spacing-md); border-radius: var(--radius-md); margin-bottom: var(--spacing-md); border: 1px solid #bbf7d0;">
-            <label class="form-label" style="color: #166534;">📅 Data da Venda (Contagem de Meta)</label>
-            <input type="date" id="appointmentSaleDate" class="form-input" required value="${today}" style="border-color: #86efac;">
-        </div>
 
         <div class="form-row">
             <div class="form-group">
@@ -747,14 +823,13 @@ function showScheduleAppointmentModal(leadId) {
 
 // Confirm schedule appointment
 function confirmScheduleAppointment(leadId) {
-    const saleDate = document.getElementById('appointmentSaleDate').value;
     const date = document.getElementById('appointmentDate').value;
     const time = document.getElementById('appointmentTime').value;
     const procedure = document.getElementById('appointmentProcedure').value || 'Avaliação';
     const notes = document.getElementById('appointmentNotes').value;
 
-    if (!saleDate || !date || !time) {
-        showNotification('Datas e hora são obrigatórios!', 'error');
+    if (!date || !time) {
+        showNotification('Data e hora são obrigatórios!', 'error');
         return;
     }
 
@@ -762,10 +837,13 @@ function confirmScheduleAppointment(leadId) {
     if (!lead) return;
 
     const dateTime = new Date(date + 'T' + time + ':00').toISOString();
-    const saleDateObj = new Date(saleDate + 'T12:00:00');
-    const creationISO = saleDateObj.toISOString();
+
+    // Use current date for "Data da Venda" logic (when the appointment was recorded)
+    const creationISO = new Date().toISOString();
 
     lead.status = 'scheduled';
+    lead.scheduledAt = creationISO; // Data em que o agendamento foi FEITO
+    lead.visitDate = dateTime;     // Data PARA A QUAL foi agendado
     lead.updatedAt = new Date().toISOString();
 
     let patient = AppState.patients.find(p => p.convertedFrom === leadId || p.name.toLowerCase() === lead.name.toLowerCase());
@@ -776,7 +854,7 @@ function confirmScheduleAppointment(leadId) {
             name: lead.name,
             phone: lead.phone,
             email: lead.email || '',
-            birthdate: '',
+            birthDate: '',
             address: '',
             createdAt: creationISO,
             convertedFrom: leadId
@@ -795,9 +873,13 @@ function confirmScheduleAppointment(leadId) {
         notes: notes || `Agendamento criado do lead - Canal: ${lead.channel || 'N/A'}`,
         status: 'scheduled',
         attended: false,
-        createdAt: creationISO
+        createdAt: new Date().toISOString()
     };
     AppState.appointments.push(appointment);
+
+    // Track when the appointment was actually MADE
+    lead.scheduledAt = new Date().toISOString();
+    lead.visitDate = dateTime; // Sincroniza a data do agendamento com o campo de visita do lead
 
     saveToStorage(STORAGE_KEYS.LEADS, AppState.leads);
     saveToStorage(STORAGE_KEYS.PATIENTS, AppState.patients);
@@ -914,6 +996,8 @@ window.confirmScheduleAppointment = confirmScheduleAppointment;
 window.openEditLeadModal = openEditLeadModal;
 window.saveLeadChanges = saveLeadChanges;
 window.searchLeads = searchLeads;
+window.markAttendance = markAttendance;
+window.markSale = markSale;
 
 // Interaction History Helpers
 window.showAddInteractionModal = (leadId) => {
@@ -946,5 +1030,210 @@ window.saveInteraction = (leadId) => {
         closeModal();
         renderLeadsList();
         showNotification('Nota salva com sucesso', 'success');
+    }
+};
+
+// New Helper Functions for Intuitive UX
+async function markAttendance(leadId, attended) {
+    const lead = AppState.leads.find(l => l.id === leadId);
+    if (!lead) return;
+
+    lead.attended = attended;
+    if (attended) {
+        lead.status = 'visit';
+        // Sync with related appointment if exists
+        const patient = AppState.patients.find(p => p.convertedFrom === leadId);
+        if (patient) {
+            const appointment = AppState.appointments.find(a => a.patientId === patient.id && a.status === 'scheduled');
+            if (appointment) {
+                appointment.attended = true;
+                appointment.status = 'completed';
+            }
+        }
+    } else {
+        lead.status = 'not-converted';
+        lead.saleStatus = 'lost';
+    }
+
+    lead.updatedAt = new Date().toISOString();
+    saveToStorage(STORAGE_KEYS.LEADS, AppState.leads);
+    saveToStorage(STORAGE_KEYS.APPOINTMENTS, AppState.appointments);
+    refreshLeadCard(leadId);
+    showNotification(attended ? 'Comparecimento registrado!' : 'Lead marcado como não compareceu', 'success');
+}
+
+async function markSale(leadId, sold) {
+    const lead = AppState.leads.find(l => l.id === leadId);
+    if (!lead) return;
+
+    lead.saleStatus = sold ? 'sold' : 'lost';
+    if (sold) {
+        const value = prompt(`Digite o valor do fechamento para "${lead.name}":`, lead.saleValue || "0");
+        if (value === null) return; // Cancelled
+        lead.saleValue = parseFloat(value.replace(',', '.')) || 0;
+        lead.status = 'converted';
+
+        // Add interaction automatically
+        if (!lead.interactions) lead.interactions = [];
+        lead.interactions.unshift({
+            date: new Date().toISOString(),
+            note: `💰 VENDA REALIZADA! Valor: R$ ${lead.saleValue.toFixed(2)}. Lead convertido em paciente.`
+        });
+
+        // Ensure patient is created
+        if (typeof convertLeadToPatient === 'function') {
+            convertLeadToPatient(leadId, true); // silent conversion
+        }
+    } else {
+        if (!confirm(`Confirmar que a venda para "${lead.name}" não foi fechada?`)) return;
+        lead.status = 'not-converted';
+        lead.saleValue = 0;
+    }
+
+    lead.updatedAt = new Date().toISOString();
+    saveToStorage(STORAGE_KEYS.LEADS, AppState.leads);
+
+    // Refresh relevant UIs
+    if (typeof refreshLeadCard === 'function') refreshLeadCard(leadId);
+    if (typeof renderKanbanBoard === 'function') renderKanbanBoard();
+    if (typeof updateDashboard === 'function') updateDashboard();
+
+    showNotification(sold ? `Parabéns pela venda de R$ ${lead.saleValue.toFixed(2)}! 🎯` : 'Lead marcado como perdido', sold ? 'success' : 'info');
+}
+
+// Helpers for Manual Retroactive Date Updates
+function getCurrentTimeFormatted() {
+    const now = new Date();
+    return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+}
+
+window.editStepDate = (leadId, field) => {
+    const lead = AppState.leads.find(l => l.id === leadId);
+    if (!lead) return;
+
+    const currentVal = lead[field] ? lead[field].split('T')[0] : new Date().toISOString().split('T')[0];
+    const label = field === 'contactedAt' ? 'Data do Primeiro Contato' : 'Data da Criação do Agendamento';
+
+    const formHTML = `
+        <div class="form-group">
+            <label class="form-label">📅 Alterar ${label}</label>
+            <input type="date" id="newStepDate" class="form-input" value="${currentVal}">
+            <p style="font-size: 0.8rem; color: var(--gray-500); margin-top: 0.5rem;">
+                Esta data é usada para os relatórios de conversão e metas.
+            </p>
+        </div>
+    `;
+
+    openModal('Editar Data do Fluxo', formHTML, [
+        { label: 'Cancelar', class: 'btn-secondary', onclick: 'closeModal()' },
+        { label: 'Salvar Alteração', class: 'btn-primary', onclick: `saveStepDate('${leadId}', '${field}')` }
+    ]);
+};
+
+window.saveStepDate = (leadId, field) => {
+    const newDate = document.getElementById('newStepDate').value;
+    if (!newDate) return;
+
+    const lead = AppState.leads.find(l => l.id === leadId);
+    if (lead) {
+        // Keep the original time but change the date
+        const timePart = lead[field] ? lead[field].split('T')[1] : '12:00:00.000Z';
+        lead[field] = new Date(newDate + 'T' + (timePart.includes('Z') ? timePart : timePart + 'Z')).toISOString();
+        lead.updatedAt = new Date().toISOString();
+
+        saveToStorage(STORAGE_KEYS.LEADS, AppState.leads);
+        closeModal();
+        refreshLeadCard(leadId);
+        showNotification('Data atualizada com sucesso!', 'success');
+    }
+};
+
+window.revertLeadStep = (leadId, step) => {
+    const lead = AppState.leads.find(l => l.id === leadId);
+    if (!lead) return;
+
+    const confirmMsg = `Deseja realmente voltar o passo ${step}? Isso poderá resetar o status do lead.`;
+    if (!confirm(confirmMsg)) return;
+
+    switch (step) {
+        case 1: // Revert Contacted
+            lead.contactedAt = null;
+            lead.status = 'new';
+            break;
+        case 2: // Revert Scheduled
+            lead.scheduledAt = null;
+            lead.visitDate = null;
+            lead.status = 'in-contact';
+            // Note: We don't automatically delete the appointment record to avoid data loss, 
+            // but the lead workflow returns to contact phase.
+            break;
+        case 3: // Revert Attendance
+            lead.attended = false;
+            lead.status = 'scheduled';
+            break;
+        case 4: // Revert Sale
+            lead.saleStatus = null;
+            lead.saleValue = 0;
+            lead.status = lead.attended ? 'visit' : 'scheduled';
+            break;
+    }
+
+    lead.updatedAt = new Date().toISOString();
+    saveToStorage(STORAGE_KEYS.LEADS, AppState.leads);
+    refreshLeadCard(leadId);
+    showNotification('Passo revertido com sucesso', 'info');
+};
+
+window.editVisitDate = (leadId) => {
+    const lead = AppState.leads.find(l => l.id === leadId);
+    if (!lead) return;
+
+    const currentVal = lead.visitDate ? lead.visitDate.split('T')[0] : new Date().toISOString().split('T')[0];
+
+    const formHTML = `
+        <div class="form-group">
+            <label class="form-label">📅 Trocar Data do Agendamento</label>
+            <input type="date" id="newVisitDate" class="form-input" value="${currentVal}">
+            <p style="font-size: 0.825rem; color: var(--gray-500); margin-top: 0.5rem;">
+                Isso alterará a data registrada para a visita do paciente.
+            </p>
+        </div>
+    `;
+
+    openModal('Alterar Data da Visita', formHTML, [
+        { label: 'Cancelar', class: 'btn-secondary', onclick: 'closeModal()' },
+        { label: 'Salvar Nova Data', class: 'btn-primary', onclick: `saveVisitDate('${leadId}')` }
+    ]);
+};
+
+window.saveVisitDate = (leadId) => {
+    const newDate = document.getElementById('newVisitDate').value;
+    if (!newDate) return;
+
+    const lead = AppState.leads.find(l => l.id === leadId);
+    if (lead) {
+        // Keep original time if possible, or use noon
+        const timePart = lead.visitDate ? lead.visitDate.split('T')[1] : '12:00:00.000Z';
+        lead.visitDate = new Date(newDate + 'T' + (timePart.includes('Z') ? timePart : timePart + 'Z')).toISOString();
+        lead.updatedAt = new Date().toISOString();
+
+        // Also update related appointment if possible
+        const patient = AppState.patients.find(p => p.convertedFrom === leadId);
+        if (patient) {
+            const appointments = AppState.appointments.filter(a => a.patientId === patient.id && a.status === 'scheduled');
+            appointments.forEach(a => {
+                const aTime = a.date.split('T')[1];
+                a.date = new Date(newDate + 'T' + aTime).toISOString();
+                a.updatedAt = new Date().toISOString();
+            });
+            if (appointments.length > 0) {
+                saveToStorage(STORAGE_KEYS.APPOINTMENTS, AppState.appointments);
+            }
+        }
+
+        saveToStorage(STORAGE_KEYS.LEADS, AppState.leads);
+        closeModal();
+        refreshLeadCard(leadId);
+        showNotification('Data do agendamento atualizada!', 'success');
     }
 };

@@ -86,6 +86,28 @@ function renderSettingsView() {
                     <div>• Espaço LocalStorage: <strong id="storageUsage">calculando...</strong></div>
                 </div>
             </div>
+            <hr style="margin: 2rem 0; border: none; border-top: 1px solid var(--gray-200);">
+
+            <div style="background: #f0f9ff; padding: var(--spacing-lg); border-radius: var(--radius-md); border: 1px solid #bae6fd; margin-bottom: var(--spacing-lg);">
+                <h4 style="font-size: 1rem; font-weight: 600; margin-bottom: var(--spacing-md); color: #0369a1; display: flex; align-items: center; gap: 0.5rem;">
+                    ☁️ Sincronização em Nuvem
+                </h4>
+                <p style="color: #0c4a6e; font-size: 0.875rem; margin-bottom: var(--spacing-md);">
+                    Status: <strong id="cloudStatusLabel">${typeof isCloudConnected === 'function' && isCloudConnected() ? '<span style="color: #059669;">Conectado</span>' : '<span style="color: #dc2626;">Local (Offline)</span>'}</strong>
+                </p>
+                
+                <div style="display: flex; gap: var(--spacing-md); flex-wrap: wrap;">
+                    <button type="button" class="btn btn-small" onclick="forceSyncToCloud()" style="background: #0ea5e9; color: white; border: none;">
+                        📤 Forçar Sincronização Envio (Local → Nuvem)
+                    </button>
+                    <button type="button" class="btn btn-small" onclick="forceSyncFromCloud()" style="background: white; color: #0369a1; border: 1px solid #bae6fd; margin-left: 0.5rem;">
+                        📥 Forçar Sincronização Recebimento (Nuvem → Local)
+                    </button>
+                </div>
+                <p style="font-size: 0.75rem; color: #64748b; margin-top: 0.75rem;">
+                    ⚠️ Use "Forçar Envio" se você aplicou o SQL e quer garantir que todos os dados locais subam para o servidor.
+                </p>
+            </div>
 
             <hr style="margin: 2rem 0; border: none; border-top: 1px solid var(--gray-200);">
 
@@ -179,10 +201,8 @@ function clearData(type) {
 
     if (type === 'patients') {
         AppState.patients = [];
-        AppState.kanbanCards = [];
         AppState.appointments = [];
         saveToStorage(STORAGE_KEYS.PATIENTS, []);
-        saveToStorage(STORAGE_KEYS.KANBAN, []);
         saveToStorage(STORAGE_KEYS.APPOINTMENTS, []);
     }
 
@@ -215,7 +235,45 @@ function saveSettings(event) {
     showNotification('Configurações salvas com sucesso!', 'success');
 }
 
+// Force sync functions
+async function forceSyncToCloud() {
+    if (!confirm('Isso enviará TODOS os seus dados locais para a nuvem, sobrescrevendo conflitos com a versão local (mais atual). Continuar?')) return;
+
+    showNotification('Iniciando sincronização forçada...', 'info');
+
+    try {
+        await Promise.all([
+            saveToSupabase('leads', AppState.leads),
+            saveToSupabase('patients', AppState.patients),
+            saveToSupabase('appointments', AppState.appointments),
+            saveToSupabase('settings', AppState.settings),
+            saveToSupabase('old_patients', AppState.oldPatients)
+        ]);
+        showNotification('🚀 Sincronização concluída com sucesso!', 'success');
+    } catch (error) {
+        console.error('Force sync failed:', error);
+        showNotification('Erro na sincronização forçada. Verifique o console.', 'error');
+    }
+}
+
+async function forceSyncFromCloud() {
+    if (!confirm('Deseja baixar todos os dados da nuvem? Isso mesclará com seus dados locais.')) return;
+
+    showNotification('Baixando dados da nuvem...', 'info');
+
+    if (typeof loadDataFromSupabase === 'function') {
+        const success = await loadDataFromSupabase();
+        if (success) {
+            location.reload(); // Reload to refresh all views with merged data
+        } else {
+            showNotification('Falha ao carregar dados da nuvem.', 'error');
+        }
+    }
+}
+
 // Export functions
 window.initSettingsModule = initSettingsModule;
 window.saveSettings = saveSettings;
 window.clearData = clearData;
+window.forceSyncToCloud = forceSyncToCloud;
+window.forceSyncFromCloud = forceSyncFromCloud;

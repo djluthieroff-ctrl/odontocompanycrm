@@ -7,7 +7,7 @@ const AppState = {
     leads: [],
     patients: [],
     appointments: [],
-    kanbanCards: [],
+    oldPatients: [], // Pacientes Antigos (Fichas Físicas)
     settings: {
         crcName: '',
         dailyGoal: 5,
@@ -22,27 +22,73 @@ const STORAGE_KEYS = {
     LEADS: 'odontocrm_leads',
     PATIENTS: 'odontocrm_patients',
     APPOINTMENTS: 'odontocrm_appointments',
-    KANBAN: 'odontocrm_kanban',
-    SETTINGS: 'odontocrm_settings'
+    SETTINGS: 'odontocrm_settings',
+    OLD_PATIENTS: 'odontocrm_old_patients'
 };
 
 // Initialize App
-document.addEventListener('DOMContentLoaded', () => {
-    // Ensure data is loaded
-    loadDataFromStorage();
+document.addEventListener('DOMContentLoaded', async () => {
+    // 1. Initialize loading overlay first
+    initializeLoadingOverlay();
 
-    // Initialize systems
+    // 2. Try to initialize Supabase
+    const supabaseOk = typeof initSupabase === 'function' && initSupabase();
+
+    if (supabaseOk) {
+        // Cloud mode: Auth flow handles data loading and app initialization
+        console.log('☁️ Cloud mode — starting auth flow');
+        // initAuth() will handle session check → login screen or auto-load
+        // After successful login, onLoginSuccess() in auth.js calls initializeAppUI()
+        initAuth();
+    } else {
+        // Local mode: Load from localStorage as before
+        console.log('💾 Local mode — loading from localStorage');
+        loadDataFromStorage();
+        initializeAppUI();
+    }
+
+    console.log('🦷 CRM Odonto Company Initialized');
+});
+
+// Initialize App UI (shared between cloud and local mode)
+function initializeAppUI() {
     initializeNavigation();
     initializeGlobalSearch();
-    initializeLoadingOverlay();
 
     // Force initial dashboard update
     updateDashboard();
 
-    // Check for backup reminder
-    setTimeout(checkBackupReminder, 2000);
+    // Update connection indicator
+    if (typeof updateConnectionIndicator === 'function') {
+        updateConnectionIndicator();
+    }
 
-    console.log('🦷 CRM Odonto Company Initialized');
+    // Initialize Logout Button
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.onclick = async () => {
+            if (confirm('Deseja realmente sair?')) {
+                if (typeof supabaseSignOut === 'function') {
+                    await supabaseSignOut();
+                    location.reload(); // Hard reload to clear state and show login
+                }
+            }
+        };
+    }
+
+    // Check for backup reminder (only in local mode)
+    if (!isCloudConnected || !isCloudConnected()) {
+        setTimeout(checkBackupReminder, 2000);
+    } else {
+        // Cloud mode: Start external sync loop (Unisoft/n8n)
+        setTimeout(() => {
+            if (typeof processUnprocessedSyncRecords === 'function') {
+                processUnprocessedSyncRecords();
+                // Schedule every 5 minutes
+                setInterval(processUnprocessedSyncRecords, 5 * 60 * 1000);
+            }
+        }, 5000);
+    }
 
     // Recovery check: If leads are empty, try loading again after a small delay
     if (AppState.leads.length === 0) {
@@ -51,12 +97,11 @@ document.addEventListener('DOMContentLoaded', () => {
             loadDataFromStorage();
             if (AppState.leads.length > 0) {
                 updateDashboard();
-                // If we are in leads module, render list
                 if (typeof renderLeadsList === 'function') renderLeadsList();
             }
         }, 500);
     }
-});
+}
 
 // Load Data from LocalStorage
 function loadDataFromStorage() {
@@ -65,15 +110,15 @@ function loadDataFromStorage() {
         const leadsData = localStorage.getItem(STORAGE_KEYS.LEADS);
         const patientsData = localStorage.getItem(STORAGE_KEYS.PATIENTS);
         const appointmentsData = localStorage.getItem(STORAGE_KEYS.APPOINTMENTS);
-        const kanbanData = localStorage.getItem(STORAGE_KEYS.KANBAN);
         const settingsData = localStorage.getItem(STORAGE_KEYS.SETTINGS);
 
         // Only parse if data exists, otherwise default to empty array/object
         if (leadsData) AppState.leads = JSON.parse(leadsData);
         if (patientsData) AppState.patients = JSON.parse(patientsData);
         if (appointmentsData) AppState.appointments = JSON.parse(appointmentsData);
-        if (kanbanData) AppState.kanbanCards = JSON.parse(kanbanData);
         if (settingsData) AppState.settings = JSON.parse(settingsData);
+        const oldPatientsData = localStorage.getItem(STORAGE_KEYS.OLD_PATIENTS);
+        if (oldPatientsData) AppState.oldPatients = JSON.parse(oldPatientsData);
 
         // DEFAULT SETTINGS IF MISSING
         if (!AppState.settings || Object.keys(AppState.settings).length === 0) {
@@ -97,15 +142,41 @@ function loadDataFromStorage() {
             appointments: AppState.appointments.length
         });
 
+        // 🚀 CRITICAL: Fix any legacy IDs to standard UUIDs for cloud synchronization
+        if (typeof fixAllIdsToUUIDs === 'function') {
+            fixAllIdsToUUIDs();
+        }
+
+        return true;
+
     } catch (error) {
         console.error('❌ CRITICAL ERROR loading data:', error);
     }
 }
 
-// Save Data to LocalStorage
+// Save Data to LocalStorage (with Supabase sync)
 function saveToStorage(key, data) {
     try {
+        // Always save to localStorage as cache/backup
         localStorage.setItem(key, JSON.stringify(data));
+
+        // If cloud connected, also save to Supabase
+        if (typeof isCloudConnected === 'function' && isCloudConnected()) {
+            const tableMap = {};
+            tableMap[STORAGE_KEYS.LEADS] = 'leads';
+            tableMap[STORAGE_KEYS.PATIENTS] = 'patients';
+            tableMap[STORAGE_KEYS.APPOINTMENTS] = 'appointments';
+            tableMap[STORAGE_KEYS.SETTINGS] = 'settings';
+            tableMap[STORAGE_KEYS.OLD_PATIENTS] = 'old_patients';
+            const table = tableMap[key];
+            if (table) {
+                // Fire-and-forget async save to Supabase
+                saveToSupabase(table, data).catch(err => {
+                    console.warn('Supabase sync failed, local data preserved:', err);
+                });
+            }
+        }
+
         updateDashboard();
     } catch (error) {
         console.error('Error saving data:', error);
@@ -269,18 +340,23 @@ function updateDashboard() {
     const today = new Date().toDateString();
 
     // Populate Top Stats
-    const todayLeads = AppState.leads.filter(l => new Date(l.createdAt).toDateString() === today).length;
-    // Agendados Hoje (Marcados hoje para qualquer data)
+    const totalLeads = AppState.leads.length;
     const scheduledToday = AppState.appointments.filter(a => a.createdAt && new Date(a.createdAt).toDateString() === today).length;
     const conversionRate = metrics.totalLeads > 0 ? Math.round((metrics.scheduled / metrics.totalLeads) * 100) : 0;
 
-    const elTodayLeads = document.getElementById('dashTodayLeads');
+    const elTotalLeads = document.getElementById('dashTodayLeads');
     const elScheduledToday = document.getElementById('dashScheduledToday');
     const elConvRate = document.getElementById('dashConvRate');
 
-    if (elTodayLeads) elTodayLeads.textContent = todayLeads;
+    if (elTotalLeads) elTotalLeads.textContent = totalLeads;
     if (elScheduledToday) elScheduledToday.textContent = scheduledToday;
     if (elConvRate) elConvRate.textContent = conversionRate + '%';
+
+    // Add Total Sales Value to Dashboard if possible
+    const elTotalSales = document.getElementById('dashTotalSales');
+    if (elTotalSales) {
+        elTotalSales.textContent = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(metrics.totalSalesValue);
+    }
 
     // Populate Funnel Visual
     renderDashboardFunnel(metrics);
@@ -294,9 +370,9 @@ function updateDashboard() {
     // CRM Metrics Compatibility (Legacy badges if any)
     const leadsBadge = document.getElementById('leadsBadge');
     if (leadsBadge) {
-        const newLeads = AppState.leads.filter(l => l.status === 'new').length;
-        leadsBadge.textContent = newLeads;
-        leadsBadge.style.display = newLeads > 0 ? 'block' : 'none';
+        const totalLeads = AppState.leads.length;
+        leadsBadge.textContent = totalLeads;
+        leadsBadge.style.display = totalLeads > 0 ? 'flex' : 'none';
     }
 
     // If Reports module is active, update it too
@@ -422,7 +498,9 @@ function calculateMetrics() {
     const visits = AppState.leads.filter(l => l.status === 'visit' || ['sold', 'lost'].includes(l.saleStatus)).length;
 
     // Sales
-    const sales = AppState.leads.filter(l => l.saleStatus === 'sold').length;
+    const salesLeads = AppState.leads.filter(l => l.saleStatus === 'sold');
+    const sales = salesLeads.length;
+    const totalSalesValue = salesLeads.reduce((sum, l) => sum + (l.saleValue || 0), 0);
 
     // Contacted (assuming any lead not 'new' has been contacted)
     const contacted = AppState.leads.filter(l => l.status !== 'new').length;
@@ -432,6 +510,7 @@ function calculateMetrics() {
         scheduled,
         visits,
         sales,
+        totalSalesValue,
         contacted
     };
 }
@@ -547,8 +626,23 @@ function calculateWeeklyPerformance() {
 
 // Update Weekly Goals
 function updateWeeklyGoals() {
-    if (typeof renderMonthlyGoals === 'function') {
-        renderMonthlyGoals();
+    const goals = calculateWeeklyPerformance();
+    const appointmentsGoal = AppState.settings.weeklyAppointmentsGoal || 80;
+    const visitsGoal = AppState.settings.weeklyVisitsGoal || 40;
+
+    const appPercent = Math.min(Math.round((goals.appointments / appointmentsGoal) * 100), 100);
+    const visitPercent = Math.min(Math.round((goals.visits / visitsGoal) * 100), 100);
+
+    const appProgress = document.getElementById('appointmentsProgress');
+    const visitProgress = document.getElementById('visitsProgress');
+
+    if (appProgress) {
+        appProgress.style.width = `${appPercent}%`;
+        document.getElementById('appointmentsCount').textContent = goals.appointments;
+    }
+    if (visitProgress) {
+        visitProgress.style.width = `${visitPercent}%`;
+        document.getElementById('visitsCount').textContent = goals.visits;
     }
 }
 
@@ -602,7 +696,8 @@ function closeModal() {
 
 // Utilities
 function capitalize(str) {
-    return str.charAt(0).toUpperCase() + str.slice(1);
+    if (!str) return '';
+    return str.split('-').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join('');
 }
 
 function formatDate(dateString) {
@@ -638,7 +733,7 @@ function syncLeadVisitToAppointment(leadId) {
             name: lead.name,
             phone: lead.phone,
             email: lead.email || '',
-            birthdate: '',
+            birthDate: '',
             address: '',
             createdAt: new Date().toISOString(),
             convertedFrom: leadId
@@ -660,8 +755,12 @@ function syncLeadVisitToAppointment(leadId) {
         const apt = openAppts[0];
         apt.status = 'completed';
         apt.attended = true;
-        // Keep the original appointment date, but mark as completed today
-        apt.notes = (apt.notes || '') + `\n⚠️ Baixa automática via Lead (Visita em ${new Date().toLocaleDateString('pt-BR')})`;
+
+        // 🔥 Retroactive Fix: If lead has a specific visitDate, use it
+        const finalDate = lead.visitDate || new Date().toISOString();
+        const dateLabel = new Date(finalDate).toLocaleDateString('pt-BR');
+
+        apt.notes = (apt.notes || '') + `\n⚠️ Baixa automática via Lead (Visita em ${dateLabel})`;
 
         saveToStorage(STORAGE_KEYS.APPOINTMENTS, AppState.appointments);
         showNotification(`Agenda atualizada: Agendamento de ${patient.name} marcado como concluído.`, 'success');
@@ -675,11 +774,13 @@ function syncLeadVisitToAppointment(leadId) {
         );
 
         if (!alreadyHasCompletedToday) {
+            const finalDate = lead.visitDate || new Date().toISOString();
+
             const appointment = {
                 id: generateId(),
                 patientId: patient.id,
                 patientName: patient.name,
-                date: new Date().toISOString(),
+                date: finalDate,
                 procedure: lead.interest || 'Avaliação',
                 duration: 60,
                 notes: `⚠️ Sincronizado automaticamente (Lead: ${lead.source})`,
@@ -696,7 +797,71 @@ function syncLeadVisitToAppointment(leadId) {
 }
 
 function generateId() {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2);
+    // Use modern randomUUID if available
+    if (window.crypto && window.crypto.randomUUID) {
+        return window.crypto.randomUUID();
+    }
+    // Standard RFC4122 version 4 UUID fallback
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+        var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+}
+
+function isValidUUID(str) {
+    if (!str || typeof str !== 'string') return false;
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(str);
+}
+
+function fixAllIdsToUUIDs() {
+    let changed = false;
+    const idMap = new Map();
+
+    // 1. Leads
+    AppState.leads.forEach(lead => {
+        if (!isValidUUID(lead.id)) {
+            const oldId = lead.id;
+            const newId = generateId();
+            idMap.set(oldId, newId);
+            lead.id = newId;
+            changed = true;
+        }
+    });
+
+    // 2. Patients (and fix convertedFrom reference)
+    AppState.patients.forEach(patient => {
+        if (!isValidUUID(patient.id)) {
+            const oldId = patient.id;
+            const newId = generateId();
+            idMap.set(oldId, newId);
+            patient.id = newId;
+            changed = true;
+        }
+        if (patient.convertedFrom && idMap.has(patient.convertedFrom)) {
+            patient.convertedFrom = idMap.get(patient.convertedFrom);
+            changed = true;
+        }
+    });
+
+    // 3. Appointments (and fix patientId reference)
+    AppState.appointments.forEach(app => {
+        if (!isValidUUID(app.id)) {
+            app.id = generateId();
+            changed = true;
+        }
+        if (app.patientId && idMap.has(app.patientId)) {
+            app.patientId = idMap.get(app.patientId);
+            changed = true;
+        }
+    });
+
+    if (changed) {
+        console.log('✨ Data legacy IDs converted to UUIDs for cloud sync');
+        saveToStorage(STORAGE_KEYS.LEADS, AppState.leads);
+        saveToStorage(STORAGE_KEYS.PATIENTS, AppState.patients);
+        saveToStorage(STORAGE_KEYS.APPOINTMENTS, AppState.appointments);
+    }
 }
 
 function showNotification(message, type = 'info') {
