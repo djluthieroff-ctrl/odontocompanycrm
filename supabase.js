@@ -300,6 +300,8 @@ async function saveToSupabase(table, data) {
     }
 
     try {
+        console.log(`📡 Sincronizando tabela ${table} (${Array.isArray(data) ? data.length : 1} registros)...`);
+
         if (table === 'settings') {
             const dbData = mapToDb('settings', data);
             dbData.updated_at = new Date().toISOString();
@@ -308,7 +310,11 @@ async function saveToSupabase(table, data) {
                 .upsert(dbData, { onConflict: 'user_id' });
             if (error) throw error;
         } else {
-            const dbRows = data.map(item => mapToDb(table, item));
+            // Se não for array, transforma em array para processamento uniforme
+            const dataArray = Array.isArray(data) ? data : [data];
+            const dbRows = dataArray.map(item => mapToDb(table, item));
+
+            // Garantir IDs únicos e remover duplicatas
             const uniqueRows = [];
             const ids = new Set();
             dbRows.forEach(row => {
@@ -319,15 +325,35 @@ async function saveToSupabase(table, data) {
             });
 
             if (uniqueRows.length > 0) {
-                const { error } = await supabaseClient
-                    .from(table)
-                    .upsert(uniqueRows, { onConflict: 'id' });
-                if (error) throw error;
+                // Processar em lotes de 100 para evitar erros de payload grande ou timeout
+                const BATCH_SIZE = 100;
+                for (let i = 0; i < uniqueRows.length; i += BATCH_SIZE) {
+                    const batch = uniqueRows.slice(i, i + BATCH_SIZE);
+                    const { error } = await supabaseClient
+                        .from(table)
+                        .upsert(batch, { onConflict: 'id' });
+
+                    if (error) {
+                        console.error(`❌ Erro no lote ${i / BATCH_SIZE + 1} da tabela ${table}:`, error);
+                        throw error;
+                    }
+                }
             }
         }
+        console.log(`✅ Tabela ${table} sincronizada com sucesso`);
     } catch (error) {
-        console.error(`❌ Error saving ${table} to Supabase:`, error);
-        showNotification('Erro ao salvar na nuvem', 'error');
+        console.error(`❌ Falha crítica ao salvar ${table} no Supabase:`, error);
+
+        let errorMsg = 'Erro ao sincronizar com a nuvem';
+        if (error.message) errorMsg += `: ${error.message}`;
+
+        // Se o erro for de Row Level Security ou permissão
+        if (error.code === '42501') {
+            errorMsg = 'Erro de permissão no Supabase. Verifique as políticas de RLS.';
+        }
+
+        showNotification(errorMsg, 'error');
+        throw error; // Re-lança para ser capturado pelo importBackupJSON
     }
 
     updateDashboard();
