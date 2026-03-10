@@ -48,6 +48,7 @@ function initializeAppUI() {
     initializeGlobalSearch();
 
     updateDashboard();
+    checkStaleLeads();
 
     // Initialize Tippy Tooltips
     if (window.tippy) {
@@ -61,6 +62,10 @@ function initializeAppUI() {
     if (typeof updateConnectionIndicator === 'function') {
         updateConnectionIndicator();
     }
+
+    initializeDarkMode();
+    initializeKeyboardShortcuts();
+    startTodayWidgetPolling();
 
     // Initialize Logout Button
     const logoutBtn = document.getElementById('logoutBtn');
@@ -83,6 +88,95 @@ function initializeAppUI() {
         }
     }, 5000);
 }
+
+function initializeDarkMode() {
+    const darkModeBtn = document.getElementById('darkModeToggle');
+    const isDark = localStorage.getItem('darkMode') === 'true';
+
+    if (isDark) {
+        document.body.classList.add('dark-mode');
+        if (darkModeBtn) darkModeBtn.textContent = '☀️';
+    }
+
+    if (darkModeBtn) {
+        darkModeBtn.onclick = () => {
+            const isNowDark = document.body.classList.toggle('dark-mode');
+            localStorage.setItem('darkMode', isNowDark);
+            darkModeBtn.textContent = isNowDark ? '☀️' : '🌓';
+
+            // Re-render charts if they depend on colors
+            if (typeof updateDashboard === 'function') updateDashboard();
+        };
+    }
+}
+
+function initializeKeyboardShortcuts() {
+    document.addEventListener('keydown', (e) => {
+        // Ignorar se o usuário estiver digitando em um input
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) {
+            if (e.key === 'Escape') {
+                closeAllModals();
+            }
+            return;
+        }
+
+        const key = e.key.toLowerCase();
+
+        if (key === 'n') {
+            e.preventDefault();
+            if (typeof showNewLeadForm === 'function') showNewLeadForm();
+        } else if (key === 'a') {
+            e.preventDefault();
+            if (typeof switchModule === 'function') switchModule('appointments');
+        } else if (e.key === 'Escape') {
+            closeAllModals();
+        }
+    });
+}
+
+function closeAllModals() {
+    const modals = document.querySelectorAll('.modal, .modal-overlay');
+    modals.forEach(m => {
+        m.style.display = 'none';
+        // Se houver overlay do modal antigo
+        if (m.classList.contains('active')) m.classList.remove('active');
+    });
+}
+
+function startTodayWidgetPolling() {
+    updateTodayWidget();
+    // Atualiza a cada 2 minutos como sugerido no print
+    setInterval(updateTodayWidget, 2 * 60 * 1000);
+}
+
+function updateTodayWidget() {
+    if (!AppState.appointments) return;
+
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+
+    // Filtrar agendamentos de hoje
+    const todayAppts = AppState.appointments.filter(a => {
+        const aDate = new Date(a.date).toISOString().split('T')[0];
+        return aDate === todayStr;
+    });
+
+    const expected = todayAppts.length;
+    const attended = todayAppts.filter(a => a.attended || a.status === 'completed').length;
+    const rate = expected > 0 ? Math.round((attended / expected) * 100) : 0;
+
+    const elExpected = document.getElementById('todayExpectedCount');
+    const elAttended = document.getElementById('todayAttendedCount');
+    const elProgress = document.getElementById('todayProgressFill');
+    const elRateText = document.getElementById('todayPresenceRate');
+
+    if (elExpected) elExpected.textContent = expected;
+    if (elAttended) elAttended.textContent = attended;
+    if (elProgress) elProgress.style.width = `${rate}%`;
+    if (elRateText) elRateText.textContent = `${rate}% de presença`;
+}
+
+
 
 // Load Data from LocalStorage
 function loadDataFromStorage() {
@@ -158,7 +252,7 @@ function saveToStorage(key, data) {
             }
         }
 
-        updateDashboard();
+        // updateDashboard(); // BUG 7: Removido daqui para evitar repintura excessiva. Chamar apenas quando necessário.
     } catch (error) {
         console.error('Error saving data:', error);
         showNotification('Erro ao salvar dados', 'error');
@@ -197,8 +291,10 @@ function switchModule(moduleName) {
         AppState.currentModule = moduleName;
 
         // Trigger module-specific initialization
-        if (typeof window[`init${capitalize(moduleName)}Module`] === 'function') {
-            window[`init${capitalize(moduleName)}Module`]();
+        // BUG 6: Fix para módulos com hífen (red-folder -> initRedFolderModule)
+        const funcName = `init${moduleName.split('-').map(s => capitalize(s)).join('')}Module`;
+        if (typeof window[funcName] === 'function') {
+            window[funcName]();
         }
     }
 }
@@ -291,28 +387,51 @@ function initializeGlobalSearch() {
 
 // Global search navigation helpers
 window.navigateToPatient = (id) => {
-    document.getElementById('search-results-dropdown').style.display = 'none';
-    document.getElementById('globalSearch').value = '';
+    const dropdown = document.getElementById('search-results-dropdown');
+    if (dropdown) dropdown.style.display = 'none';
+    const searchInput = document.getElementById('globalSearch');
+    if (searchInput) searchInput.value = '';
+
     switchModule('patients');
     setTimeout(() => {
-        if (typeof showPatientDetails === 'function') {
-            showPatientDetails(id);
+        if (typeof window.showPatientDetails === 'function') {
+            window.showPatientDetails(id);
         }
     }, 100);
 };
 
 window.navigateToLead = (id) => {
-    document.getElementById('search-results-dropdown').style.display = 'none';
-    document.getElementById('globalSearch').value = '';
+    const dropdown = document.getElementById('search-results-dropdown');
+    if (dropdown) dropdown.style.display = 'none';
+    const searchInput = document.getElementById('globalSearch');
+    if (searchInput) searchInput.value = '';
+
     switchModule('leads');
+    // Scroll to lead or open it if possible
     setTimeout(() => {
-        if (typeof expandLead === 'function') {
-            expandLead(id);
-            // Scroll to the lead card if possible
-            const element = document.querySelector(`[data-lead-id="${id}"]`);
-            if (element) element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-    }, 300);
+        const leadEl = document.querySelector(`[data-id="${id}"]`);
+        if (leadEl) leadEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
+};
+
+// Helper for manual sale recording (used by appointments.js)
+window.saveManualAptSale = (aptId) => {
+    const input = document.getElementById('manualSaleValue');
+    if (!input) return;
+
+    const valStr = input.value.trim().replace(',', '.');
+    const value = parseFloat(valStr) || 0;
+
+    const apt = AppState.appointments.find(a => a.id === aptId);
+    if (apt) {
+        apt.saleValue = value;
+        apt.isSale = true;
+        apt.updatedAt = new Date().toISOString();
+        saveToStorage(STORAGE_KEYS.APPOINTMENTS, AppState.appointments);
+        showNotification(`Venda de R$ ${value.toFixed(2)} registrada!`, 'success');
+        closeModal();
+        if (typeof window.renderAppointmentsView === 'function') window.renderAppointmentsView();
+    }
 };
 
 // Dashboard Updates
@@ -384,9 +503,19 @@ function updateDashboard() {
     // CRM Metrics Compatibility (Legacy badges if any)
     const leadsBadge = document.getElementById('leadsBadge');
     if (leadsBadge) {
-        const totalLeadsCount = AppState.leads.length;
+        const totalLeadsCount = AppState.leads.filter(l => l.status === 'new').length;
         leadsBadge.textContent = totalLeadsCount;
         leadsBadge.style.display = totalLeadsCount > 0 ? 'flex' : 'none';
+    }
+
+    // Badge: Pasta Vermelha
+    const redFolderBadge = document.getElementById('redFolderBadge');
+    if (redFolderBadge) {
+        if (typeof window.getRedFolderEntries === 'function') {
+            const count = window.getRedFolderEntries().length;
+            redFolderBadge.textContent = count;
+            redFolderBadge.style.display = count > 0 ? 'flex' : 'none';
+        }
     }
 
     // If Reports module is active, update it too
@@ -597,10 +726,12 @@ function updateCRCMetrics(metrics) {
 
 // Calculate Weekly Performance (Appointments Created and Visits Completed)
 function calculateWeeklyPerformance() {
-    const now = new Date();
-    const day = now.getDay();
-    const diff = now.getDate() - day + (day === 0 ? -6 : 1); // Adjust to start of week (Monday)
-    const startOfWeek = new Date(now.setDate(diff));
+    const nowForCalc = new Date();
+    const day = nowForCalc.getDay();
+    const diff = nowForCalc.getDate() - day + (day === 0 ? -6 : 1);
+    // BUG 1: Usar uma nova instância para não mutar o objeto original
+    const startOfWeek = new Date(nowForCalc);
+    startOfWeek.setDate(diff);
     startOfWeek.setHours(0, 0, 0, 0);
 
     const endOfWeek = new Date(startOfWeek);
@@ -970,6 +1101,20 @@ function initializeLoadingOverlay() {
     }
 }
 
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+window.debounce = debounce;
+
 function checkBackupReminder() {
     const lastBackup = localStorage.getItem('last_backup_date');
     const threeDays = 3 * 24 * 60 * 60 * 1000;
@@ -979,4 +1124,25 @@ function checkBackupReminder() {
         showNotification('🚀 Lembrete: Faça um backup dos seus dados nas configurações!', 'warning');
     }
 }
+
+function checkStaleLeads() {
+    const now = new Date();
+    const threeDaysAgo = new Date(now - 3 * 24 * 60 * 60 * 1000);
+
+    if (!AppState.leads || AppState.leads.length === 0) return;
+
+    const staleCount = AppState.leads.filter(l =>
+        l.status === 'new' && new Date(l.createdAt) < threeDaysAgo
+    ).length;
+
+    if (staleCount > 0) {
+        setTimeout(() => {
+            if (typeof showNotification === 'function') {
+                showNotification(`📢 Atenção: Você tem ${staleCount} leads novos há mais de 3 dias sem contato!`, 'warning');
+            }
+        }, 3000);
+    }
+}
+
+
 

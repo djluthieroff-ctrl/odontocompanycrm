@@ -187,14 +187,23 @@ function renderOldPatientCard(p) {
     `;
 }
 
-function updateOldPatientsSearch(value) {
+// Debounced search
+const debouncedOldPatientsSearch = debounce((value) => {
     oldPatientsSearch = value;
     renderOldPatients();
-    // Manter foco no campo de busca
+    // Maintain focus on search field after re-render if needed
     requestAnimationFrame(() => {
         const el = document.getElementById('oldPatientsSearchInput');
-        if (el) { el.focus(); el.setSelectionRange(value.length, value.length); }
+        if (el && el.value !== value) {
+            el.value = value;
+            el.focus();
+            el.setSelectionRange(value.length, value.length);
+        }
     });
+}, 400);
+
+function updateOldPatientsSearch(value) {
+    debouncedOldPatientsSearch(value);
 }
 
 function updateOldPatientsStatusFilter(value) {

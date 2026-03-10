@@ -191,7 +191,7 @@ function renderLeadsList() {
         const term = LeadsState.searchTerm.toLowerCase();
         filteredLeads = filteredLeads.filter(l =>
             l.name.toLowerCase().includes(term) ||
-            l.phone.includes(term)
+            (l.phone && String(l.phone).includes(term))
         );
     }
 
@@ -230,6 +230,7 @@ function renderLeadsList() {
                             </div>
                             <p style="color: var(--gray-600); font-size: 0.875rem; margin: 0;">
                                 📱 ${safePhone} ${lead.email ? `• ✉️ ${safeEmail}` : ''}
+                                ${lead.nextContact ? ` • 📅 Retorno: <span style="color: ${new Date(lead.nextContact) < new Date() ? 'var(--error-600)' : 'var(--primary-600)'}; font-weight: 700;">${new Date(lead.nextContact).toLocaleDateString('pt-BR')}</span>` : ''}
                             </p>
                         </div>
                     </div>
@@ -246,6 +247,19 @@ function renderLeadsList() {
                                 🚀 Fluxo de Trabalho
                             </h5>
                             
+                            <div style="margin-bottom: 1rem; padding: 1rem; background: ${lead.nextContact && new Date(lead.nextContact) < new Date() ? '#fff1f2' : 'white'}; border: 1px dashed ${lead.nextContact && new Date(lead.nextContact) < new Date() ? '#fda4af' : '#cbd5e1'}; border-radius: 8px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div>
+                                        <div style="font-size: 0.75rem; color: var(--gray-500); font-weight: 600; text-transform: uppercase;">📅 Próximo Contato (Follow-up)</div>
+                                        <div style="font-weight: 600; color: var(--gray-800); margin-top: 4px;">
+                                            ${lead.nextContact ? new Date(lead.nextContact).toLocaleDateString('pt-BR') : 'Não agendado'}
+                                            ${lead.nextContact && new Date(lead.nextContact) < new Date() ? ' <span style="color: var(--error-600); font-size: 0.7rem;">⚠️ ATRASADO</span>' : ''}
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-secondary btn-small" onclick="showSetNextContactModal('${lead.id}')">Agendar Retorno</button>
+                                </div>
+                            </div>
+
                             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
                                 <!-- Passo 1: Contato -->
                                 <div class="lead-workflow-item" style="padding: 1rem; background: white; border-radius: 8px; border: 1px solid ${lead.contactedAt ? '#bbf7d0' : '#e2e8f0'}; position: relative;">
@@ -438,10 +452,14 @@ function refreshLeadCard(leadId) {
     renderLeadsList();
 }
 
-// Search Leads
-function searchLeads(term) {
+// Search Leads (Debounced)
+const debouncedSearchLeads = debounce((term) => {
     LeadsState.searchTerm = term;
     renderLeadsList(); // Re-render with filter
+}, 400);
+
+function searchLeads(term) {
+    debouncedSearchLeads(term);
 }
 
 // Filter leads by status
@@ -1237,3 +1255,47 @@ window.saveVisitDate = (leadId) => {
         showNotification('Data do agendamento atualizada!', 'success');
     }
 };
+function showSetNextContactModal(leadId) {
+    const lead = AppState.leads.find(l => l.id === leadId);
+    if (!lead) return;
+
+    const current = lead.nextContact ? lead.nextContact.split('T')[0] : '';
+
+    const html = `
+        <div class="form-group">
+            <label class="form-label">Data para Retorno</label>
+            <input type="date" id="nextContactDate" class="form-input" value="${current}">
+            <p style="font-size: 0.75rem; color: var(--gray-500); margin-top: 5px;">
+                Agende uma data para entrar em contato com o lead novamente caso ele não tenha fechado agora.
+            </p>
+        </div>
+    `;
+
+    openModal(`Agendar Retorno: ${lead.name}`, html, [
+        { label: 'Cancelar', class: 'btn-secondary', onclick: 'closeModal()' },
+        { label: 'Remover Agendamento', class: 'btn-secondary', onclick: `saveNextContact('${leadId}', null)` },
+        { label: 'Salvar Agendamento', class: 'btn-primary', onclick: `saveNextContact('${leadId}')` }
+    ]);
+}
+
+window.saveNextContact = (leadId, value) => {
+    const lead = AppState.leads.find(l => l.id === leadId);
+    if (lead) {
+        if (value === null) {
+            delete lead.nextContact;
+        } else {
+            const date = document.getElementById('nextContactDate').value;
+            if (!date) {
+                showNotification('Selecione uma data!', 'warning');
+                return;
+            }
+            lead.nextContact = date + 'T12:00:00';
+        }
+        saveToStorage(STORAGE_KEYS.LEADS, AppState.leads);
+        closeModal();
+        renderLeadsList();
+        showNotification('Acompanhamento atualizado!', 'success');
+    }
+};
+
+window.showSetNextContactModal = showSetNextContactModal;

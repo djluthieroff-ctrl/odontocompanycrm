@@ -93,13 +93,13 @@ function renderRedFolder() {
 
     container.innerHTML = `
         <!-- Resumo no topo -->
-        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 2rem;">
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem;">
             <div class="stat-card" style="cursor:default;">
                 <div class="stat-icon" style="background:#fee2e2;color:#dc2626;">📅</div>
                 <div class="stat-content">
                     <h3>Recentes</h3>
                     <p class="stat-number" style="color:#dc2626;">${recent.length}</p>
-                    <small style="color:var(--gray-500);">Últimos 60 dias</small>
+                    <small style="color:var(--gray-500);">< 60 dias</small>
                 </div>
             </div>
             <div class="stat-card" style="cursor:default;">
@@ -107,30 +107,43 @@ function renderRedFolder() {
                 <div class="stat-content">
                     <h3>Antigas</h3>
                     <p class="stat-number" style="color:#ea580c;">${old.length}</p>
-                    <small style="color:var(--gray-500);">Acima de 60 dias</small>
+                    <small style="color:var(--gray-500);">> 60 dias</small>
                 </div>
             </div>
             <div class="stat-card" style="cursor:default;">
-                <div class="stat-icon" style="background:#dcfce7;color:#16a34a;">📊</div>
+                <div class="stat-icon" style="background:#dcfce7;color:#16a34a;">📈</div>
                 <div class="stat-content">
-                    <h3>Taxa de Fechamento</h3>
+                    <h3>Conversão</h3>
                     <p class="stat-number" style="color:#16a34a;">${closingRate}%</p>
-                    <small style="color:var(--gray-500);">Visitas que fecharam</small>
+                    <small style="color:var(--gray-500);">Visita → Venda</small>
+                </div>
+            </div>
+            <div class="stat-card" style="cursor:default;">
+                <div class="stat-icon" style="background:#eff6ff;color:#2563eb;">💰</div>
+                <div class="stat-content">
+                    <h3>Pendentes</h3>
+                    <p class="stat-number" style="color:#2563eb;">${all.length}</p>
+                    <small style="color:var(--gray-500);">Total na Pasta</small>
                 </div>
             </div>
         </div>
 
-        <!-- Filtro -->
-        <div style="display:flex;gap:0.5rem;margin-bottom:1.5rem;flex-wrap:wrap;">
-            <button class="btn ${redFolderFilter === 'all' ? 'btn-primary' : 'btn-secondary'} btn-small" onclick="setRedFolderFilter('all')">
-                📁 Todos (${all.length})
-            </button>
-            <button class="btn ${redFolderFilter === 'recent' ? 'btn-primary' : 'btn-secondary'} btn-small" onclick="setRedFolderFilter('recent')">
-                📅 Recentes (${recent.length})
-            </button>
-            <button class="btn ${redFolderFilter === 'old' ? 'btn-primary' : 'btn-secondary'} btn-small" onclick="setRedFolderFilter('old')">
-                🕰️ Antigos (${old.length})
-            </button>
+        <!-- Filtro e Ações -->
+        <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
+            <div style="display:flex;gap:0.5rem;">
+                <button class="btn ${redFolderFilter === 'all' ? 'btn-primary' : 'btn-secondary'} btn-small" onclick="setRedFolderFilter('all')">
+                    📁 Todos (${all.length})
+                </button>
+                <button class="btn ${redFolderFilter === 'recent' ? 'btn-primary' : 'btn-secondary'} btn-small" onclick="setRedFolderFilter('recent')">
+                    📅 Recentes (${recent.length})
+                </button>
+                <button class="btn ${redFolderFilter === 'old' ? 'btn-primary' : 'btn-secondary'} btn-small" onclick="setRedFolderFilter('old')">
+                    🕰️ Antigos (${old.length})
+                </button>
+            </div>
+            <div style="display:flex; gap:0.5rem; align-items:center;">
+                 <input type="text" id="redFolderSearch" placeholder="Buscar na pasta..." class="form-input" style="width:200px; height:32px; font-size:0.85rem;" oninput="searchRedFolder(this.value)">
+            </div>
         </div>
 
         ${all.length === 0 ? `
@@ -141,41 +154,50 @@ function renderRedFolder() {
             </div>
         ` : ''}
 
-        <!-- Seção: Agendamentos Recentes -->
-        ${(redFolderFilter === 'all' || redFolderFilter === 'recent') && recent.length > 0 ? `
-        <div style="margin-bottom:2rem;">
+        <div id="redFolderListContainer">
+            ${renderRedFolderSections(recent, old)}
+        </div>
+    `;
+}
+
+function renderRedFolderSections(recent, old) {
+    let html = '';
+
+    // Seção: Agendamentos Recentes
+    if ((redFolderFilter === 'all' || redFolderFilter === 'recent') && recent.length > 0) {
+        html += `
+        <div style="margin-bottom:2.5rem;">
             <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem;">
                 <div style="width:4px;height:24px;background:#dc2626;border-radius:2px;"></div>
-                <h3 style="margin:0;font-weight:700;color:var(--gray-900);">📅 Agendamentos Recentes — Não Fechados</h3>
+                <h3 style="margin:0;font-weight:700;color:var(--gray-900);">📅 Fluxo Recente (< 60 dias)</h3>
                 <span class="badge" style="background:#fee2e2;color:#dc2626;font-weight:700;">${recent.length}</span>
             </div>
-            <p style="color:var(--gray-500);font-size:0.85rem;margin-bottom:1rem;">Vieram nos últimos 60 dias e ainda não fecharam tratamento. Prioridade máxima!</p>
-            <div style="display:flex;flex-direction:column;gap:0.75rem;">
+            <p style="color:var(--gray-500);font-size:0.85rem;margin-bottom:1.25rem;">Pacientes que realizaram avaliação recentemente. **Foco em follow-up ativo!**</p>
+            <div style="display:grid;grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));gap:1rem;">
                 ${recent.map(e => renderRedFolderCard(e)).join('')}
             </div>
         </div>
-        ` : ''}
+        `;
+    }
 
-        <!-- Divisor -->
-        ${redFolderFilter === 'all' && recent.length > 0 && old.length > 0 ? `
-        <div style="border-top:2px dashed var(--gray-200);margin:1.5rem 0;"></div>
-        ` : ''}
-
-        <!-- Seção: Avaliações Antigas -->
-        ${(redFolderFilter === 'all' || redFolderFilter === 'old') && old.length > 0 ? `
+    // Seção: Avaliações Antigas
+    if ((redFolderFilter === 'all' || redFolderFilter === 'old') && old.length > 0) {
+        html += `
         <div>
             <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem;">
                 <div style="width:4px;height:24px;background:#ea580c;border-radius:2px;"></div>
-                <h3 style="margin:0;font-weight:700;color:var(--gray-900);">🕰️ Avaliações Antigas — Sem Retorno</h3>
+                <h3 style="margin:0;font-weight:700;color:var(--gray-900);">🕰️ Arquivo Especial (> 60 dias)</h3>
                 <span class="badge" style="background:#fff7ed;color:#ea580c;font-weight:700;">${old.length}</span>
             </div>
-            <p style="color:var(--gray-500);font-size:0.85rem;margin-bottom:1rem;">Vieram há mais de 60 dias. Vale tentar reativar com uma proposta especial.</p>
-            <div style="display:flex;flex-direction:column;gap:0.75rem;">
+            <p style="color:var(--gray-500);font-size:0.85rem;margin-bottom:1.25rem;">Pacientes sem retorno há meses. **Potencial para campanhas de reativação.**</p>
+            <div style="display:grid;grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));gap:1rem;">
                 ${old.map(e => renderRedFolderCard(e)).join('')}
             </div>
         </div>
-        ` : ''}
-    `;
+        `;
+    }
+
+    return html;
 }
 
 function renderRedFolderCard(entry) {
@@ -189,39 +211,68 @@ function renderRedFolderCard(entry) {
     const lastVisitStr = entry.lastVisit.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
     return `
-        <div class="list-item" style="border-left: 4px solid ${urgencyColor}; padding: 1rem 1.25rem;">
-            <div class="list-item-content" style="flex:1;">
-                <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-bottom:0.35rem;">
-                    <h4 style="margin:0;font-weight:700;">${escapeHTML(entry.name)}</h4>
-                    <span style="background:${urgencyBg};color:${urgencyColor};padding:2px 8px;border-radius:12px;font-size:0.75rem;font-weight:700;">
-                        ⏱️ ${entry.daysSince} dias sem retorno
-                    </span>
-                    ${entry.procedure ? `<span class="badge badge-gray" style="font-size:0.7rem;">${escapeHTML(entry.procedure)}</span>` : ''}
+    < div class="list-item" style = "border-left: 4px solid ${urgencyColor}; padding: 1.25rem; background:white; border-radius:12px; box-shadow: 0 2px 4px rgba(0,0,0,0.04); display:flex; flex-direction:column; gap:1rem;" >
+            <div style="display:flex; justify-content: space-between; align-items: flex-start;">
+                <div style="flex:1;">
+                    <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.25rem;">
+                        <h4 style="margin:0;font-weight:700;font-size:1.1rem;color:var(--gray-800);">${escapeHTML(entry.name)}</h4>
+                        <span style="background:${urgencyBg};color:${urgencyColor};padding:2px 8px;border-radius:12px;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">
+                            ⏱️ ${entry.daysSince} dias
+                        </span>
+                    </div>
+                    <div style="display:flex;gap:1.25rem;font-size:0.8rem;color:var(--gray-500);flex-wrap:wrap;">
+                        <span>📱 ${escapeHTML(entry.phone || 'Sem contato')}</span>
+                        <span>📅 Visita: ${lastVisitStr}</span>
+                        ${entry.procedure ? `<span style="color:var(--secondary-600);font-weight:600;">🦷 ${escapeHTML(entry.procedure)}</span>` : ''}
+                    </div>
                 </div>
-                <div style="display:flex;gap:1.25rem;font-size:0.82rem;color:var(--gray-500);flex-wrap:wrap;">
-                    <span>📱 ${escapeHTML(entry.phone || 'Sem telefone')}</span>
-                    <span>📅 Última visita: ${lastVisitStr}</span>
+                <div style="display:flex; gap:0.4rem;">
+                    ${entry.phone ? `
+                    <button class="btn btn-whatsapp btn-small" onclick="window.openWhatsApp('${escapeHTML(entry.phone)}')">
+                        📱
+                    </button>
+                    ` : ''}
+                    <button class="btn btn-secondary btn-small" onclick="${entry.patientId ? `navigateToPatient('${entry.patientId}')` : `navigateToLead('${entry.leadId}')`}">
+                        🔍
+                    </button>
                 </div>
             </div>
-            <div class="list-item-actions" style="flex-shrink:0;">
-                ${entry.phone ? `
-                <button class="btn btn-whatsapp btn-small" onclick="window.openWhatsApp('${escapeHTML(entry.phone)}')">
-                    📱 WhatsApp
-                </button>
-                ` : ''}
-                ${entry.patientId ? `
-                <button class="btn btn-secondary btn-small" onclick="navigateToPatient('${entry.patientId}')">
-                    👤 Ver Ficha
-                </button>
-                ` : ''}
+            
+            <div style="display:flex; gap:0.75rem; padding-top:0.75rem; border-top:1px solid var(--gray-50);">
                 ${entry.leadId ? `
-                <button class="btn btn-secondary btn-small" onclick="markRedFolderAsSold('${entry.leadId}')">
-                    ✅ Fechou!
+                <button class="btn btn-success btn-small" style="flex:1; border-radius:8px; font-weight:700;" onclick="markRedFolderAsSold('${entry.leadId}')">
+                    💰 FECHOU TRATAMENTO
                 </button>
-                ` : ''}
+                <button class="btn btn-secondary btn-small" style="flex:1; border-radius:8px;" onclick="switchModule('kanban')">
+                    🗒️ Agendar Re-visita
+                </button>
+                ` : `
+                <button class="btn btn-secondary btn-small" style="flex:1; border-radius:8px;" onclick="switchModule('kanban')">
+                    📋 Abrir Kanban
+                </button>
+                `}
             </div>
-        </div>
+        </div >
     `;
+}
+
+let redFolderSearchTerm = '';
+function searchRedFolder(term) {
+    redFolderSearchTerm = term.toLowerCase();
+    const all = getRedFolderEntries();
+    const filtered = all.filter(e =>
+        e.name.toLowerCase().includes(redFolderSearchTerm) ||
+        (e.phone && e.phone.includes(redFolderSearchTerm))
+    );
+
+    // Split filtered results
+    const recent = filtered.filter(e => e.daysSince <= RED_FOLDER_RECENT_DAYS);
+    const old = filtered.filter(e => e.daysSince > RED_FOLDER_RECENT_DAYS);
+
+    const container = document.getElementById('redFolderListContainer');
+    if (container) {
+        container.innerHTML = renderRedFolderSections(recent, old);
+    }
 }
 
 function setRedFolderFilter(filter) {
@@ -232,7 +283,7 @@ function setRedFolderFilter(filter) {
 async function markRedFolderAsSold(leadId) {
     const lead = AppState.leads.find(l => l.id === leadId);
     if (!lead) return;
-    if (!confirm(`Confirmar que "${lead.name}" fechou tratamento?`)) return;
+    if (!confirm(`Confirmar que "${lead.name}" fechou tratamento ? `)) return;
 
     const idx = AppState.leads.indexOf(lead);
     AppState.leads[idx] = { ...lead, saleStatus: 'sold', status: 'converted' };
@@ -251,3 +302,5 @@ window.initRedFolderModule = initRedFolderModule;
 window.renderRedFolder = renderRedFolder;
 window.setRedFolderFilter = setRedFolderFilter;
 window.markRedFolderAsSold = markRedFolderAsSold;
+window.searchRedFolder = searchRedFolder;
+window.getRedFolderEntries = getRedFolderEntries;

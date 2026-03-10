@@ -138,6 +138,11 @@ function renderAppointmentsView() {
                     </div>
                     <button class="btn btn-secondary btn-icon" onclick="changeDate(1)">▶</button>
                     <input type="date" class="form-input" style="width: auto;" value="${dateStr}" onchange="setDate(this.value)">
+                    <button class="btn btn-primary" id="newAppointmentBtn">📅 Novo Agendamento</button>
+                    <button class="btn btn-whatsapp" onclick="showBulkWhatsAppModal()" style="display: flex; align-items: center; gap: 8px;">
+                        <span>💬</span> Lembretes (Amanhã)
+                    </button>
+                </div>
                     <button class="btn btn-secondary" onclick="setDate(new Date().toISOString().split('T')[0])">Hoje</button>
                     <button class="btn btn-secondary" onclick="showAgendaHeatmap()" title="Mapa de Calor da Agenda">🔥</button>
                 </div>
@@ -461,13 +466,16 @@ function processAptSale(aptId, isSold) {
             markSale(leadId, true);
         } else {
             // No lead linked, ask for value manually
-            const value = prompt(`Digite o valor da venda para ${apt.patientName}:`, "0");
-            if (value !== null) {
-                apt.saleValue = parseFloat(value.replace(',', '.')) || 0;
-                apt.isSale = true;
-                saveToStorage(STORAGE_KEYS.APPOINTMENTS, AppState.appointments);
-                showNotification(`Venda de R$ ${apt.saleValue.toFixed(2)} registrada!`, 'success');
-            }
+            openModal(`Registrar Venda: ${apt.patientName}`, `
+                <div class="form-group">
+                    <label class="form-label">Valor da Venda (R$)</label>
+                    <input type="text" class="form-input" id="manualSaleValue" placeholder="0,00" autofocus>
+                    <small style="color:var(--gray-500);">Digite o valor final do tratamento fechado.</small>
+                </div>
+            `, [
+                { label: 'Cancelar', class: 'btn-secondary', onclick: 'closeModal()' },
+                { label: 'Confirmar Venda', class: 'btn-primary', onclick: `saveManualAptSale('${apt.id}')` }
+            ]);
         }
     } else {
         // Just a visit
@@ -881,4 +889,64 @@ window.sendWhatsAppReminder = (aptId) => {
         openWhatsApp(patient.phone, message);
         showNotification('Lembrete enviado!', 'success');
     }
-};
+}
+
+function showBulkWhatsAppModal() {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
+    const tomorrowAppts = AppState.appointments.filter(a => {
+        const aDate = new Date(a.date).toISOString().split('T')[0];
+        return aDate === tomorrowStr && a.status !== 'cancelled';
+    });
+
+    const modal = document.createElement('div');
+    modal.className = 'modal active';
+    modal.id = 'bulkWhatsAppModal';
+    modal.style.display = 'flex';
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3>📢 Lembretes para Amanhã (${tomorrow.toLocaleDateString('pt-BR')})</h3>
+                <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>O sistema identificou <strong>${tomorrowAppts.length}</strong> agendamentos para amanhã para confirmação.</p>
+                <div style="margin: 1.5rem 0; max-height: 400px; overflow-y: auto;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead style="background: var(--gray-50);">
+                            <tr>
+                                <th style="text-align: left; padding: 10px;">Paciente</th>
+                                <th style="text-align: center; padding: 10px;">Hora</th>
+                                <th style="text-align: right; padding: 10px;">Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${tomorrowAppts.map(a => {
+        const patient = AppState.patients.find(p => p.id === a.patientId) || { name: 'Desconhecido', phone: '' };
+        const time = new Date(a.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        const msg = `Olá ${patient.name}, aqui é da OdontoCompany! Passando para confirmar seu agendamento de amanhã às ${time}. Podemos confirmar?`;
+        return `
+                                    <tr style="border-bottom: 1px solid var(--gray-100);">
+                                        <td style="padding: 12px 10px;">${patient.name}</td>
+                                        <td style="padding: 12px 10px; text-align: center;">${time}</td>
+                                        <td style="padding: 12px 10px; text-align: right;">
+                                            <button class="btn btn-whatsapp btn-small" onclick="openWhatsApp('${patient.phone}', '${msg}')">Confirmar</button>
+                                        </td>
+                                    </tr>
+                                `;
+    }).join('')}
+                            ${tomorrowAppts.length === 0 ? '<tr><td colspan="3" style="text-align: center; padding: 2rem; color: var(--gray-400);">Nenhum agendamento para amanhã.</td></tr>' : ''}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">Fechar</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+;

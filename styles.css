@@ -62,6 +62,54 @@
     --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Dark Mode Variables */
+body.dark-mode {
+    --gray-50: #0f172a;
+    --gray-100: #1e293b;
+    --gray-200: #334155;
+    --gray-300: #475569;
+    --gray-400: #94a3b8;
+    --gray-500: #cbd5e1;
+    --gray-600: #e2e8f0;
+    --gray-700: #f1f5f9;
+    --gray-800: #f8fafc;
+    --gray-900: #ffffff;
+
+    --primary-50: #064e3b;
+    --primary-100: #065f46;
+    --secondary-50: #1e293b;
+    
+    background: #0f172a;
+}
+
+body.dark-mode .header,
+body.dark-mode .sidebar,
+body.dark-mode .stat-card,
+body.dark-mode .card,
+body.dark-mode .module-container,
+body.dark-mode .modal-content,
+body.dark-mode .dash-widget {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+    color: var(--gray-800);
+}
+
+body.dark-mode input, 
+body.dark-mode select, 
+body.dark-mode textarea {
+    background: #0f172a !important;
+    border-color: #334155 !important;
+    color: white !important;
+}
+
+body.dark-mode .nav-item:not(.active) {
+    color: #94a3b8;
+}
+
+body.dark-mode .nav-item:hover {
+    background: #334155;
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -1366,3 +1414,29 @@ body {
 .report-day-cell:active {
     transform: translateY(0);
 }
+/* Animations */
+@keyframes slideUpFade {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.dash-widget, .stat-card, .card, .lead-card, .appointment-card, .timeline-item {
+    animation: slideUpFade 0.4s ease-out forwards;
+}
+
+/* Delay gradual para cards */
+.lead-card:nth-child(1), .timeline-item:nth-child(1) { animation-delay: 0.05s; }
+.lead-card:nth-child(2), .timeline-item:nth-child(2) { animation-delay: 0.1s; }
+.lead-card:nth-child(3), .timeline-item:nth-child(3) { animation-delay: 0.15s; }
+
+/* Transitions for Dark Mode */
+body, .header, .sidebar, .dash-widget, .stat-card, .nav-item, input, select, button {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
