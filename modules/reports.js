@@ -350,6 +350,7 @@ function updateReportsStats() {
     setEl('kpiMonthLeads', thisMonthLeads);
     setEl('kpiRedFolder', redFolderCount);
 
+    const diffEl = document.getElementById('kpiMonthLeadsDiff');
     if (diffEl) {
         if (monthDiff > 0) diffEl.innerHTML = `<span style="color:#16a34a;">↑ +${monthDiff} vs mês ant.</span>`;
         else if (monthDiff < 0) diffEl.innerHTML = `<span style="color:#dc2626;">↓ ${monthDiff} vs mês ant.</span>`;
