@@ -567,7 +567,7 @@ function renderDashboardTimeline() {
     const todays = AppState.appointments
         .filter(a => a.date.startsWith(todayStr))
         .sort((a, b) => new Date(a.date) - new Date(b.date))
-        .slice(0, 4); // Show only top 4
+        .slice(0, 6); // Show only top 6
 
     if (todays.length === 0) {
         container.innerHTML = '<p style="color: var(--gray-400); text-align: center; padding: 1rem; border: 1px dashed var(--gray-200); border-radius: 8px;">Nenhum agendamento para hoje.</p>';

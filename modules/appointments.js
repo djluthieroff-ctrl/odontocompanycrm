@@ -139,12 +139,10 @@ function renderAppointmentsView() {
                     <button class="btn btn-secondary btn-icon" onclick="changeDate(1)">▶</button>
                     <input type="date" class="form-input" style="width: auto;" value="${dateStr}" onchange="setDate(this.value)">
                     <button class="btn btn-primary" id="newAppointmentBtn">📅 Novo Agendamento</button>
-                    <button class="btn btn-whatsapp" onclick="showBulkWhatsAppModal()" style="display: flex; align-items: center; gap: 8px;">
-                        <span>💬</span> Lembretes (Amanhã)
-                    </button>
-                </div>
-                    <button class="btn btn-secondary" onclick="setDate(new Date().toISOString().split('T')[0])">Hoje</button>
-                    <button class="btn btn-secondary" onclick="showAgendaHeatmap()" title="Mapa de Calor da Agenda">🔥</button>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <button class="btn btn-secondary" onclick="setDate(new Date().toISOString().split('T')[0])">Hoje</button>
+                        <button class="btn btn-secondary" onclick="showAgendaHeatmap()" title="Mapa de Calor da Agenda">🔥</button>
+                    </div>
                 </div>
 
                 <!-- NEW: Global Appointment Search -->

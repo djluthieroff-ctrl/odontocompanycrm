@@ -211,7 +211,7 @@ function renderRedFolderCard(entry) {
     const lastVisitStr = entry.lastVisit.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
     return `
-    < div class="list-item" style = "border-left: 4px solid ${urgencyColor}; padding: 1.25rem; background:white; border-radius:12px; box-shadow: 0 2px 4px rgba(0,0,0,0.04); display:flex; flex-direction:column; gap:1rem;" >
+    <div class="list-item" style="border-left: 4px solid ${urgencyColor}; padding: 1.25rem; background:white; border-radius:12px; box-shadow: 0 2px 4px rgba(0,0,0,0.04); display:flex; flex-direction:column; gap:1rem;">
             <div style="display:flex; justify-content: space-between; align-items: flex-start;">
                 <div style="flex:1;">
                     <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.25rem;">
@@ -252,7 +252,7 @@ function renderRedFolderCard(entry) {
                 </button>
                 `}
             </div>
-        </div >
+        </div>
     `;
 }
 
