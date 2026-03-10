@@ -350,10 +350,9 @@ function updateReportsStats() {
     setEl('kpiMonthLeads', thisMonthLeads);
     setEl('kpiRedFolder', redFolderCount);
 
-    const diffEl = document.getElementById('kpiMonthLeadsDiff');
     if (diffEl) {
-        if (monthDiff > 0) diffEl.innerHTML = `< span style = "color:#16a34a;" >↑ +${monthDiff} vs mês ant.</span > `;
-        else if (monthDiff < 0) diffEl.innerHTML = `< span style = "color:#dc2626;" >↓ ${monthDiff} vs mês ant.</span > `;
+        if (monthDiff > 0) diffEl.innerHTML = `<span style="color:#16a34a;">↑ +${monthDiff} vs mês ant.</span>`;
+        else if (monthDiff < 0) diffEl.innerHTML = `<span style="color:#dc2626;">↓ ${monthDiff} vs mês ant.</span>`;
         else diffEl.textContent = '= igual ao mês ant.';
     }
 
@@ -388,8 +387,8 @@ function renderReportAlerts(filteredLeads, totalAppts, redFolderCount) {
     if (staleLeads > 0) {
         alerts.push({
             icon: '⏰', color: '#dc2626', bg: '#fee2e2',
-            msg: `< strong > ${staleLeads} leads novos</strong > há mais de 7 dias sem contato.`,
-            action: `onclick = "switchModule('leads')"`, label: 'Ver Leads'
+            msg: `<strong>${staleLeads} leads novos</strong> há mais de 7 dias sem contato.`,
+            action: `onclick="switchModule('leads')"`, label: 'Ver Leads'
         });
     }
 
@@ -397,8 +396,8 @@ function renderReportAlerts(filteredLeads, totalAppts, redFolderCount) {
     if (redFolderCount > 0) {
         alerts.push({
             icon: '📁', color: '#ea580c', bg: '#fff7ed',
-            msg: `< strong > ${redFolderCount} pacientes</strong > na Pasta Vermelha sem fechamento.`,
-            action: `onclick = "switchModule('red-folder')"`, label: 'Abrir Pasta'
+            msg: `<strong>${redFolderCount} pacientes</strong> na Pasta Vermelha sem fechamento.`,
+            action: `onclick="switchModule('red-folder')"`, label: 'Abrir Pasta'
         });
     }
 
@@ -412,7 +411,7 @@ function renderReportAlerts(filteredLeads, totalAppts, redFolderCount) {
     if (remaining > 0) {
         alerts.push({
             icon: '🎯', color: '#7c3aed', bg: '#f5f3ff',
-            msg: `Meta semanal: faltam < strong > ${remaining} agendamentos</strong > para bater a meta de ${weeklyGoal}.`,
+            msg: `Meta semanal: faltam <strong>${remaining} agendamentos</strong> para bater a meta de ${weeklyGoal}.`,
             action: '', label: ''
         });
     }
@@ -424,22 +423,22 @@ function renderReportAlerts(filteredLeads, totalAppts, redFolderCount) {
     if (totalVisited >= 5 && rate < 30) {
         alerts.push({
             icon: '📉', color: '#991b1b', bg: '#fef2f2',
-            msg: `Taxa de fechamento em < strong > ${rate}%</strong >.Meta sugerida: acima de 30 %.`,
+            msg: `Taxa de fechamento em <strong>${rate}%</strong>. Meta sugerida: acima de 30%.`,
             action: '', label: ''
         });
     }
 
     if (alerts.length === 0) {
-        alertsEl.innerHTML = `< p style = "color:#16a34a;font-weight:600;" >✅ Nenhum alerta no momento.Ótimo resultado!</p > `;
+        alertsEl.innerHTML = `<p style="color:#16a34a;font-weight:600;">✅ Nenhum alerta no momento. Ótimo resultado!</p>`;
         return;
     }
 
     alertsEl.innerHTML = alerts.map(a => `
-        < div style = "display:flex;align-items:center;gap:0.75rem;padding:0.6rem 0.9rem;background:${a.bg};border-radius:8px;" >
+        <div style="display:flex;align-items:center;gap:0.75rem;padding:0.6rem 0.9rem;background:${a.bg};border-radius:8px;">
             <span style="font-size:1.1rem;">${a.icon}</span>
             <span style="flex:1;font-size:0.875rem;color:var(--gray-700);">${a.msg}</span>
             ${a.action && a.label ? `<button class="btn btn-secondary btn-small" style="color:${a.color};border-color:${a.color};" ${a.action}>${a.label}</button>` : ''}
-        </div >
+        </div>
         `).join('');
 }
 
@@ -463,7 +462,7 @@ function renderConversionFunnel(leads, appts, visits, sales) {
             ? Math.round((s.value / steps[i - 1].value) * 100) + '%'
             : '';
         return `
-        < div style = "margin-bottom:1rem;" >
+        <div style="margin-bottom:1rem;">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;font-size:0.82rem;font-weight:600;">
                     <span style="color:var(--gray-700);">${s.label}</span>
                     <div style="display:flex;gap:0.75rem;align-items:center;">
@@ -476,7 +475,7 @@ function renderConversionFunnel(leads, appts, visits, sales) {
                         ${pct > 15 ? `<span style="color:white;font-size:0.75rem;font-weight:700;">${pct}%</span>` : ''}
                     </div>
                 </div>
-            </div >
+            </div>
         `;
     }).join('');
 }
@@ -498,12 +497,12 @@ function renderChannelRanking(filteredLeads) {
     const rows = Object.entries(channels).sort((a, b) => b[1].leads - a[1].leads);
 
     if (rows.length === 0) {
-        el.innerHTML = `< p style = "color:var(--gray-400);text-align:center;padding:1rem;" > Sem dados para o período selecionado.</p > `;
+        el.innerHTML = `<p style="color:var(--gray-400);text-align:center;padding:1rem;">Sem dados para o período selecionado.</p>`;
         return;
     }
 
     el.innerHTML = `
-        < table style = "width:100%;border-collapse:collapse;font-size:0.875rem;" >
+        <table style="width:100%;border-collapse:collapse;font-size:0.875rem;">
             <thead>
                 <tr style="border-bottom:2px solid var(--gray-200);">
                     <th style="text-align:left;padding:8px 12px;color:var(--gray-600);font-weight:600;">#</th>
@@ -534,7 +533,7 @@ function renderChannelRanking(filteredLeads) {
                     `;
     }).join('')}
             </tbody>
-        </table >
+        </table>
         `;
 }
 
@@ -567,7 +566,7 @@ function renderWeeklyDetailedReport() {
     const visitGoal = AppState.settings?.weeklyVisitsGoal || 40;
 
     if (weeks.length === 0) {
-        container.innerHTML = `< div style = "text-align: center; padding: 2rem; color: var(--gray-400);" > Sem dados para este período</div > `;
+        container.innerHTML = `<div style="text-align: center; padding: 2rem; color: var(--gray-400);">Sem dados para este período</div>`;
         return;
     }
 
@@ -580,7 +579,7 @@ function renderWeeklyDetailedReport() {
         const visitPercent = Math.min(Math.round((weekStats.totalVisits / visitGoal) * 100), 100);
 
         return `
-        < div class="report-week-card" >
+        <div class="report-week-card">
                 <div class="report-week-header">
                     <div>
                         <h4 style="margin: 0; color: var(--gray-900); font-size: 1.1rem;">Semana ${index + 1}</h4>
@@ -644,7 +643,7 @@ function renderWeeklyDetailedReport() {
                         `;
         }).join('')}
                 </div>
-            </div >
+            </div>
         `;
     }).join('');
 }
@@ -936,8 +935,8 @@ function showDayDetails(isoDate) {
     });
 
     const formatList = (items, emptyMsg) => {
-        if (items.length === 0) return `< p style = "color: var(--gray-400); font-style: italic; font-size: 0.9rem;" > ${emptyMsg}</p > `;
-        return `< ul style = "list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px;" >
+        if (items.length === 0) return `<p style="color: var(--gray-400); font-style: italic; font-size: 0.9rem;">${emptyMsg}</p>`;
+        return `<ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px;">
         ${items.map(item => `
                 <li style="padding: 8px 12px; background: white; border-radius: 6px; border: 1px solid var(--gray-100); font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center;">
                     <span style="font-weight: 500; color: var(--gray-700);">${escapeHTML(item.name || item.patientName)}</span>
@@ -945,11 +944,11 @@ function showDayDetails(isoDate) {
                 </li>
             `).join('')
             }
-        </ul > `;
+        </ul>`;
     };
 
-    openModal(`Detalhamento: ${capitalize(displayDate)} `, `
-        < div style = "display: flex; flex-direction: column; gap: 1.5rem;" >
+    openModal(`Detalhamento: ${capitalize(displayDate)}`, `
+        <div style="display: flex; flex-direction: column; gap: 1.5rem;">
             <section>
                 <h4 style="color: var(--blue-700); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 8px;">
                     <span style="background: var(--blue-100); padding: 4px; border-radius: 4px;">🛒</span> Agendamentos Feitos (Novos Registros)
@@ -974,7 +973,7 @@ function showDayDetails(isoDate) {
                 </h4>
                 ${formatList(salesList, 'Nenhuma venda fechada neste dia.')}
             </section>
-        </div >
+        </div>
         `, [{ label: 'Fechar', class: 'btn-secondary', onclick: 'closeModal()' }]);
 }
 
@@ -1061,7 +1060,7 @@ function renderChannelPerformance(leads) {
     const sortedChannels = Object.entries(channels).sort((a, b) => b[1].leads - a[1].leads);
 
     tableContainer.innerHTML = `
-        < table style = "width:100%; border-collapse: collapse; font-size:0.85rem;" >
+        <table style="width:100%; border-collapse: collapse; font-size:0.85rem;">
             <thead>
                 <tr style="text-align:left; border-bottom:1px solid var(--gray-100); color:var(--gray-500);">
                     <th style="padding:8px 0;">Origem</th>
@@ -1084,7 +1083,7 @@ function renderChannelPerformance(leads) {
     }).join('')}
                 ${sortedChannels.length === 0 ? '<tr><td colspan="4" style="text-align:center; padding:2rem; color:var(--gray-400);">Nenhum dado de origem disponível</td></tr>' : ''}
             </tbody>
-        </table >
+        </table>
         `;
 }
 
