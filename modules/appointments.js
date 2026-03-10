@@ -139,6 +139,7 @@ function renderAppointmentsView() {
                     <button class="btn btn-secondary btn-icon" onclick="changeDate(1)">▶</button>
                     <input type="date" class="form-input" style="width: auto;" value="${dateStr}" onchange="setDate(this.value)">
                     <button class="btn btn-secondary" onclick="setDate(new Date().toISOString().split('T')[0])">Hoje</button>
+                    <button class="btn btn-secondary" onclick="showAgendaHeatmap()" title="Mapa de Calor da Agenda">🔥</button>
                 </div>
 
                 <!-- NEW: Global Appointment Search -->
@@ -239,6 +240,7 @@ function renderTimelineItem(apt) {
                     ${waButton}
                     <button class="btn btn-small btn-secondary" onclick="rescheduleAppointment('${apt.id}')">🔄 Remarcar</button>
                     <button class="btn btn-small btn-secondary" onclick="editAppointment('${apt.id}')">✏️</button>
+                    <button class="btn btn-small" style="background: #25d366; color: white;" onclick="sendWhatsAppReminder('${apt.id}')" title="Enviar Lembrete WhatsApp">🔔</button>
                     ${apt.status !== 'completed' ? `
                         <button class="btn btn-small btn-success" onclick="updateAppointmentStatus('${apt.id}', 'confirmed')">👍 Confirmar</button>
                         <button class="btn btn-small btn-success" style="background: #10b981;" onclick="updateAppointmentStatus('${apt.id}', 'completed')">✅ Atendido</button>
@@ -791,3 +793,92 @@ window.promptSaleCompletion = promptSaleCompletion;
 window.processAptSale = processAptSale;
 window.searchAppointmentDate = searchAppointmentDate;
 window.selectAppointmentResult = selectAppointmentResult;
+
+window.showAgendaHeatmap = () => {
+    const appointments = AppState.appointments;
+    const heatmap = {}; // { dayIndex: { hourIndex: count } }
+
+    appointments.forEach(a => {
+        const d = new Date(a.date);
+        const day = d.getDay(); // 0-6
+        const hour = d.getHours(); // 0-23
+        if (!heatmap[day]) heatmap[day] = {};
+        heatmap[day][hour] = (heatmap[day][hour] || 0) + 1;
+    });
+
+    const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+    const hours = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
+
+    const generateHeatmapGrid = () => {
+        let html = '<div style="display: grid; grid-template-columns: 60px repeat(7, 1fr); gap: 4px; overflow-x: auto;">';
+
+        // Header
+        html += '<div></div>' + days.map(d => `<div style="text-align: center; font-weight: bold; font-size: 0.8rem;">${d}</div>`).join('');
+
+        // Rows
+        hours.forEach(h => {
+            html += `<div style="text-align: right; font-size: 0.75rem; font-weight: bold; padding-right: 8px; color: var(--gray-500);">${h}:00</div>`;
+            for (let d = 0; d < 7; d++) {
+                const count = heatmap[d]?.[h] || 0;
+                const opacity = Math.min(count * 0.2, 1);
+                const color = count > 0 ? `rgba(37, 99, 235, ${opacity})` : '#f8fafc';
+                const textColor = opacity > 0.6 ? 'white' : 'var(--gray-700)';
+                html += `
+                    <div style="
+                        height: 30px; 
+                        background: ${color}; 
+                        border-radius: 4px; 
+                        display: flex; 
+                        align-items: center; 
+                        justify-content: center; 
+                        font-size: 0.7rem; 
+                        font-weight: bold;
+                        color: ${textColor};
+                        border: 1px solid var(--gray-100);
+                    " title="${count} agendamentos às ${h}:00 na ${days[d]}">
+                        ${count > 0 ? count : ''}
+                    </div>
+                `;
+            }
+        });
+        html += '</div>';
+        return html;
+    };
+
+    openModal('🔥 Mapa de Calor da Agenda', `
+        <div style="padding: 1rem;">
+            <p style="color: var(--gray-500); font-size: 0.9rem; margin-bottom: 1.5rem; text-align: center;">
+                Visualize os horários de maior movimento na clínica.
+            </p>
+            ${generateHeatmapGrid()}
+            <div style="margin-top: 1.5rem; display: flex; gap: 1rem; justify-content: center; font-size: 0.75rem; color: var(--gray-500);">
+                <div style="display: flex; align-items: center; gap: 4px;"><div style="width: 12px; height: 12px; background: #f8fafc; border: 1px solid var(--gray-100);"></div> Vazio</div>
+                <div style="display: flex; align-items: center; gap: 4px;"><div style="width: 12px; height: 12px; background: rgba(37, 99, 235, 0.4);"></div> Médio</div>
+                <div style="display: flex; align-items: center; gap: 4px;"><div style="width: 12px; height: 12px; background: rgba(37, 99, 235, 1);"></div> Alto</div>
+            </div>
+        </div>
+    `, [{ label: 'Fechar', class: 'btn-secondary', onclick: 'closeModal()' }]);
+};
+
+window.sendWhatsAppReminder = (aptId) => {
+    const apt = AppState.appointments.find(a => a.id === aptId);
+    if (!apt) return;
+
+    const patient = AppState.patients.find(p => p.id === apt.patientId);
+    if (!patient || !patient.phone) {
+        showNotification('Paciente sem telefone cadastrado', 'error');
+        return;
+    }
+
+    const time = new Date(apt.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const date = new Date(apt.date).toLocaleDateString('pt-BR');
+    const firstName = patient.name.split(' ')[0];
+
+    const message = `Olá ${firstName}! 🦷 Passando para confirmar seu agendamento na Odonto Company para o dia ${date} às ${time}. Podemos confirmar?`;
+
+    // In a real scenario, this could call an API. For now, we use the WhatsApp utility.
+    if (typeof openWhatsApp === 'function') {
+        openWhatsApp(patient.phone, message);
+        showNotification('Lembrete enviado!', 'success');
+    }
+};

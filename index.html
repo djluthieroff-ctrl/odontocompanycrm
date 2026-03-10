@@ -20,6 +20,14 @@
     <!-- Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="auth.css">
+
+    <!-- New Dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@3.6.0/cdn.min.js"></script>
+    <script src="https://unpkg.com/@popperjs/core@2"></script>
+    <script src="https://unpkg.com/tippy.js@6"></script>
+    <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/animations/shift-away.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 </head>
 
 <body>
@@ -101,10 +109,30 @@
         <main class="main-content">
             <!-- Dashboard Module -->
             <section id="dashboard-module" class="module active">
-                <div class="module-header" style="margin-bottom: 2rem;">
+                <div class="module-header"
+                    style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center;">
                     <div>
                         <h2>Olá, <span id="userName">CRC</span></h2>
                         <p>Aqui está o que está acontecendo na odontologia hoje.</p>
+                    </div>
+                    <div class="dashboard-filter"
+                        style="display: flex; gap: 1rem; align-items: flex-end; background: white; padding: 1rem; border-radius: 12px; border: 1px solid var(--gray-200); box-shadow: var(--shadow-sm);">
+                        <div class="form-group" style="margin: 0;">
+                            <label class="form-label" style="font-size: 0.75rem; margin-bottom: 4px;">Início</label>
+                            <input type="date" id="dashStartDate" class="form-input"
+                                style="padding: 0.4rem; font-size: 0.85rem;">
+                        </div>
+                        <div class="form-group" style="margin: 0;">
+                            <label class="form-label" style="font-size: 0.75rem; margin-bottom: 4px;">Fim</label>
+                            <input type="date" id="dashEndDate" class="form-input"
+                                style="padding: 0.4rem; font-size: 0.85rem;">
+                        </div>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button class="btn btn-primary btn-small" onclick="updateDashboard()"
+                                style="padding: 0.5rem 1rem;">Filtrar</button>
+                            <button class="btn btn-secondary btn-small" onclick="clearDashboardFilter()"
+                                style="padding: 0.5rem 1rem;">Limpar</button>
+                        </div>
                     </div>
                 </div>
 

@@ -49,6 +49,15 @@ function initializeAppUI() {
 
     updateDashboard();
 
+    // Initialize Tippy Tooltips
+    if (window.tippy) {
+        tippy('[title]', {
+            animation: 'shift-away',
+            theme: 'light-border',
+            arrow: true
+        });
+    }
+
     if (typeof updateConnectionIndicator === 'function') {
         updateConnectionIndicator();
     }
@@ -308,20 +317,53 @@ window.navigateToLead = (id) => {
 
 // Dashboard Updates
 function updateDashboard() {
-    const metrics = calculateMetrics();
+    const startDateInput = document.getElementById('dashStartDate');
+    const endDateInput = document.getElementById('dashEndDate');
+
+    let startDate = null;
+    let endDate = null;
+
+    if (startDateInput && startDateInput.value) {
+        startDate = new Date(startDateInput.value + 'T00:00:00');
+    }
+    if (endDateInput && endDateInput.value) {
+        endDate = new Date(endDateInput.value + 'T23:59:59');
+    }
+
+    const metrics = calculateMetrics(startDate, endDate);
+
+    // If no filter, "Today" logic applies for some stats
+    const isFiltered = !!(startDate || endDate);
     const today = new Date().toDateString();
 
     // Populate Top Stats
-    const totalLeads = AppState.leads.length;
-    const scheduledToday = AppState.appointments.filter(a => a.createdAt && new Date(a.createdAt).toDateString() === today).length;
+    const totalLeads = metrics.totalLeads;
+
+    // Scheduled: If filtered, show appointments CREATED in period. If not, show created TODAY.
+    const scheduledCount = isFiltered
+        ? AppState.appointments.filter(a => {
+            const d = new Date(a.createdAt);
+            if (startDate && d < startDate) return false;
+            if (endDate && d > endDate) return false;
+            return true;
+        }).length
+        : AppState.appointments.filter(a => a.createdAt && new Date(a.createdAt).toDateString() === today).length;
+
     const conversionRate = metrics.totalLeads > 0 ? Math.round((metrics.scheduled / metrics.totalLeads) * 100) : 0;
 
     const elTotalLeads = document.getElementById('dashTodayLeads');
     const elScheduledToday = document.getElementById('dashScheduledToday');
     const elConvRate = document.getElementById('dashConvRate');
 
+    // Update labels if filtered
+    const labelLeads = document.querySelector('[id="dashTodayLeads"]').previousElementSibling;
+    const labelScheduled = document.querySelector('[id="dashScheduledToday"]').previousElementSibling;
+
+    if (labelLeads) labelLeads.textContent = isFiltered ? 'Leads no Período' : 'Total de Leads';
+    if (labelScheduled) labelScheduled.textContent = isFiltered ? 'Agendados no Período' : 'Agendados Hoje';
+
     if (elTotalLeads) elTotalLeads.textContent = totalLeads;
-    if (elScheduledToday) elScheduledToday.textContent = scheduledToday;
+    if (elScheduledToday) elScheduledToday.textContent = scheduledCount;
     if (elConvRate) elConvRate.textContent = conversionRate + '%';
 
     // Add Total Sales Value to Dashboard if possible
@@ -333,24 +375,32 @@ function updateDashboard() {
     // Populate Funnel Visual
     renderDashboardFunnel(metrics);
 
-    // Populate Today's Timeline
+    // Populate Today's Timeline (Always shows actual today/upcoming)
     renderDashboardTimeline();
 
-    // Populate Weekly Commission & Goals
+    // Populate Weekly Commission & Goals (Always shows current week)
     renderDashboardWeeklyPerf();
 
     // CRM Metrics Compatibility (Legacy badges if any)
     const leadsBadge = document.getElementById('leadsBadge');
     if (leadsBadge) {
-        const totalLeads = AppState.leads.length;
-        leadsBadge.textContent = totalLeads;
-        leadsBadge.style.display = totalLeads > 0 ? 'flex' : 'none';
+        const totalLeadsCount = AppState.leads.length;
+        leadsBadge.textContent = totalLeadsCount;
+        leadsBadge.style.display = totalLeadsCount > 0 ? 'flex' : 'none';
     }
 
     // If Reports module is active, update it too
     if (AppState.currentModule === 'reports' && typeof updateReportsStats === 'function') {
         updateReportsStats();
     }
+}
+
+function clearDashboardFilter() {
+    const startDateInput = document.getElementById('dashStartDate');
+    const endDateInput = document.getElementById('dashEndDate');
+    if (startDateInput) startDateInput.value = '';
+    if (endDateInput) endDateInput.value = '';
+    updateDashboard();
 }
 
 function renderDashboardFunnel(metrics) {
@@ -458,24 +508,34 @@ function renderDashboardWeeklyPerf() {
 }
 
 // Unified Metrics Calculation
-function calculateMetrics() {
-    const totalLeads = AppState.leads.length;
+function calculateMetrics(startDate = null, endDate = null) {
+    let filteredLeads = AppState.leads;
+
+    if (startDate || endDate) {
+        filteredLeads = AppState.leads.filter(l => {
+            const d = new Date(l.createdAt);
+            if (startDate && d < startDate) return false;
+            if (endDate && d > endDate) return false;
+            return true;
+        });
+    }
+
+    const totalLeads = filteredLeads.length;
 
     // Funnel Logic:
     // Scheduled = Status is 'scheduled' OR any future state ('visit', 'sold', 'lost')
-    const scheduled = AppState.leads.filter(l => ['scheduled', 'visit'].includes(l.status) || ['sold', 'lost'].includes(l.saleStatus)).length;
+    const scheduled = filteredLeads.filter(l => ['scheduled', 'visit'].includes(l.status) || ['sold', 'lost'].includes(l.saleStatus)).length;
 
     // Visits = Status is 'visit' OR 'sold' OR 'lost' (Assuming to get to sold/lost you visited)
-    // Note: This relies on the Kanban flow.
-    const visits = AppState.leads.filter(l => l.status === 'visit' || ['sold', 'lost'].includes(l.saleStatus)).length;
+    const visits = filteredLeads.filter(l => l.status === 'visit' || ['sold', 'lost'].includes(l.saleStatus)).length;
 
     // Sales
-    const salesLeads = AppState.leads.filter(l => l.saleStatus === 'sold');
+    const salesLeads = filteredLeads.filter(l => l.saleStatus === 'sold');
     const sales = salesLeads.length;
     const totalSalesValue = salesLeads.reduce((sum, l) => sum + (l.saleValue || 0), 0);
 
     // Contacted (assuming any lead not 'new' has been contacted)
-    const contacted = AppState.leads.filter(l => l.status !== 'new').length;
+    const contacted = filteredLeads.filter(l => l.status !== 'new').length;
 
     return {
         totalLeads,

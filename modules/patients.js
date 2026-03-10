@@ -222,6 +222,7 @@ function viewPatientDetails(patientId) {
                 <button class="tab-btn active" onclick="switchPatientTab(this, 'resumo')">Resumo / Anamnese</button>
                 <button class="tab-btn" onclick="switchPatientTab(this, 'odontograma')">Odontograma Visual</button>
                 <button class="tab-btn" onclick="switchPatientTab(this, 'historico')">Histórico / Evolução</button>
+                <button class="tab-btn" onclick="switchPatientTab(this, 'orcamento')">Gerar Orçamento 💰</button>
             </div>
 
             <div id="patientTabContent" style="flex: 1; overflow-y: auto; padding: 1.5rem; background: var(--gray-50);">
@@ -346,6 +347,152 @@ window.switchPatientTab = (btn, tab) => {
     } else if (tab === 'historico') {
         content.innerHTML = renderPatientHistory(patient);
     }
+};
+
+    } else if (tab === 'historico') {
+    content.innerHTML = renderPatientHistory(patient);
+} else if (tab === 'orcamento') {
+    content.innerHTML = renderBudgetGenerator(patient);
+}
+};
+
+function renderBudgetGenerator(patient) {
+    return `
+        <div style="background: white; padding: 2rem; border-radius: 12px; border: 1px solid var(--gray-200);">
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <h4 style="font-size: 1.25rem; font-weight: 700; color: var(--gray-800);">Gerador de Orçamentos</h4>
+                <p style="color: var(--gray-500); font-size: 0.9rem;">Selecione os procedimentos para gerar o PDF.</p>
+            </div>
+
+            <div id="budgetItems" style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 2rem;">
+                <div class="budget-item" style="display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 1rem; align-items: end;">
+                    <div class="form-group" style="margin: 0;">
+                        <label class="form-label">Procedimento</label>
+                        <input type="text" class="form-input procedure-name" placeholder="Ex: Limpeza, Canal...">
+                    </div>
+                    <div class="form-group" style="margin: 0;">
+                        <label class="form-label">Valor (R$)</label>
+                        <input type="number" class="form-input procedure-value" placeholder="0,00" step="0.01">
+                    </div>
+                    <div class="form-group" style="margin: 0;">
+                        <label class="form-label">Qtd</label>
+                        <input type="number" class="form-input procedure-qty" value="1">
+                    </div>
+                    <button class="btn btn-icon" style="color: var(--error-500);" onclick="this.parentElement.remove()">🗑️</button>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 1rem; justify-content: space-between; align-items: center; border-top: 1px solid var(--gray-100); padding-top: 1.5rem;">
+                <button class="btn btn-secondary" onclick="addBudgetItem()">➕ Adicionar Item</button>
+                <div style="text-align: right;">
+                    <div style="font-size: 0.8rem; color: var(--gray-500); margin-bottom: 4px;">Forma de Pagamento</div>
+                    <select id="budgetPayment" class="form-select" style="width: 200px; margin-bottom: 1rem;">
+                        <option value="À vista (Dinheiro/PIX)">À vista (Dinheiro/PIX)</option>
+                        <option value="Cartão de Crédito">Cartão de Crédito</option>
+                        <option value="Parcelado 10x sem juros">Parcelado 10x sem juros</option>
+                        <option value="Boleto Bancário">Boleto Bancário</option>
+                    </select>
+                    <br>
+                    <button class="btn btn-primary" style="padding: 1rem 2rem;" onclick="generateBudgetPDF('${patient.id}')">📄 Gerar PDF Profissional</button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+window.addBudgetItem = () => {
+    const container = document.getElementById('budgetItems');
+    const div = document.createElement('div');
+    div.className = 'budget-item';
+    div.style.cssText = 'display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 1rem; align-items: end;';
+    div.innerHTML = `
+        <div class="form-group" style="margin: 0;">
+            <label class="form-label">Procedimento</label>
+            <input type="text" class="form-input procedure-name" placeholder="Ex: Limpeza, Canal...">
+        </div>
+        <div class="form-group" style="margin: 0;">
+            <label class="form-label">Valor (R$)</label>
+            <input type="number" class="form-input procedure-value" placeholder="0,00" step="0.01">
+        </div>
+        <div class="form-group" style="margin: 0;">
+            <label class="form-label">Qtd</label>
+            <input type="number" class="form-input procedure-qty" value="1">
+        </div>
+        <button class="btn btn-icon" style="color: var(--error-500);" onclick="this.parentElement.remove()">🗑️</button>
+    `;
+    container.appendChild(div);
+};
+
+window.generateBudgetPDF = (patientId) => {
+    const patient = AppState.patients.find(p => p.id === patientId);
+    if (!patient) return;
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    // Header
+    doc.setFillColor(37, 99, 235); // Primary 600
+    doc.rect(0, 0, 210, 40, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(22);
+    doc.setFont('helvetica', 'bold');
+    doc.text('ODONTO COMPANY', 105, 20, { align: 'center' });
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('ORÇAMENTO DE TRATAMENTO ODONTOLÓGICO', 105, 30, { align: 'center' });
+
+    // Patient Info
+    doc.setTextColor(31, 41, 55);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('PACIENTE:', 15, 55);
+    doc.setFont('helvetica', 'normal');
+    doc.text(patient.name.toUpperCase(), 45, 55);
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('DATA:', 150, 55);
+    doc.setFont('helvetica', 'normal');
+    doc.text(new Date().toLocaleDateString('pt-BR'), 165, 55);
+
+    // Table
+    const items = [];
+    let total = 0;
+    document.querySelectorAll('.budget-item').forEach(item => {
+        const name = item.querySelector('.procedure-name').value;
+        const val = parseFloat(item.querySelector('.procedure-value').value) || 0;
+        const qty = parseInt(item.querySelector('.procedure-qty').value) || 1;
+        if (name) {
+            const subtotal = val * qty;
+            items.push([name, qty, `R$ ${val.toFixed(2)}`, `R$ ${subtotal.toFixed(2)}`]);
+            total += subtotal;
+        }
+    });
+
+    doc.autoTable({
+        startY: 65,
+        head: [['Procedimento', 'Qtd', 'Unitário', 'Subtotal']],
+        body: items,
+        theme: 'striped',
+        headStyles: { fillColor: [37, 99, 235] },
+        foot: [['', '', 'TOTAL:', `R$ ${total.toFixed(2)}`]],
+        footStyles: { fillColor: [243, 244, 246], textColor: [31, 41, 55], fontStyle: 'bold' }
+    });
+
+    // Payment & Footer
+    const finalY = doc.lastAutoTable.finalY + 15;
+    doc.setFont('helvetica', 'bold');
+    doc.text('FORMA DE PAGAMENTO:', 15, finalY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(document.getElementById('budgetPayment').value, 70, finalY);
+
+    doc.setFontSize(9);
+    doc.setTextColor(107, 114, 128);
+    const disclaimer = 'Este orçamento tem validade de 30 dias. Os valores podem sofrer alterações após este período.';
+    doc.text(disclaimer, 105, 280, { align: 'center' });
+
+    doc.save(`Orcamento_${patient.name.replace(/\s+/g, '_')}.pdf`);
+    showNotification('Orçamento gerado com sucesso!', 'success');
 };
 
 function renderPatientResumo(patient) {
