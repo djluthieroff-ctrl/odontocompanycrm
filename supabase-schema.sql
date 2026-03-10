@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS leads (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     legacy_id TEXT,
     name TEXT NOT NULL,
-    phone TEXT, -- Changed to nullable for flexible imports
+    phone TEXT, -- Nullable: leads podem ser cadastrados sem telefone
     email TEXT,
     channel TEXT DEFAULT 'WhatsApp',
     source TEXT DEFAULT 'WhatsApp',

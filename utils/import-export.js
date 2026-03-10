@@ -686,11 +686,11 @@ function importBackupJSON() {
                     throw new Error('Formato de backup inválido.');
                 }
 
-                if (!confirm(`⚠️ ATENÇÃO: Isso substituirá todos os dados na nuvem pelos dados do backup. Deseja continuar?`)) {
+                if (!confirm(`⚠️ ATENÇÃO: Isso mesclará os dados do backup com os dados atuais na nuvem. Deseja continuar?`)) {
                     return;
                 }
 
-                showLoading('Importando e sincronizando com a nuvem...');
+                showLoading('Importando e mesclando com a nuvem...');
 
                 // 🔥 CRITICAL: Fix relationship IDs (Legacy -> UUID)
                 const idMap = new Map();
@@ -728,15 +728,43 @@ function importBackupJSON() {
                     });
                 }
 
-                // 3. Update AppState
-                if (backup.data.leads) AppState.leads = backup.data.leads;
-                if (backup.data.patients) AppState.patients = backup.data.patients;
-                if (backup.data.appointments) AppState.appointments = backup.data.appointments;
-                if (backup.data.kanbanCards) AppState.kanbanCards = backup.data.kanbanCards;
-                if (backup.data.settings) AppState.settings = backup.data.settings;
+                // 3. Update AppState (SMART MERGE)
+                const mergeData = (target, source) => {
+                    if (!source) return target;
+                    const result = [...target];
+                    source.forEach(newItem => {
+                        const existingIndex = result.findIndex(item => {
+                            // Match by ID
+                            if (item.id === newItem.id) return true;
+
+                            // Match by name + phone as fallback
+                            if (item.name && newItem.name && item.name.toLowerCase() === newItem.name.toLowerCase()) {
+                                const cleanItemPhone = (item.phone || '').replace(/\D/g, '');
+                                const cleanNewPhone = (newItem.phone || '').replace(/\D/g, '');
+                                if (cleanItemPhone && cleanNewPhone && cleanItemPhone === cleanNewPhone) return true;
+                            }
+                            return false;
+                        });
+
+                        if (existingIndex > -1) {
+                            // Merge: backup data takes priority, but keep existing fields if missing in backup
+                            result[existingIndex] = { ...result[existingIndex], ...newItem };
+                        } else {
+                            result.push(newItem);
+                        }
+                    });
+                    return result;
+                };
+
+                if (backup.data.leads) AppState.leads = mergeData(AppState.leads, backup.data.leads);
+                if (backup.data.patients) AppState.patients = mergeData(AppState.patients, backup.data.patients);
+                if (backup.data.appointments) AppState.appointments = mergeData(AppState.appointments, backup.data.appointments);
+                if (backup.data.kanbanCards) AppState.kanbanCards = mergeData(AppState.kanbanCards, backup.data.kanbanCards);
+                if (backup.data.settings) AppState.settings = { ...AppState.settings, ...backup.data.settings };
+                if (backup.data.oldPatients) AppState.oldPatients = mergeData(AppState.oldPatients || [], backup.data.oldPatients);
 
                 // 4. Save to Supabase
-                console.log('🚀 Iniciando sincronização do backup...');
+                console.log('🚀 Iniciando sincronização do backup mesclado...');
 
                 // Sequencial para melhor controle de erro
                 try {
@@ -744,10 +772,7 @@ function importBackupJSON() {
                     await saveToSupabase('patients', AppState.patients);
                     await saveToSupabase('appointments', AppState.appointments);
                     await saveToSupabase('settings', AppState.settings);
-
-                    if (backup.data.oldPatients) {
-                        await saveToSupabase('old_patients', backup.data.oldPatients);
-                    }
+                    await saveToSupabase('old_patients', AppState.oldPatients);
                 } catch (syncError) {
                     console.error('❌ Erro durante a sincronização:', syncError);
                     throw syncError;

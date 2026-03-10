@@ -224,18 +224,39 @@ function mapToDb(table, obj) {
             continue;
         }
 
-        // 🔥 CRITICAL FIX: Convert empty strings to null
-        if (value === "") {
+        const dbKey = map[key] || key;
+
+        // 🔥 CRITICAL FIX: Convert empty strings to null (exceto campos obrigatórios)
+        // name e patient_name não podem ser nulos; os demais são nullable
+        if (value === "" && !['name', 'patient_name', 'status', 'source', 'channel'].includes(dbKey)) {
             value = null;
         }
 
-        const dbKey = map[key] || key;
+        // 🔥 VALIDAÇÃO DE FK: patient_id e converted_from devem ser UUIDs válidos
+        // Se não forem, envia null para evitar violação de foreign key
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (['patient_id', 'converted_from'].includes(dbKey)) {
+            if (!value || !uuidRegex.test(String(value))) {
+                value = null;
+            }
+        }
 
         // 🔥 STRICT FILTER: Only add if column exists in Supabase
         if (allowedColumns.includes(dbKey)) {
             result[dbKey] = value;
         }
     }
+
+    // 🔥 ENSURE NOT NULL COLUMNS: Garantir string vazia para campos realmente NOT NULL
+    // Nota: phone em leads agora é nullable — não incluir aqui
+    const criticalFields = ['name', 'patient_name', 'status', 'source', 'channel'];
+    criticalFields.forEach(field => {
+        if (allowedColumns.includes(field)) {
+            if (result[field] === null || result[field] === undefined || result[field] === '') {
+                result[field] = result[field] || '';
+            }
+        }
+    });
 
     // Add user_id
     if (currentUser) {
@@ -367,6 +388,7 @@ async function saveToSupabase(table, data) {
 
                     if (error) {
                         console.error(`❌ Erro no lote ${i / BATCH_SIZE + 1} da tabela ${table}:`, error);
+                        console.error('Dados do lote:', batch);
                         throw error;
                     }
                 }
