@@ -189,10 +189,11 @@ function renderLeadsList() {
 
     if (LeadsState.searchTerm) {
         const term = LeadsState.searchTerm.toLowerCase();
-        filteredLeads = filteredLeads.filter(l =>
-            l.name.toLowerCase().includes(term) ||
-            (l.phone && String(l.phone).includes(term))
-        );
+        filteredLeads = filteredLeads.filter(l => {
+            const name = l.name ? String(l.name).toLowerCase() : '';
+            const phone = l.phone ? String(l.phone) : '';
+            return name.includes(term) || phone.includes(term);
+        });
     }
 
     const sortedLeads = [...filteredLeads].sort((a, b) =>

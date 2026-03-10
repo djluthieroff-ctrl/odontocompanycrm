@@ -1079,45 +1079,6 @@ window.formatDateTime = formatDateTime;
 window.generateId = generateId;
 window.showNotification = showNotification;
 window.capitalize = capitalize;
-window.showLoading = (message = 'Carregando...') => {
-    const overlay = document.getElementById('loadingOverlay');
-    const text = document.getElementById('loadingText');
-    if (overlay && text) {
-        text.textContent = message;
-        overlay.style.display = 'flex';
-    }
-};
-window.hideLoading = () => {
-    const overlay = document.getElementById('loadingOverlay');
-    if (overlay) overlay.style.display = 'none';
-};
-
-function initializeLoadingOverlay() {
-    if (!document.getElementById('loadingOverlay')) {
-        const overlay = document.createElement('div');
-        overlay.id = 'loadingOverlay';
-        overlay.className = 'loading-overlay';
-        overlay.innerHTML = `
-            <div class="spinner"></div>
-            <p id="loadingText" style="font-weight: 600; color: var(--primary-800);">Carregando...</p>
-        `;
-        document.body.appendChild(overlay);
-    }
-}
-
-function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-    };
-}
-
-window.debounce = debounce;
 
 function checkBackupReminder() {
     const lastBackup = localStorage.getItem('last_backup_date');
