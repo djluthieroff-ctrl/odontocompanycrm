@@ -172,7 +172,7 @@ function renderRedFolderSections(recent, old) {
                 <h3 style="margin:0;font-weight:700;color:var(--gray-900);">📅 Fluxo Recente (< 60 dias)</h3>
                 <span class="badge" style="background:#fee2e2;color:#dc2626;font-weight:700;">${recent.length}</span>
             </div>
-            <p style="color:var(--gray-500);font-size:0.85rem;margin-bottom:1.25rem;">Pacientes que realizaram avaliação recentemente. **Foco em follow-up ativo!**</p>
+            <p style="color: var(--gray-500); font-size: 0.9rem; font-weight: 500; margin: 0;">Pacientes que realizaram avaliação recentemente.</p>
             <div style="display:grid;grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));gap:1rem;">
                 ${recent.map(e => renderRedFolderCard(e)).join('')}
             </div>
@@ -238,16 +238,16 @@ function renderRedFolderCard(entry) {
                 </div>
             </div>
             
-            <div style="display:flex; gap:0.75rem; padding-top:0.75rem; border-top:1px solid var(--gray-50);">
+            <div style="display:flex; gap:0.5rem; padding-top:1rem; border-top:1px solid var(--gray-100);">
                 ${entry.leadId ? `
-                <button class="btn btn-success btn-small" style="flex:1; border-radius:8px; font-weight:700;" onclick="markRedFolderAsSold('${entry.leadId}')">
-                    💰 FECHOU TRATAMENTO
+                <button class="btn btn-success" style="flex:1.5; font-weight:700; font-size:0.8rem;" onclick="markRedFolderAsSold('${entry.leadId}')">
+                    💰 FECHOU
                 </button>
-                <button class="btn btn-secondary btn-small" style="flex:1; border-radius:8px;" onclick="switchModule('kanban')">
-                    🗒️ Agendar Re-visita
+                <button class="btn btn-secondary" style="flex:1; font-size:0.8rem;" onclick="switchModule('kanban')">
+                    🗒️ Retorno
                 </button>
                 ` : `
-                <button class="btn btn-secondary btn-small" style="flex:1; border-radius:8px;" onclick="switchModule('kanban')">
+                <button class="btn btn-secondary" style="flex:1; font-size:0.8rem;" onclick="switchModule('kanban')">
                     📋 Abrir Kanban
                 </button>
                 `}

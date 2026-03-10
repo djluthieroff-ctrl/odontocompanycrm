@@ -1028,38 +1028,42 @@ function fixAllIdsToUUIDs() {
 }
 
 function showNotification(message, type = 'info') {
-    // Create toast container if it doesn't exist
     let container = document.getElementById('toast-container');
     if (!container) {
         container = document.createElement('div');
         container.id = 'toast-container';
-        container.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 10000; display: flex; flex-direction: column; gap: 10px; max-width: 400px;';
+        container.style.cssText = 'position: fixed; bottom: 30px; right: 30px; z-index: 10000; display: flex; flex-direction: column; gap: 12px; max-width: 420px;';
         document.body.appendChild(container);
     }
 
-    const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
-    const colors = {
-        success: { bg: '#f0fdf4', border: '#86efac', text: '#166534' },
-        error: { bg: '#fef2f2', border: '#fca5a5', text: '#991b1b' },
-        info: { bg: '#eff6ff', border: '#93c5fd', text: '#1e40af' },
-        warning: { bg: '#fffbeb', border: '#fcd34d', text: '#92400e' }
+    const configs = {
+        success: { icon: '✨', bg: 'var(--primary-600)', color: '#fff' },
+        error: { icon: '🛑', bg: 'var(--error-500)', color: '#fff' },
+        info: { icon: 'ℹ️', bg: 'var(--gray-800)', color: '#fff' },
+        warning: { icon: '⚠️', bg: 'var(--warning-500)', color: '#fff' }
     };
-    const c = colors[type] || colors.info;
+    const c = configs[type] || configs.info;
 
     const toast = document.createElement('div');
-    toast.style.cssText = `background: ${c.bg}; border: 1px solid ${c.border}; color: ${c.text}; padding: 12px 16px; border-radius: 10px; font-size: 0.9rem; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: flex; align-items: center; gap: 10px; animation: toastSlideIn 0.3s ease; cursor: pointer; font-family: 'Inter', sans-serif;`;
-    toast.innerHTML = `<span style="font-size: 1.2em;">${icons[type] || icons.info}</span><span>${escapeHTML(message)}</span>`;
-    toast.onclick = () => { toast.style.animation = 'toastSlideOut 0.3s ease forwards'; setTimeout(() => toast.remove(), 300); };
+    toast.style.cssText = `background: ${c.bg}; color: ${c.color}; padding: 14px 20px; border-radius: 14px; font-size: 0.95rem; font-weight: 600; box-shadow: var(--shadow-xl); display: flex; align-items: center; gap: 12px; animation: toastSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); cursor: pointer; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(8px);`;
+    toast.innerHTML = `<span style="font-size: 1.25rem;">${c.icon}</span><span style="flex:1;">${escapeHTML(message)}</span>`;
+
+    toast.onclick = () => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(100px)';
+        setTimeout(() => toast.remove(), 400);
+    };
 
     container.appendChild(toast);
 
-    // Auto dismiss after 4 seconds
     setTimeout(() => {
         if (toast.parentNode) {
-            toast.style.animation = 'toastSlideOut 0.3s ease forwards';
-            setTimeout(() => toast.remove(), 300);
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(100px)';
+            toast.style.transition = 'all 0.4s ease';
+            setTimeout(() => toast.remove(), 400);
         }
-    }, 4000);
+    }, 5000);
 }
 
 // Export to global scope

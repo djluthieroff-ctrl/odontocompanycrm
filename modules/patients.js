@@ -346,14 +346,9 @@ window.switchPatientTab = (btn, tab) => {
         content.innerHTML = renderOdontogram(patient);
     } else if (tab === 'historico') {
         content.innerHTML = renderPatientHistory(patient);
+    } else if (tab === 'orcamento') {
+        content.innerHTML = renderBudgetGenerator(patient);
     }
-};
-
-    } else if (tab === 'historico') {
-    content.innerHTML = renderPatientHistory(patient);
-} else if (tab === 'orcamento') {
-    content.innerHTML = renderBudgetGenerator(patient);
-}
 };
 
 function renderBudgetGenerator(patient) {
