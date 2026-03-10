@@ -38,7 +38,6 @@ function renderReportsView() {
             <button class="btn btn-secondary" onclick="exportAppointments()">📤 Exportar Agendamentos</button>
             <button class="btn btn-secondary" style="background: var(--error-600); color: white;" onclick="exportReportsToPDF()">📄 Exportar Relatório PDF</button>
         </div>
-        </div>
 
         <!-- KPIs Linha 1: Métricas base -->
         <div class="dashboard-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 1rem;">
@@ -236,6 +235,7 @@ function renderReportsView() {
     updateReportsStats();
 }
 
+
 // Get date range from filter inputs
 function getReportDateRange() {
     const startInput = document.getElementById('reportDateStart');
@@ -292,7 +292,7 @@ function updateReportsStats() {
 
     filterByDateRange(AppState.appointments, 'date', start, end).forEach(a => {
         if (a.attended || a.status === 'completed') {
-            const key = `${a.patientId}_${new Date(a.date).toDateString()}`;
+            const key = `${a.patientId}_${new Date(a.date).toDateString()} `;
             if (!uniqueVisitKeys.has(key)) { uniqueVisitKeys.add(key); attendedCount++; }
         }
     });
@@ -303,7 +303,7 @@ function updateReportsStats() {
             if (l.status === 'visit' || ['sold', 'lost'].includes(l.saleStatus)) {
                 const patient = AppState.patients.find(p => p.convertedFrom === l.id);
                 const entityId = patient ? patient.id : l.id;
-                const key = `${entityId}_${d.toDateString()}`;
+                const key = `${entityId}_${d.toDateString()} `;
                 if (!uniqueVisitKeys.has(key)) { uniqueVisitKeys.add(key); attendedCount++; }
             }
         }
@@ -320,133 +320,56 @@ function updateReportsStats() {
     const avgTicket = salesCount > 0 ? totalSaleValue / salesCount : null;
 
     // 6. Leads este mês vs mês anterior
-    // ... (restante do código original que deve estar abaixo)
+    const now = new Date();
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+    const thisMonthLeads = AppState.leads.filter(l => new Date(l.createdAt) >= thisMonthStart).length;
+    const lastMonthLeads = AppState.leads.filter(l => {
+        const d = new Date(l.createdAt);
+        return d >= lastMonthStart && d <= lastMonthEnd;
+    }).length;
+    const monthDiff = thisMonthLeads - lastMonthLeads;
 
-    // 7. Update UI
-    document.getElementById('kpiTotalLeads').textContent = totalLeads;
-    document.getElementById('kpiAppointments').textContent = totalApptsCount;
-    document.getElementById('kpiAttended').textContent = attendedCount;
-    document.getElementById('kpiSales').textContent = salesCount;
-    document.getElementById('kpiShowRate').textContent = showRate ? `${showRate}%` : '—%';
-    document.getElementById('kpiCloseRate').textContent = closeRate ? `${closeRate}%` : '—%';
-    document.getElementById('kpiAvgTicket').textContent = avgTicket ? `R$ ${avgTicket.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : 'R$ 0,00';
+    // 7. Pasta Vermelha count (simplified)
+    const redFolderCount = AppState.appointments.filter(a =>
+        (a.status === 'completed' || a.attended) &&
+        !AppState.leads.some(l => l.saleStatus === 'sold' &&
+            AppState.patients.some(p => p.id === a.patientId && (p.phone === l.phone || p.name === l.name)))
+    ).length;
 
-    // 8. Channel Performance Table
+    // 8. Update UI KPIs
+    const setEl = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    setEl('kpiTotalLeads', totalLeads);
+    setEl('kpiAppointments', totalApptsCount);
+    setEl('kpiAttended', attendedCount);
+    setEl('kpiSales', salesCount);
+    setEl('kpiShowRate', showRate !== null ? showRate + '%' : '—');
+    setEl('kpiCloseRate', closeRate !== null ? closeRate + '%' : '—');
+    setEl('kpiAvgTicket', avgTicket !== null ? 'R$' + avgTicket.toFixed(0) : '—');
+    setEl('kpiMonthLeads', thisMonthLeads);
+    setEl('kpiRedFolder', redFolderCount);
+
+    const diffEl = document.getElementById('kpiMonthLeadsDiff');
+    if (diffEl) {
+        if (monthDiff > 0) diffEl.innerHTML = `< span style = "color:#16a34a;" >↑ +${monthDiff} vs mês ant.</span > `;
+        else if (monthDiff < 0) diffEl.innerHTML = `< span style = "color:#dc2626;" >↓ ${monthDiff} vs mês ant.</span > `;
+        else diffEl.textContent = '= igual ao mês ant.';
+    }
+
+    // 9. Channel Performance Table
     renderChannelPerformance(filteredLeads);
 
-    // 9. Smart Insights
+    // 10. Smart Insights
     generateSmartInsights(closeRate, showRate, avgTicket);
-}
 
-function renderChannelPerformance(leads) {
-    const tableContainer = document.getElementById('channelPerformanceTableContainer');
-    if (!tableContainer) return;
-
-    const channels = {};
-    leads.forEach(l => {
-        const source = l.source || 'Indefinido';
-        if (!channels[source]) channels[source] = { leads: 0, sales: 0, saleValue: 0 };
-        channels[source].leads++;
-        if (l.saleStatus === 'sold') {
-            channels[source].sales++;
-            channels[source].saleValue += (parseFloat(l.saleValue) || 0);
-        }
-    });
-
-    const sortedChannels = Object.entries(channels).sort((a, b) => b[1].leads - a[1].leads);
-
-    tableContainer.innerHTML = `
-        <table style="width:100%; border-collapse: collapse; font-size:0.85rem;">
-            <thead>
-                <tr style="text-align:left; border-bottom:1px solid var(--gray-100); color:var(--gray-500);">
-                    <th style="padding:8px 0;">Origem</th>
-                    <th style="padding:8px 0; text-align:center;">Leads</th>
-                    <th style="padding:8px 0; text-align:center;">Vendas</th>
-                    <th style="padding:8px 0; text-align:right;">Conv.</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${sortedChannels.map(([name, data]) => {
-        const conv = data.leads > 0 ? Math.round((data.sales / data.leads) * 100) : 0;
-        return `
-                        <tr style="border-bottom:1px solid var(--gray-50);">
-                            <td style="padding:10px 0; font-weight:600;">${escapeHTML(name)}</td>
-                            <td style="padding:10px 0; text-align:center;">${data.leads}</td>
-                            <td style="padding:10px 0; text-align:center;">${data.sales}</td>
-                            <td style="padding:10px 0; text-align:right; font-weight:700; color:var(--primary-600);">${conv}%</td>
-                        </tr>
-                    `;
-    }).join('')}
-                ${sortedChannels.length === 0 ? '<tr><td colspan="4" style="text-align:center; padding:2rem; color:var(--gray-400);">Nenhum dado de origem disponível</td></tr>' : ''}
-            </tbody>
-        </table>
-    `;
-}
-
-function generateSmartInsights(closeRate, showRate, avgTicket) {
-    const container = document.getElementById('smartInsightContainer');
-    if (!container) return;
-
-    let insight = '';
-    if (closeRate < 10 && closeRate !== null) insight = "🚨 **Foco em Fechamento:** Sua taxa de conversão está baixa. Revise os argumentos de venda no momento da avaliação.";
-    else if (showRate < 40 && showRate !== null) insight = "⚠️ **Foco em Comparecimento:** Muitos agendados estão faltando. Tente reforçar os lembretes de WhatsApp.";
-    else if (avgTicket < 1000 && (avgTicket > 0 && avgTicket !== null)) insight = "💡 **Ticket Médio:** Você está fechando muitos tratamentos, mas de valor baixo. Tente oferecer planos de tratamento mais completos.";
-    else insight = "🌟 **Ótimo Desempenho:** Seus indicadores estão equilibrados. Continue o bom trabalho de follow-up e captação!";
-
-    container.innerHTML = insight;
-}
-const now = new Date();
-const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
-const thisMonthLeads = AppState.leads.filter(l => new Date(l.createdAt) >= thisMonthStart).length;
-const lastMonthLeads = AppState.leads.filter(l => {
-    const d = new Date(l.createdAt);
-    return d >= lastMonthStart && d <= lastMonthEnd;
-}).length;
-const monthDiff = thisMonthLeads - lastMonthLeads;
-
-// 7. Pasta Vermelha count (simplified)
-const redFolderCount = AppState.appointments.filter(a =>
-    (a.status === 'completed' || a.attended) &&
-    !AppState.leads.some(l => l.saleStatus === 'sold' &&
-        AppState.patients.some(p => p.id === a.patientId && (p.phone === l.phone || p.name === l.name)))
-).length;
-
-// Update KPIs
-const setEl = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-setEl('kpiTotalLeads', totalLeads);
-setEl('kpiAppointments', totalApptsCount);
-setEl('kpiAttended', attendedCount);
-setEl('kpiSales', salesCount);
-setEl('kpiShowRate', showRate !== null ? showRate + '%' : '—');
-setEl('kpiCloseRate', closeRate !== null ? closeRate + '%' : '—');
-setEl('kpiAvgTicket', avgTicket !== null ? 'R$' + avgTicket.toFixed(0) : '—');
-setEl('kpiMonthLeads', thisMonthLeads);
-setEl('kpiRedFolder', redFolderCount);
-
-const diffEl = document.getElementById('kpiMonthLeadsDiff');
-if (diffEl) {
-    if (monthDiff > 0) diffEl.innerHTML = `<span style="color:#16a34a;">↑ +${monthDiff} vs mês ant.</span>`;
-    else if (monthDiff < 0) diffEl.innerHTML = `<span style="color:#dc2626;">↓ ${monthDiff} vs mês ant.</span>`;
-    else diffEl.textContent = '= igual ao mês ant.';
-}
-
-// Renderizar alertas
-renderReportAlerts(filteredLeads, totalApptsCount, redFolderCount);
-
-// Renderizar funil
-renderConversionFunnel(totalLeads, totalApptsCount, attendedCount, salesCount);
-
-// Renderizar ranking por canal
-renderChannelRanking(filteredLeads);
-
-// Renderizar gráficos
-renderCharts(filteredLeads, filteredApptsCreated);
-renderMonthlyEvolutionChart();
-
-// Relatório mensal detalhado
-renderWeeklyDetailedReport();
+    // 11. Renderizar outros componentes
+    renderReportAlerts(filteredLeads, totalApptsCount, redFolderCount);
+    renderConversionFunnel(totalLeads, totalApptsCount, attendedCount, salesCount);
+    renderChannelRanking(filteredLeads);
+    renderCharts(filteredLeads, filteredApptsCreated);
+    renderMonthlyEvolutionChart();
+    renderWeeklyDetailedReport();
 }
 
 // Alertas e Oportunidades
@@ -465,8 +388,8 @@ function renderReportAlerts(filteredLeads, totalAppts, redFolderCount) {
     if (staleLeads > 0) {
         alerts.push({
             icon: '⏰', color: '#dc2626', bg: '#fee2e2',
-            msg: `<strong>${staleLeads} leads novos</strong> há mais de 7 dias sem contato.`,
-            action: `onclick="switchModule('leads')"`, label: 'Ver Leads'
+            msg: `< strong > ${staleLeads} leads novos</strong > há mais de 7 dias sem contato.`,
+            action: `onclick = "switchModule('leads')"`, label: 'Ver Leads'
         });
     }
 
@@ -474,8 +397,8 @@ function renderReportAlerts(filteredLeads, totalAppts, redFolderCount) {
     if (redFolderCount > 0) {
         alerts.push({
             icon: '📁', color: '#ea580c', bg: '#fff7ed',
-            msg: `<strong>${redFolderCount} pacientes</strong> na Pasta Vermelha sem fechamento.`,
-            action: `onclick="switchModule('red-folder')"`, label: 'Abrir Pasta'
+            msg: `< strong > ${redFolderCount} pacientes</strong > na Pasta Vermelha sem fechamento.`,
+            action: `onclick = "switchModule('red-folder')"`, label: 'Abrir Pasta'
         });
     }
 
@@ -489,7 +412,7 @@ function renderReportAlerts(filteredLeads, totalAppts, redFolderCount) {
     if (remaining > 0) {
         alerts.push({
             icon: '🎯', color: '#7c3aed', bg: '#f5f3ff',
-            msg: `Meta semanal: faltam <strong>${remaining} agendamentos</strong> para bater a meta de ${weeklyGoal}.`,
+            msg: `Meta semanal: faltam < strong > ${remaining} agendamentos</strong > para bater a meta de ${weeklyGoal}.`,
             action: '', label: ''
         });
     }
@@ -501,23 +424,23 @@ function renderReportAlerts(filteredLeads, totalAppts, redFolderCount) {
     if (totalVisited >= 5 && rate < 30) {
         alerts.push({
             icon: '📉', color: '#991b1b', bg: '#fef2f2',
-            msg: `Taxa de fechamento em <strong>${rate}%</strong>. Meta sugerida: acima de 30%.`,
+            msg: `Taxa de fechamento em < strong > ${rate}%</strong >.Meta sugerida: acima de 30 %.`,
             action: '', label: ''
         });
     }
 
     if (alerts.length === 0) {
-        alertsEl.innerHTML = `<p style="color:#16a34a;font-weight:600;">✅ Nenhum alerta no momento. Ótimo resultado!</p>`;
+        alertsEl.innerHTML = `< p style = "color:#16a34a;font-weight:600;" >✅ Nenhum alerta no momento.Ótimo resultado!</p > `;
         return;
     }
 
     alertsEl.innerHTML = alerts.map(a => `
-        <div style="display:flex;align-items:center;gap:0.75rem;padding:0.6rem 0.9rem;background:${a.bg};border-radius:8px;">
+        < div style = "display:flex;align-items:center;gap:0.75rem;padding:0.6rem 0.9rem;background:${a.bg};border-radius:8px;" >
             <span style="font-size:1.1rem;">${a.icon}</span>
             <span style="flex:1;font-size:0.875rem;color:var(--gray-700);">${a.msg}</span>
             ${a.action && a.label ? `<button class="btn btn-secondary btn-small" style="color:${a.color};border-color:${a.color};" ${a.action}>${a.label}</button>` : ''}
-        </div>
-    `).join('');
+        </div >
+        `).join('');
 }
 
 // Funil de conversão por etapa — barras horizontais
@@ -540,7 +463,7 @@ function renderConversionFunnel(leads, appts, visits, sales) {
             ? Math.round((s.value / steps[i - 1].value) * 100) + '%'
             : '';
         return `
-            <div style="margin-bottom:1rem;">
+        < div style = "margin-bottom:1rem;" >
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;font-size:0.82rem;font-weight:600;">
                     <span style="color:var(--gray-700);">${s.label}</span>
                     <div style="display:flex;gap:0.75rem;align-items:center;">
@@ -553,7 +476,7 @@ function renderConversionFunnel(leads, appts, visits, sales) {
                         ${pct > 15 ? `<span style="color:white;font-size:0.75rem;font-weight:700;">${pct}%</span>` : ''}
                     </div>
                 </div>
-            </div>
+            </div >
         `;
     }).join('');
 }
@@ -575,12 +498,12 @@ function renderChannelRanking(filteredLeads) {
     const rows = Object.entries(channels).sort((a, b) => b[1].leads - a[1].leads);
 
     if (rows.length === 0) {
-        el.innerHTML = `<p style="color:var(--gray-400);text-align:center;padding:1rem;">Sem dados para o período selecionado.</p>`;
+        el.innerHTML = `< p style = "color:var(--gray-400);text-align:center;padding:1rem;" > Sem dados para o período selecionado.</p > `;
         return;
     }
 
     el.innerHTML = `
-        <table style="width:100%;border-collapse:collapse;font-size:0.875rem;">
+        < table style = "width:100%;border-collapse:collapse;font-size:0.875rem;" >
             <thead>
                 <tr style="border-bottom:2px solid var(--gray-200);">
                     <th style="text-align:left;padding:8px 12px;color:var(--gray-600);font-weight:600;">#</th>
@@ -611,8 +534,8 @@ function renderChannelRanking(filteredLeads) {
                     `;
     }).join('')}
             </tbody>
-        </table>
-    `;
+        </table >
+        `;
 }
 
 // Navigation for the detailed report
@@ -644,7 +567,7 @@ function renderWeeklyDetailedReport() {
     const visitGoal = AppState.settings?.weeklyVisitsGoal || 40;
 
     if (weeks.length === 0) {
-        container.innerHTML = `<div style="text-align: center; padding: 2rem; color: var(--gray-400);">Sem dados para este período</div>`;
+        container.innerHTML = `< div style = "text-align: center; padding: 2rem; color: var(--gray-400);" > Sem dados para este período</div > `;
         return;
     }
 
@@ -657,7 +580,7 @@ function renderWeeklyDetailedReport() {
         const visitPercent = Math.min(Math.round((weekStats.totalVisits / visitGoal) * 100), 100);
 
         return `
-            <div class="report-week-card">
+        < div class="report-week-card" >
                 <div class="report-week-header">
                     <div>
                         <h4 style="margin: 0; color: var(--gray-900); font-size: 1.1rem;">Semana ${index + 1}</h4>
@@ -721,7 +644,7 @@ function renderWeeklyDetailedReport() {
                         `;
         }).join('')}
                 </div>
-            </div>
+            </div >
         `;
     }).join('');
 }
@@ -776,7 +699,7 @@ function calculateWeekStats(start, end) {
         if (aptDate >= s && aptDate <= e && (apt.status === 'completed' || apt.attended)) {
             const dayKey = aptDate.toDateString();
             if (!stats.days[dayKey]) stats.days[dayKey] = { appointments: 0, scheduledTotal: 0, visits: 0, sales: 0 };
-            const visitKey = `${apt.patientId}_${dayKey}`;
+            const visitKey = `${apt.patientId}_${dayKey} `;
             if (!uniqueVisitKeys.has(visitKey)) {
                 stats.days[dayKey].visits++;
                 stats.totalVisits++;
@@ -794,7 +717,7 @@ function calculateWeekStats(start, end) {
             if (lead.status === 'visit' || ['sold', 'lost'].includes(lead.saleStatus)) {
                 const patient = AppState.patients.find(p => p.convertedFrom === lead.id);
                 const entityId = patient ? patient.id : lead.id;
-                const visitKey = `${entityId}_${dayKey}`;
+                const visitKey = `${entityId}_${dayKey} `;
 
                 if (!uniqueVisitKeys.has(visitKey)) {
                     stats.days[dayKey].visits++;
@@ -889,7 +812,7 @@ function renderCharts(filteredLeads, filteredAppointments) {
                         borderRadius: 6, borderSkipped: false
                     },
                     {
-                        label: `Meta Diária (${dailyGoal})`,
+                        label: `Meta Diária(${dailyGoal})`,
                         data: sortedDays.map(() => dailyGoal),
                         type: 'line', borderColor: '#ef4444', borderDash: [5, 5],
                         borderWidth: 2, pointRadius: 0, fill: false
@@ -996,7 +919,7 @@ function showDayDetails(isoDate) {
         if (a.attended || a.status === 'completed') {
             uniqueVisits.set(a.patientId + '_' + dateStr, { name: a.patientName, type: 'Agenda', detail: a.procedure });
         }
-        if (a.isSale) salesList.push({ name: a.patientName, detail: `💰 R$ ${a.saleValue?.toFixed(2) || '0,00'}` });
+        if (a.isSale) salesList.push({ name: a.patientName, detail: `💰 R$ ${a.saleValue?.toFixed(2) || '0,00'} ` });
     });
 
     AppState.leads.forEach(l => {
@@ -1008,24 +931,25 @@ function showDayDetails(isoDate) {
                 const key = entityId + '_' + dateStr;
                 if (!uniqueVisits.has(key)) uniqueVisits.set(key, { name: l.name, type: 'Lead', detail: l.saleStatus === 'sold' ? '💰 Venda' : 'Visita' });
             }
-            if (l.saleStatus === 'sold') salesList.push({ name: l.name, detail: `💰 Venda (${l.interest || 'Avaliação'})` });
+            if (l.saleStatus === 'sold') salesList.push({ name: l.name, detail: `💰 Venda(${l.interest || 'Avaliação'})` });
         }
     });
 
     const formatList = (items, emptyMsg) => {
-        if (items.length === 0) return `<p style="color: var(--gray-400); font-style: italic; font-size: 0.9rem;">${emptyMsg}</p>`;
-        return `<ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px;">
-            ${items.map(item => `
+        if (items.length === 0) return `< p style = "color: var(--gray-400); font-style: italic; font-size: 0.9rem;" > ${emptyMsg}</p > `;
+        return `< ul style = "list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px;" >
+        ${items.map(item => `
                 <li style="padding: 8px 12px; background: white; border-radius: 6px; border: 1px solid var(--gray-100); font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center;">
                     <span style="font-weight: 500; color: var(--gray-700);">${escapeHTML(item.name || item.patientName)}</span>
                     <span class="badge" style="font-size: 0.7rem;">${escapeHTML(item.detail || item.source || item.status || 'Agendamento')}</span>
                 </li>
-            `).join('')}
-        </ul>`;
+            `).join('')
+            }
+        </ul > `;
     };
 
-    openModal(`Detalhamento: ${capitalize(displayDate)}`, `
-        <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+    openModal(`Detalhamento: ${capitalize(displayDate)} `, `
+        < div style = "display: flex; flex-direction: column; gap: 1.5rem;" >
             <section>
                 <h4 style="color: var(--blue-700); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 8px;">
                     <span style="background: var(--blue-100); padding: 4px; border-radius: 4px;">🛒</span> Agendamentos Feitos (Novos Registros)
@@ -1050,8 +974,29 @@ function showDayDetails(isoDate) {
                 </h4>
                 ${formatList(salesList, 'Nenhuma venda fechada neste dia.')}
             </section>
-        </div>
-    `, [{ label: 'Fechar', class: 'btn-secondary', onclick: 'closeModal()' }]);
+        </div >
+        `, [{ label: 'Fechar', class: 'btn-secondary', onclick: 'closeModal()' }]);
+}
+
+function calculateMetrics(start, end) {
+    const s = start ? new Date(start + 'T00:00:00') : null;
+    const e = end ? new Date(end + 'T23:59:59') : null;
+
+    const leads = filterByDateRange(AppState.leads, 'createdAt', s, e);
+    const appts = filterByDateRange(AppState.appointments, 'createdAt', s, e);
+    const sold = leads.filter(l => l.saleStatus === 'sold');
+
+    return {
+        totalLeads: leads.length,
+        scheduled: appts.length,
+        visits: appts.filter(a => a.attended || a.status === 'completed').length,
+        salesCount: sold.length,
+        totalSalesValue: sold.reduce((sum, l) => sum + (parseFloat(l.saleValue) || 0), 0),
+        conversionRate: leads.length > 0 ? Math.round((sold.length / leads.length) * 100) : 0,
+        averageTicket: sold.length > 0 ? sold.reduce((sum, l) => sum + (parseFloat(l.saleValue) || 0), 0) / sold.length : 0
+    };
+}
+
 function exportReportsToPDF() {
     if (!window.jspdf || !window.jspdf.jsPDF) {
         showNotification('Biblioteca PDF não carregada. Verifique a conexão.', 'error');
@@ -1066,11 +1011,11 @@ function exportReportsToPDF() {
     doc.setFontSize(22);
     doc.setTextColor(37, 99, 235);
     doc.text('Relatório de Desempenho CRM', 14, 22);
-    
+
     doc.setFontSize(10);
     doc.setTextColor(100);
-    doc.text(\Período: \ até \\, 14, 30);
-    doc.text(\Gerado em: \\, 14, 35);
+    doc.text(`Período: ${start || 'Início'} até ${end || 'Fim'} `, 14, 30);
+    doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')} `, 14, 35);
 
     const metrics = calculateMetrics(start, end);
     const kpiData = [
@@ -1084,71 +1029,75 @@ function exportReportsToPDF() {
         ['Total em Vendas', new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(metrics.totalSalesValue)]
     ];
 
-    doc.autoTable({
-        startY: 45,
-        head: [kpiData[0]],
-        body: kpiData.slice(1),
-        theme: 'striped',
-        headStyles: { fillColor: [37, 99, 235] }
-    });
-
-    doc.save(\Relatorio_CRM_\_\.pdf\);
-    showNotification('PDF gerado com sucesso!', 'success');
-}
-
-function renderMonthlyEvolutionChart() {
-    const ctx = document.getElementById('monthlyEvolutionChart')?.getContext('2d');
-    if (!ctx) return;
-
-    if (window.monthlyEvalChartInstance) window.monthlyEvalChartInstance.destroy();
-
-    const last6Months = [];
-    for (let i = 5; i >= 0; i--) {
-        const d = new Date();
-        d.setMonth(d.getMonth() - i);
-        last6Months.push({
-            month: d.toLocaleString('pt-BR', { month: 'short' }),
-            year: d.getFullYear(),
-            monthNum: d.getMonth(),
-            yearNum: d.getFullYear()
+    if (doc.autoTable) {
+        doc.autoTable({
+            startY: 45,
+            head: [kpiData[0]],
+            body: kpiData.slice(1),
+            theme: 'striped',
+            headStyles: { fillColor: [37, 99, 235] }
         });
     }
 
-    const labels = last6Months.map(m => m.month.toUpperCase());
-    const salesData = last6Months.map(m => {
-        const apps = (AppState.appointments || []).filter(a => {
-            const d = new Date(a.date);
-            return d.getMonth() === m.monthNum && d.getFullYear() === m.yearNum && a.isSale;
-        });
-        const leadsSold = (AppState.leads || []).filter(l => {
-            const d = new Date(l.updatedAt || l.createdAt);
-            return d.getMonth() === m.monthNum && d.getFullYear() === m.yearNum && l.saleStatus === 'sold';
-        });
-        return apps.length + leadsSold.length;
-    });
+    doc.save(`Relatorio_CRM_${start || 'Geral'}.pdf`);
+    showNotification('PDF gerado com sucesso!', 'success');
+}
 
-    window.monthlyEvalChartInstance = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Vendas Fechadas',
-                data: salesData,
-                borderColor: '#10b981',
-                backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                borderWidth: 3,
-                fill: true,
-                tension: 0.4
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: {
-                y: { beginAtZero: true, grid: { display: false } },
-                x: { grid: { display: false } }
-            }
+function renderChannelPerformance(leads) {
+    const tableContainer = document.getElementById('channelPerformanceTableContainer');
+    if (!tableContainer) return;
+
+    const channels = {};
+    leads.forEach(l => {
+        const source = l.source || 'Indefinido';
+        if (!channels[source]) channels[source] = { leads: 0, sales: 0, saleValue: 0 };
+        channels[source].leads++;
+        if (l.saleStatus === 'sold') {
+            channels[source].sales++;
+            channels[source].saleValue += (parseFloat(l.saleValue) || 0);
         }
     });
+
+    const sortedChannels = Object.entries(channels).sort((a, b) => b[1].leads - a[1].leads);
+
+    tableContainer.innerHTML = `
+        < table style = "width:100%; border-collapse: collapse; font-size:0.85rem;" >
+            <thead>
+                <tr style="text-align:left; border-bottom:1px solid var(--gray-100); color:var(--gray-500);">
+                    <th style="padding:8px 0;">Origem</th>
+                    <th style="padding:8px 0; text-align:center;">Leads</th>
+                    <th style="padding:8px 0; text-align:center;">Vendas</th>
+                    <th style="padding:8px 0; text-align:right;">Conv.</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${sortedChannels.map(([name, data]) => {
+        const conv = data.leads > 0 ? Math.round((data.sales / data.leads) * 100) : 0;
+        return `
+                        <tr style="border-bottom:1px solid var(--gray-50);">
+                            <td style="padding:10px 0; font-weight:600;">${escapeHTML(name)}</td>
+                            <td style="padding:10px 0; text-align:center;">${data.leads}</td>
+                            <td style="padding:10px 0; text-align:center;">${data.sales}</td>
+                            <td style="padding:10px 0; text-align:right; font-weight:700; color:var(--primary-600);">${conv}%</td>
+                        </tr>
+                    `;
+    }).join('')}
+                ${sortedChannels.length === 0 ? '<tr><td colspan="4" style="text-align:center; padding:2rem; color:var(--gray-400);">Nenhum dado de origem disponível</td></tr>' : ''}
+            </tbody>
+        </table >
+        `;
 }
+
+function generateSmartInsights(closeRate, showRate, avgTicket) {
+    const container = document.getElementById('smartInsightContainer');
+    if (!container) return;
+
+    let insight = '';
+    if (closeRate < 10 && closeRate !== null) insight = "🚨 **Foco em Fechamento:** Sua taxa de conversão está baixa. Revise os argumentos de venda no momento da avaliação.";
+    else if (showRate < 40 && showRate !== null) insight = "⚠️ **Foco em Comparecimento:** Muitos agendados estão faltando. Tente reforçar os lembretes de WhatsApp.";
+    else if (avgTicket < 1000 && (avgTicket > 0 && avgTicket !== null)) insight = "💡 **Ticket Médio:** Você está fechando muitos tratamentos, mas de valor baixo. Tente oferecer planos de tratamento mais completos.";
+    else insight = "🌟 **Ótimo Desempenho:** Seus indicadores estão equilibrados. Continue o bom trabalho de follow-up e captação!";
+
+    container.innerHTML = insight;
+}
+
