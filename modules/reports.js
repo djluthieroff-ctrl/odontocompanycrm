@@ -24,6 +24,7 @@ function renderReportsView() {
     const firstOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
 
     container.innerHTML = `
+        <!-- Filtro de Período -->
         <div style="display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; align-items: flex-end;">
             <div class="form-group" style="margin: 0;">
                 <label class="form-label">Data Início</label>
@@ -37,12 +38,14 @@ function renderReportsView() {
             <button class="btn btn-secondary" onclick="exportAppointments()">📤 Exportar Agendamentos</button>
         </div>
 
-        <div class="dashboard-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 2rem;">
+        <!-- KPIs Linha 1: Métricas base -->
+        <div class="dashboard-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 1rem;">
             <div class="stat-card">
                 <div class="stat-icon" style="background: var(--primary-100); color: var(--primary-600);">💬</div>
                 <div class="stat-content">
                     <h3>Total de Leads</h3>
                     <p class="stat-number" id="kpiTotalLeads">0</p>
+                    <small id="kpiLeadsTrend" style="color:var(--gray-400);"></small>
                 </div>
             </div>
             <div class="stat-card">
@@ -68,6 +71,56 @@ function renderReportsView() {
             </div>
         </div>
 
+        <!-- KPIs Linha 2: Taxas e indicadores avançados -->
+        <div class="dashboard-grid" style="grid-template-columns: repeat(5, 1fr); margin-bottom: 2rem;">
+            <div class="stat-card" style="border-top: 3px solid #3b82f6;">
+                <div class="stat-icon" style="background: #eff6ff; color: #1d4ed8; font-size:1.1rem;">📊</div>
+                <div class="stat-content">
+                    <h3 style="font-size:0.75rem;">Taxa de Comparecimento</h3>
+                    <p class="stat-number" id="kpiShowRate" style="font-size:1.4rem;">—%</p>
+                </div>
+            </div>
+            <div class="stat-card" style="border-top: 3px solid #22c55e;">
+                <div class="stat-icon" style="background: #f0fdf4; color: #15803d; font-size:1.1rem;">🎯</div>
+                <div class="stat-content">
+                    <h3 style="font-size:0.75rem;">Taxa de Fechamento</h3>
+                    <p class="stat-number" id="kpiCloseRate" style="font-size:1.4rem;">—%</p>
+                </div>
+            </div>
+            <div class="stat-card" style="border-top: 3px solid #f59e0b;">
+                <div class="stat-icon" style="background: #fffbeb; color: #b45309; font-size:1.1rem;">💵</div>
+                <div class="stat-content">
+                    <h3 style="font-size:0.75rem;">Ticket Médio</h3>
+                    <p class="stat-number" id="kpiAvgTicket" style="font-size:1.2rem;">—</p>
+                </div>
+            </div>
+            <div class="stat-card" style="border-top: 3px solid #8b5cf6;">
+                <div class="stat-icon" style="background: #f5f3ff; color: #6d28d9; font-size:1.1rem;">📈</div>
+                <div class="stat-content">
+                    <h3 style="font-size:0.75rem;">Leads este Mês</h3>
+                    <p class="stat-number" id="kpiMonthLeads" style="font-size:1.4rem;">0</p>
+                    <small id="kpiMonthLeadsDiff" style="color:var(--gray-400);font-size:0.7rem;"></small>
+                </div>
+            </div>
+            <div class="stat-card" style="border-top: 3px solid #ef4444; cursor:pointer;" onclick="navigateTo('red-folder')">
+                <div class="stat-icon" style="background: #fef2f2; color: #dc2626; font-size:1.1rem;">📁</div>
+                <div class="stat-content">
+                    <h3 style="font-size:0.75rem;">Pasta Vermelha</h3>
+                    <p class="stat-number" id="kpiRedFolder" style="font-size:1.4rem;">0</p>
+                    <small style="color:#dc2626;font-size:0.7rem;">↗ Ver pasta</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alertas e Oportunidades -->
+        <div id="reportsAlertsBlock" class="card" style="padding:1.25rem;margin-bottom:2rem;border-left:4px solid #f59e0b;background:linear-gradient(135deg,#fffbeb 0%,#fff 100%);">
+            <h3 style="margin:0 0 1rem 0;font-weight:700;color:#92400e;display:flex;align-items:center;gap:8px;">
+                ⚠️ Alertas e Oportunidades
+            </h3>
+            <div id="reportsAlertsList" style="display:flex;flex-direction:column;gap:0.5rem;"></div>
+        </div>
+
+        <!-- Gráficos 1ª linha: Funil + Canal -->
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
             <div class="card" style="padding: 1.5rem;">
                 <h3 style="margin-bottom: 1.5rem; font-weight: 600; display: flex; align-items: center; gap: 10px;">
@@ -87,6 +140,7 @@ function renderReportsView() {
             </div>
         </div>
 
+        <!-- Gráfico: Performance Diária -->
         <div class="card" style="padding: 1.5rem; margin-bottom: 2rem;">
             <h3 style="margin-bottom: 1.5rem; font-weight: 600; display: flex; align-items: center; gap: 10px;">
                 <span style="font-size: 1.25rem;">📈</span> Performance Diária de Agendamentos
@@ -96,7 +150,33 @@ function renderReportsView() {
             </div>
         </div>
 
-        <!-- Detailed navigatable Monthly Report -->
+        <!-- Gráficos 2ª linha: Evolução Mensal + Funil de Conversão -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+            <div class="card" style="padding: 1.5rem;">
+                <h3 style="margin-bottom: 1.5rem; font-weight: 600; display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 1.25rem;">📉</span> Evolução dos Últimos 6 Meses
+                </h3>
+                <div style="height: 300px; position: relative;">
+                    <canvas id="monthlyEvolutionChart"></canvas>
+                </div>
+            </div>
+            <div class="card" style="padding: 1.5rem;">
+                <h3 style="margin-bottom: 1.5rem; font-weight: 600; display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 1.25rem;">🎯</span> Funil de Conversão por Etapa
+                </h3>
+                <div id="conversionFunnelContainer" style="padding: 0.5rem 0;"></div>
+            </div>
+        </div>
+
+        <!-- Ranking por Canal -->
+        <div class="card" style="padding: 1.5rem; margin-bottom: 2rem;">
+            <h3 style="margin-bottom: 1.25rem; font-weight: 700; display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 1.25rem;">🏆</span> Ranking de Leads por Canal / Origem
+            </h3>
+            <div id="channelRankingTable"></div>
+        </div>
+
+        <!-- Relatório Mensal Detalhado (preservado) -->
         <div class="card" style="padding: 2rem; background: var(--gray-50); border: 1px solid var(--gray-200);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
                 <div style="display: flex; align-items: center; gap: 1.5rem;">
@@ -163,7 +243,7 @@ function resetReportDates() {
 function filterByDateRange(items, dateField, start, end) {
     return items.filter(item => {
         const d = item[dateField];
-        if (!d) return !start && !end; // include only if no filter
+        if (!d) return !start && !end;
         const date = new Date(d);
         if (start && date < start) return false;
         if (end && date > end) return false;
@@ -175,64 +255,266 @@ function filterByDateRange(items, dateField, start, end) {
 function updateReportsStats() {
     const { start, end } = getReportDateRange();
 
-    // 1. Leads Created in Period
+    // 1. Leads
     const filteredLeads = filterByDateRange(AppState.leads, 'createdAt', start, end);
     const totalLeads = filteredLeads.length;
 
-    // 2. Appointments Created in Period (Bookings)
+    // 2. Appointments
     const filteredApptsCreated = filterByDateRange(AppState.appointments, 'createdAt', start, end);
     const totalApptsCount = filteredApptsCreated.length;
 
-    // 3. Visits (Attended) In Period - Unified & Deduplicated
+    // 3. Visits — Unified & Deduplicated
     const uniqueVisitKeys = new Set();
     let attendedCount = 0;
 
-    // A. From Agenda
     filterByDateRange(AppState.appointments, 'date', start, end).forEach(a => {
         if (a.attended || a.status === 'completed') {
             const key = `${a.patientId}_${new Date(a.date).toDateString()}`;
-            if (!uniqueVisitKeys.has(key)) {
-                uniqueVisitKeys.add(key);
-                attendedCount++;
-            }
+            if (!uniqueVisitKeys.has(key)) { uniqueVisitKeys.add(key); attendedCount++; }
         }
     });
 
-    // B. From Leads (Visit/Sold status)
     AppState.leads.forEach(l => {
-        // Fallback Priority: Locked visitDate > createdAt (Legacy)
-        // NEVER use updatedAt as a fallback for historical metrics as it changes on every edit.
         const d = new Date(l.visitDate || l.createdAt);
         if ((!start || d >= start) && (!end || d <= end)) {
             if (l.status === 'visit' || ['sold', 'lost'].includes(l.saleStatus)) {
                 const patient = AppState.patients.find(p => p.convertedFrom === l.id);
                 const entityId = patient ? patient.id : l.id;
                 const key = `${entityId}_${d.toDateString()}`;
-
-                if (!uniqueVisitKeys.has(key)) {
-                    uniqueVisitKeys.add(key);
-                    attendedCount++;
-                }
+                if (!uniqueVisitKeys.has(key)) { uniqueVisitKeys.add(key); attendedCount++; }
             }
         }
     });
 
-    // 4. Sales Count
-    const salesCount = filteredLeads.filter(l => l.saleStatus === 'sold' || l.status === 'sold').length;
+    // 4. Sales
+    const soldLeads = filteredLeads.filter(l => l.saleStatus === 'sold' || l.status === 'sold');
+    const salesCount = soldLeads.length;
+    const totalSaleValue = soldLeads.reduce((sum, l) => sum + (parseFloat(l.saleValue) || 0), 0);
 
-    // Update KPI displays
-    const elLeads = document.getElementById('kpiTotalLeads');
-    const elAppts = document.getElementById('kpiAppointments');
-    const elAttended = document.getElementById('kpiAttended');
-    const elSales = document.getElementById('kpiSales');
+    // 5. Taxa comparecimento e fechamento
+    const showRate = totalApptsCount > 0 ? Math.round((attendedCount / totalApptsCount) * 100) : null;
+    const closeRate = attendedCount > 0 ? Math.round((salesCount / attendedCount) * 100) : null;
+    const avgTicket = salesCount > 0 ? totalSaleValue / salesCount : null;
 
-    if (elLeads) elLeads.textContent = totalLeads;
-    if (elAppts) elAppts.textContent = totalApptsCount;
-    if (elAttended) elAttended.textContent = attendedCount;
-    if (elSales) elSales.textContent = salesCount;
+    // 6. Leads este mês vs mês anterior
+    const now = new Date();
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+    const thisMonthLeads = AppState.leads.filter(l => new Date(l.createdAt) >= thisMonthStart).length;
+    const lastMonthLeads = AppState.leads.filter(l => {
+        const d = new Date(l.createdAt);
+        return d >= lastMonthStart && d <= lastMonthEnd;
+    }).length;
+    const monthDiff = thisMonthLeads - lastMonthLeads;
 
+    // 7. Pasta Vermelha count (simplified)
+    const redFolderCount = AppState.appointments.filter(a =>
+        (a.status === 'completed' || a.attended) &&
+        !AppState.leads.some(l => l.saleStatus === 'sold' &&
+            AppState.patients.some(p => p.id === a.patientId && (p.phone === l.phone || p.name === l.name)))
+    ).length;
+
+    // Update KPIs
+    const setEl = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    setEl('kpiTotalLeads', totalLeads);
+    setEl('kpiAppointments', totalApptsCount);
+    setEl('kpiAttended', attendedCount);
+    setEl('kpiSales', salesCount);
+    setEl('kpiShowRate', showRate !== null ? showRate + '%' : '—');
+    setEl('kpiCloseRate', closeRate !== null ? closeRate + '%' : '—');
+    setEl('kpiAvgTicket', avgTicket !== null ? 'R$' + avgTicket.toFixed(0) : '—');
+    setEl('kpiMonthLeads', thisMonthLeads);
+    setEl('kpiRedFolder', redFolderCount);
+
+    const diffEl = document.getElementById('kpiMonthLeadsDiff');
+    if (diffEl) {
+        if (monthDiff > 0) diffEl.innerHTML = `<span style="color:#16a34a;">↑ +${monthDiff} vs mês ant.</span>`;
+        else if (monthDiff < 0) diffEl.innerHTML = `<span style="color:#dc2626;">↓ ${monthDiff} vs mês ant.</span>`;
+        else diffEl.textContent = '= igual ao mês ant.';
+    }
+
+    // Renderizar alertas
+    renderReportAlerts(filteredLeads, totalApptsCount, redFolderCount);
+
+    // Renderizar funil
+    renderConversionFunnel(totalLeads, totalApptsCount, attendedCount, salesCount);
+
+    // Renderizar ranking por canal
+    renderChannelRanking(filteredLeads);
+
+    // Renderizar gráficos
     renderCharts(filteredLeads, filteredApptsCreated);
+    renderMonthlyEvolutionChart();
+
+    // Relatório mensal detalhado
     renderWeeklyDetailedReport();
+}
+
+// Alertas e Oportunidades
+function renderReportAlerts(filteredLeads, totalAppts, redFolderCount) {
+    const alertsEl = document.getElementById('reportsAlertsList');
+    if (!alertsEl) return;
+
+    const alerts = [];
+    const now = new Date();
+    const sevenDaysAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
+
+    // Leads sem contato há 7+ dias
+    const staleLeads = AppState.leads.filter(l =>
+        l.status === 'new' && new Date(l.createdAt) <= sevenDaysAgo
+    ).length;
+    if (staleLeads > 0) {
+        alerts.push({
+            icon: '⏰', color: '#dc2626', bg: '#fee2e2',
+            msg: `<strong>${staleLeads} leads novos</strong> há mais de 7 dias sem contato.`,
+            action: `onclick="navigateTo('leads')"`, label: 'Ver Leads'
+        });
+    }
+
+    // Pasta Vermelha há 30+ dias
+    if (redFolderCount > 0) {
+        alerts.push({
+            icon: '📁', color: '#ea580c', bg: '#fff7ed',
+            msg: `<strong>${redFolderCount} pacientes</strong> na Pasta Vermelha sem fechamento.`,
+            action: `onclick="navigateTo('red-folder')"`, label: 'Abrir Pasta'
+        });
+    }
+
+    // Meta semanal de agendamentos
+    const weeklyGoal = AppState.settings?.weeklyAppointmentsGoal || 80;
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - now.getDay() + 1);
+    weekStart.setHours(0, 0, 0, 0);
+    const thisWeekAppts = AppState.appointments.filter(a => new Date(a.createdAt) >= weekStart).length;
+    const remaining = weeklyGoal - thisWeekAppts;
+    if (remaining > 0) {
+        alerts.push({
+            icon: '🎯', color: '#7c3aed', bg: '#f5f3ff',
+            msg: `Meta semanal: faltam <strong>${remaining} agendamentos</strong> para bater a meta de ${weeklyGoal}.`,
+            action: '', label: ''
+        });
+    }
+
+    // Taxa de fechamento baixa
+    const totalVisited = AppState.leads.filter(l => l.status === 'visit' || l.saleStatus === 'sold' || l.saleStatus === 'lost').length;
+    const totalSold = AppState.leads.filter(l => l.saleStatus === 'sold').length;
+    const rate = totalVisited > 0 ? Math.round((totalSold / totalVisited) * 100) : 0;
+    if (totalVisited >= 5 && rate < 30) {
+        alerts.push({
+            icon: '📉', color: '#991b1b', bg: '#fef2f2',
+            msg: `Taxa de fechamento em <strong>${rate}%</strong>. Meta sugerida: acima de 30%.`,
+            action: '', label: ''
+        });
+    }
+
+    if (alerts.length === 0) {
+        alertsEl.innerHTML = `<p style="color:#16a34a;font-weight:600;">✅ Nenhum alerta no momento. Ótimo resultado!</p>`;
+        return;
+    }
+
+    alertsEl.innerHTML = alerts.map(a => `
+        <div style="display:flex;align-items:center;gap:0.75rem;padding:0.6rem 0.9rem;background:${a.bg};border-radius:8px;">
+            <span style="font-size:1.1rem;">${a.icon}</span>
+            <span style="flex:1;font-size:0.875rem;color:var(--gray-700);">${a.msg}</span>
+            ${a.action && a.label ? `<button class="btn btn-secondary btn-small" style="color:${a.color};border-color:${a.color};" ${a.action}>${a.label}</button>` : ''}
+        </div>
+    `).join('');
+}
+
+// Funil de conversão por etapa — barras horizontais
+function renderConversionFunnel(leads, appts, visits, sales) {
+    const el = document.getElementById('conversionFunnelContainer');
+    if (!el) return;
+
+    const steps = [
+        { label: '💬 Leads Captados', value: leads, color: '#3b82f6', bg: '#eff6ff' },
+        { label: '📅 Agendamentos', value: appts, color: '#8b5cf6', bg: '#f5f3ff' },
+        { label: '👥 Compareceram', value: visits, color: '#10b981', bg: '#f0fdf4' },
+        { label: '💰 Fecharam', value: sales, color: '#f59e0b', bg: '#fffbeb' }
+    ];
+
+    const max = Math.max(leads, 1);
+
+    el.innerHTML = steps.map((s, i) => {
+        const pct = Math.round((s.value / max) * 100);
+        const convPct = i > 0 && steps[i - 1].value > 0
+            ? Math.round((s.value / steps[i - 1].value) * 100) + '%'
+            : '';
+        return `
+            <div style="margin-bottom:1rem;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;font-size:0.82rem;font-weight:600;">
+                    <span style="color:var(--gray-700);">${s.label}</span>
+                    <div style="display:flex;gap:0.75rem;align-items:center;">
+                        ${convPct ? `<span style="font-size:0.72rem;color:var(--gray-400);">conv. ${convPct}</span>` : ''}
+                        <span style="color:${s.color};font-size:1rem;font-weight:800;">${s.value}</span>
+                    </div>
+                </div>
+                <div style="height:28px;background:var(--gray-100);border-radius:6px;overflow:hidden;position:relative;">
+                    <div style="width:${pct}%;height:100%;background:${s.color};border-radius:6px;transition:width 0.6s ease;display:flex;align-items:center;justify-content:flex-end;padding-right:8px;">
+                        ${pct > 15 ? `<span style="color:white;font-size:0.75rem;font-weight:700;">${pct}%</span>` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// Ranking por Canal
+function renderChannelRanking(filteredLeads) {
+    const el = document.getElementById('channelRankingTable');
+    if (!el) return;
+
+    const channels = {};
+    filteredLeads.forEach(l => {
+        const ch = l.channel || l.source || 'Outros';
+        if (!channels[ch]) channels[ch] = { leads: 0, appts: 0, sales: 0 };
+        channels[ch].leads++;
+        if (['scheduled', 'visit', 'converted'].includes(l.status)) channels[ch].appts++;
+        if (l.saleStatus === 'sold') channels[ch].sales++;
+    });
+
+    const rows = Object.entries(channels).sort((a, b) => b[1].leads - a[1].leads);
+
+    if (rows.length === 0) {
+        el.innerHTML = `<p style="color:var(--gray-400);text-align:center;padding:1rem;">Sem dados para o período selecionado.</p>`;
+        return;
+    }
+
+    el.innerHTML = `
+        <table style="width:100%;border-collapse:collapse;font-size:0.875rem;">
+            <thead>
+                <tr style="border-bottom:2px solid var(--gray-200);">
+                    <th style="text-align:left;padding:8px 12px;color:var(--gray-600);font-weight:600;">#</th>
+                    <th style="text-align:left;padding:8px 12px;color:var(--gray-600);font-weight:600;">Canal</th>
+                    <th style="text-align:center;padding:8px 12px;color:var(--gray-600);font-weight:600;">Leads</th>
+                    <th style="text-align:center;padding:8px 12px;color:var(--gray-600);font-weight:600;">Agendados</th>
+                    <th style="text-align:center;padding:8px 12px;color:var(--gray-600);font-weight:600;">Vendas</th>
+                    <th style="text-align:center;padding:8px 12px;color:var(--gray-600);font-weight:600;">Conv. %</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${rows.map(([ch, d], i) => {
+        const conv = d.leads > 0 ? Math.round((d.sales / d.leads) * 100) : 0;
+        const convColor = conv >= 20 ? '#16a34a' : conv >= 10 ? '#d97706' : '#dc2626';
+        return `
+                        <tr style="border-bottom:1px solid var(--gray-100);${i % 2 === 0 ? 'background:var(--gray-50);' : ''}">
+                            <td style="padding:10px 12px;color:var(--gray-400);font-weight:700;">${i + 1}</td>
+                            <td style="padding:10px 12px;font-weight:600;color:var(--gray-800);">${escapeHTML(ch)}</td>
+                            <td style="padding:10px 12px;text-align:center;font-weight:700;color:var(--primary-700);">${d.leads}</td>
+                            <td style="padding:10px 12px;text-align:center;color:var(--purple-700);font-weight:600;">${d.appts}</td>
+                            <td style="padding:10px 12px;text-align:center;color:#16a34a;font-weight:700;">${d.sales}</td>
+                            <td style="padding:10px 12px;text-align:center;">
+                                <span style="background:${conv >= 20 ? '#dcfce7' : conv >= 10 ? '#fef9c3' : '#fee2e2'};color:${convColor};padding:2px 8px;border-radius:10px;font-size:0.75rem;font-weight:700;">
+                                    ${conv}%
+                                </span>
+                            </td>
+                        </tr>
+                    `;
+    }).join('')}
+            </tbody>
+        </table>
+    `;
 }
 
 // Navigation for the detailed report
@@ -240,13 +522,8 @@ function changeReportMonth(delta) {
     let newMonth = reportState.currentMonth + delta;
     let newYear = reportState.currentYear;
 
-    if (newMonth < 0) {
-        newMonth = 11;
-        newYear--;
-    } else if (newMonth > 11) {
-        newMonth = 0;
-        newYear++;
-    }
+    if (newMonth < 0) { newMonth = 11; newYear--; }
+    else if (newMonth > 11) { newMonth = 0; newYear++; }
 
     reportState.currentMonth = newMonth;
     reportState.currentYear = newYear;
@@ -259,12 +536,10 @@ function renderWeeklyDetailedReport() {
     const display = document.getElementById('reportMonthDisplay');
     if (!container || !display) return;
 
-    // Update Month Display
     const dateDisplay = new Date(reportState.currentYear, reportState.currentMonth, 1);
     const monthName = dateDisplay.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
     display.textContent = monthName.charAt(0).toUpperCase() + monthName.slice(1);
 
-    // Get weeks of selected month
     const weeks = getWeeksOfMonth(reportState.currentYear, reportState.currentMonth);
 
     const aptGoal = AppState.settings?.weeklyAppointmentsGoal || 80;
@@ -358,14 +633,11 @@ function getWeeksOfMonth(year, month) {
     const firstOfMonth = new Date(year, month, 1);
     const lastOfMonth = new Date(year, month + 1, 0);
 
-    // Start with the Monday of the week containing the 1st of the month
     let currentDay = new Date(firstOfMonth);
     const dayOfWeek = currentDay.getDay();
     const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
     currentDay.setDate(currentDay.getDate() + diffToMonday);
 
-    // Keep adding weeks until we pass the end of the month
-    // We want to show 4 to 6 weeks depending on the layout
     while (currentDay <= lastOfMonth || (weeks.length < 5 && weeks.length < 6)) {
         const week = { start: new Date(currentDay), end: null, days: [] };
         for (let i = 0; i < 7; i++) {
@@ -374,8 +646,6 @@ function getWeeksOfMonth(year, month) {
             currentDay.setDate(currentDay.getDate() + 1);
         }
         weeks.push(week);
-
-        // Stop if we've passed the month and have enough weeks
         if (currentDay > lastOfMonth && weeks.length >= 4) break;
     }
     return weeks;
@@ -385,21 +655,13 @@ function calculateWeekStats(start, end) {
     const s = new Date(start); s.setHours(0, 0, 0, 0);
     const e = new Date(end); e.setHours(23, 59, 59, 999);
 
-    const stats = {
-        totalAppointments: 0,
-        totalVisits: 0,
-        days: {}
-    };
-
-    // Use a Set to avoid double counting visits from Lead + Appointment
+    const stats = { totalAppointments: 0, totalVisits: 0, days: {} };
     const uniqueVisitKeys = new Set();
 
-    // 1. Process Appointments
     AppState.appointments.forEach(apt => {
         const createDate = new Date(apt.createdAt);
         const aptDate = new Date(apt.date);
 
-        // A. Novos Agendamentos (Created In Week)
         if (createDate >= s && createDate <= e) {
             const dayKey = createDate.toDateString();
             if (!stats.days[dayKey]) stats.days[dayKey] = { appointments: 0, scheduledTotal: 0, visits: 0, sales: 0 };
@@ -407,18 +669,15 @@ function calculateWeekStats(start, end) {
             stats.totalAppointments++;
         }
 
-        // B. Agendados para o dia (Total scheduled for that day, excluding cancelled)
         if (aptDate >= s && aptDate <= e && apt.status !== 'cancelled') {
             const dayKey = aptDate.toDateString();
             if (!stats.days[dayKey]) stats.days[dayKey] = { appointments: 0, scheduledTotal: 0, visits: 0, sales: 0 };
             stats.days[dayKey].scheduledTotal++;
         }
 
-        // C. Visitas (Attended In Week from Agenda)
         if (aptDate >= s && aptDate <= e && (apt.status === 'completed' || apt.attended)) {
             const dayKey = aptDate.toDateString();
-            if (!stats.days[dayKey]) stats.days[dayKey] = { appointments: 0, scheduledTotal: 0, visits: 0 };
-
+            if (!stats.days[dayKey]) stats.days[dayKey] = { appointments: 0, scheduledTotal: 0, visits: 0, sales: 0 };
             const visitKey = `${apt.patientId}_${dayKey}`;
             if (!uniqueVisitKeys.has(visitKey)) {
                 stats.days[dayKey].visits++;
@@ -428,9 +687,7 @@ function calculateWeekStats(start, end) {
         }
     });
 
-    // 2. Process Leads (for visits that might not have a formal appointment object)
     AppState.leads.forEach(lead => {
-        // Fallback Priority: Locked visitDate > createdAt (Legacy)
         const d = new Date(lead.visitDate || lead.createdAt);
         if (d >= s && d <= e) {
             const dayKey = d.toDateString();
@@ -443,17 +700,12 @@ function calculateWeekStats(start, end) {
 
                 if (!uniqueVisitKeys.has(visitKey)) {
                     stats.days[dayKey].visits++;
-
-                    // CRITICAL: Any visit is ALSO a scheduled event for that day
-                    // This ensures "Show-up" rate is at least what was reached.
                     stats.days[dayKey].scheduledTotal++;
-
                     stats.totalVisits++;
                     uniqueVisitKeys.add(visitKey);
                 }
             }
 
-            // D. Vendas (Closed In Week)
             if (lead.saleStatus === 'sold') {
                 stats.days[dayKey].sales++;
             }
@@ -465,7 +717,6 @@ function calculateWeekStats(start, end) {
 
 // Render Charts
 function renderCharts(filteredLeads, filteredAppointments) {
-    // Destroy old charts
     Object.values(charts).forEach(chart => { if (chart && chart.destroy) chart.destroy(); });
 
     // --- Status Doughnut Chart ---
@@ -473,8 +724,8 @@ function renderCharts(filteredLeads, filteredAppointments) {
     if (ctxStatus) {
         const statusCounts = {};
         const statusLabels = {
-            'new': 'Novo', 'contacted': 'Contactado', 'scheduled': 'Agendado',
-            'visit': 'Visita', 'sold': 'Venda', 'lost': 'Perdido'
+            'new': 'Novo', 'in-contact': 'Em Contato', 'scheduled': 'Agendado',
+            'visit': 'Visita', 'converted': 'Convertido', 'not-converted': 'Não Convertido'
         };
         filteredLeads.forEach(l => {
             const s = l.status || 'new';
@@ -487,13 +738,9 @@ function renderCharts(filteredLeads, filteredAppointments) {
 
         charts.status = new Chart(ctxStatus.getContext('2d'), {
             type: 'doughnut',
-            data: {
-                labels: labels,
-                datasets: [{ data: data, backgroundColor: bgColors.slice(0, data.length), borderWidth: 2, borderColor: '#fff' }]
-            },
+            data: { labels, datasets: [{ data, backgroundColor: bgColors.slice(0, data.length), borderWidth: 2, borderColor: '#fff' }] },
             options: {
-                responsive: true,
-                maintainAspectRatio: false,
+                responsive: true, maintainAspectRatio: false,
                 plugins: { legend: { position: 'bottom', labels: { padding: 15, font: { family: "'Inter', sans-serif" } } } }
             }
         });
@@ -512,81 +759,119 @@ function renderCharts(filteredLeads, filteredAppointments) {
 
         charts.channel = new Chart(ctxChannel.getContext('2d'), {
             type: 'pie',
-            data: {
-                labels: Object.keys(channels),
-                datasets: [{ data: Object.values(channels), backgroundColor: channelColors.slice(0, Object.keys(channels).length), borderWidth: 2, borderColor: '#fff' }]
-            },
+            data: { labels: Object.keys(channels), datasets: [{ data: Object.values(channels), backgroundColor: channelColors.slice(0, Object.keys(channels).length), borderWidth: 2, borderColor: '#fff' }] },
             options: {
-                responsive: true,
-                maintainAspectRatio: false,
+                responsive: true, maintainAspectRatio: false,
                 plugins: { legend: { position: 'bottom', labels: { padding: 15, font: { family: "'Inter', sans-serif" } } } }
             }
         });
     }
 
-    // --- Daily Performance Chart (Bar Chart) ---
+    // --- Daily Performance Bar Chart ---
     const ctxDaily = document.getElementById('dailyPerformanceChart');
     if (ctxDaily) {
-        // Group appointments by creation date
         const dailyCounts = {};
         filteredAppointments.forEach(a => {
             const day = a.createdAt ? new Date(a.createdAt).toISOString().split('T')[0] : null;
-            if (day) {
-                dailyCounts[day] = (dailyCounts[day] || 0) + 1;
-            }
+            if (day) dailyCounts[day] = (dailyCounts[day] || 0) + 1;
         });
 
-        // Sort by date
         const sortedDays = Object.keys(dailyCounts).sort();
         const dailyGoal = AppState.settings?.dailyGoal || 5;
 
         charts.daily = new Chart(ctxDaily.getContext('2d'), {
             type: 'bar',
             data: {
-                labels: sortedDays.map(d => {
-                    const dt = new Date(d + 'T12:00:00');
-                    return dt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-                }),
+                labels: sortedDays.map(d => new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })),
                 datasets: [
                     {
                         label: 'Agendamentos Criados',
                         data: sortedDays.map(d => dailyCounts[d]),
                         backgroundColor: sortedDays.map(d => dailyCounts[d] >= dailyGoal ? '#10b981' : '#3b82f6'),
-                        borderRadius: 6,
-                        borderSkipped: false
+                        borderRadius: 6, borderSkipped: false
                     },
                     {
                         label: `Meta Diária (${dailyGoal})`,
                         data: sortedDays.map(() => dailyGoal),
-                        type: 'line',
-                        borderColor: '#ef4444',
-                        borderDash: [5, 5],
-                        borderWidth: 2,
-                        pointRadius: 0,
-                        fill: false
+                        type: 'line', borderColor: '#ef4444', borderDash: [5, 5],
+                        borderWidth: 2, pointRadius: 0, fill: false
                     }
                 ]
             },
             options: {
-                responsive: true,
-                maintainAspectRatio: false,
+                responsive: true, maintainAspectRatio: false,
                 scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: { stepSize: 1, font: { family: "'Inter', sans-serif" } },
-                        grid: { color: 'rgba(0,0,0,0.05)' }
-                    },
-                    x: {
-                        ticks: { font: { family: "'Inter', sans-serif", size: 11 } },
-                        grid: { display: false }
-                    }
+                    y: { beginAtZero: true, ticks: { stepSize: 1, font: { family: "'Inter', sans-serif" } }, grid: { color: 'rgba(0,0,0,0.05)' } },
+                    x: { ticks: { font: { family: "'Inter', sans-serif", size: 11 } }, grid: { display: false } }
                 },
-                plugins: {
-                    legend: { position: 'bottom', labels: { padding: 15, font: { family: "'Inter', sans-serif" } } }
-                }
+                plugins: { legend: { position: 'bottom', labels: { padding: 15, font: { family: "'Inter', sans-serif" } } } }
             }
         });
     }
+}
+
+// Novo gráfico: Evolução dos últimos 6 Meses
+function renderMonthlyEvolutionChart() {
+    const ctxEvol = document.getElementById('monthlyEvolutionChart');
+    if (!ctxEvol) return;
+    if (charts.evolution) { charts.evolution.destroy(); delete charts.evolution; }
+
+    const now = new Date();
+    const months = [];
+    for (let i = 5; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        months.push({
+            label: d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
+            start: new Date(d.getFullYear(), d.getMonth(), 1),
+            end: new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59)
+        });
+    }
+
+    const datasets = {
+        leads: [], appts: [], visits: [], sales: []
+    };
+
+    months.forEach(m => {
+        const mLeads = AppState.leads.filter(l => { const d = new Date(l.createdAt); return d >= m.start && d <= m.end; });
+        const mAppts = AppState.appointments.filter(a => { const d = new Date(a.createdAt); return d >= m.start && d <= m.end; });
+        const mSales = mLeads.filter(l => l.saleStatus === 'sold').length;
+
+        // Count unique visits in month
+        const visitKeys = new Set();
+        AppState.appointments.filter(a => {
+            const d = new Date(a.date); return d >= m.start && d <= m.end && (a.status === 'completed' || a.attended);
+        }).forEach(a => visitKeys.add(a.patientId + '_' + new Date(a.date).toDateString()));
+        mLeads.filter(l => l.status === 'visit' || l.saleStatus === 'sold' || l.saleStatus === 'lost').forEach(l => {
+            const d = new Date(l.visitDate || l.createdAt);
+            if (d >= m.start && d <= m.end) visitKeys.add((l.convertedFrom || l.id) + '_' + d.toDateString());
+        });
+
+        datasets.leads.push(mLeads.length);
+        datasets.appts.push(mAppts.length);
+        datasets.visits.push(visitKeys.size);
+        datasets.sales.push(mSales);
+    });
+
+    charts.evolution = new Chart(ctxEvol.getContext('2d'), {
+        type: 'line',
+        data: {
+            labels: months.map(m => m.label),
+            datasets: [
+                { label: '💬 Leads', data: datasets.leads, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.08)', tension: 0.4, borderWidth: 2.5, pointRadius: 4 },
+                { label: '📅 Agendamentos', data: datasets.appts, borderColor: '#8b5cf6', backgroundColor: 'rgba(139,92,246,0.08)', tension: 0.4, borderWidth: 2.5, pointRadius: 4 },
+                { label: '👥 Visitas', data: datasets.visits, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.08)', tension: 0.4, borderWidth: 2.5, pointRadius: 4 },
+                { label: '💰 Vendas', data: datasets.sales, borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.08)', tension: 0.4, borderWidth: 2.5, pointRadius: 4 }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: {
+                y: { beginAtZero: true, ticks: { stepSize: 1, font: { family: "'Inter', sans-serif" } }, grid: { color: 'rgba(0,0,0,0.05)' } },
+                x: { ticks: { font: { family: "'Inter', sans-serif", size: 11 } }, grid: { display: false } }
+            },
+            plugins: { legend: { position: 'bottom', labels: { padding: 12, font: { family: "'Inter', sans-serif", size: 12 } } } }
+        }
+    });
 }
 
 // Export functions
@@ -596,34 +881,26 @@ window.resetReportDates = resetReportDates;
 window.changeReportMonth = changeReportMonth;
 window.showDayDetails = showDayDetails;
 
-// Show Detailed Breakdown for a Specific Day
+// Show Detailed Breakdown for a Specific Day (preserved)
 function showDayDetails(isoDate) {
     const targetDate = new Date(isoDate);
     const dateStr = targetDate.toISOString().split('T')[0];
     const displayDate = targetDate.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
 
-    // 1. Agendamentos Feitos (Created on this day)
     const createdLeads = AppState.leads.filter(l => l.createdAt.startsWith(dateStr));
     const createdAppts = AppState.appointments.filter(a => a.createdAt && a.createdAt.startsWith(dateStr));
-
-    // 2. Agendados para o Dia (Scheduled for this date)
     const scheduledAppts = AppState.appointments.filter(a => a.date.startsWith(dateStr) && a.status !== 'cancelled');
 
-    // 3. Comparecimentos (Attended/Completed on this date)
     const uniqueVisits = new Map();
     const salesList = [];
 
-    // A. From Agenda
     scheduledAppts.forEach(a => {
         if (a.attended || a.status === 'completed') {
             uniqueVisits.set(a.patientId + '_' + dateStr, { name: a.patientName, type: 'Agenda', detail: a.procedure });
         }
-        if (a.isSale) {
-            salesList.push({ name: a.patientName, detail: `💰 R$ ${a.saleValue?.toFixed(2) || '0,00'}` });
-        }
+        if (a.isSale) salesList.push({ name: a.patientName, detail: `💰 R$ ${a.saleValue?.toFixed(2) || '0,00'}` });
     });
 
-    // B. From Leads
     AppState.leads.forEach(l => {
         const d = l.visitDate || l.createdAt;
         if (d.startsWith(dateStr)) {
@@ -631,13 +908,9 @@ function showDayDetails(isoDate) {
                 const patient = AppState.patients.find(p => p.convertedFrom === l.id);
                 const entityId = patient ? patient.id : l.id;
                 const key = entityId + '_' + dateStr;
-                if (!uniqueVisits.has(key)) {
-                    uniqueVisits.set(key, { name: l.name, type: 'Lead', detail: l.saleStatus === 'sold' ? '💰 Venda' : 'Visita' });
-                }
+                if (!uniqueVisits.has(key)) uniqueVisits.set(key, { name: l.name, type: 'Lead', detail: l.saleStatus === 'sold' ? '💰 Venda' : 'Visita' });
             }
-            if (l.saleStatus === 'sold') {
-                salesList.push({ name: l.name, detail: `💰 Venda (${l.interest || 'Avaliação'})` });
-            }
+            if (l.saleStatus === 'sold') salesList.push({ name: l.name, detail: `💰 Venda (${l.interest || 'Avaliação'})` });
         }
     });
 
@@ -653,43 +926,32 @@ function showDayDetails(isoDate) {
         </ul>`;
     };
 
-    const modalHTML = `
+    openModal(`Detalhamento: ${capitalize(displayDate)}`, `
         <div style="display: flex; flex-direction: column; gap: 1.5rem;">
             <section>
                 <h4 style="color: var(--blue-700); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 8px;">
-                    <span style="background: var(--blue-100); padding: 4px; border-radius: 4px;">🛒</span> 
-                    Agendamentos Feitos (Novos Registros)
+                    <span style="background: var(--blue-100); padding: 4px; border-radius: 4px;">🛒</span> Agendamentos Feitos (Novos Registros)
                 </h4>
                 ${formatList([...createdLeads, ...createdAppts], 'Nenhum agendamento criado neste dia.')}
             </section>
-
             <section>
                 <h4 style="color: var(--primary-700); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 8px;">
-                    <span style="background: var(--primary-100); padding: 4px; border-radius: 4px;">📅</span> 
-                    Esperados para o Dia (Total Agendado)
+                    <span style="background: var(--primary-100); padding: 4px; border-radius: 4px;">📅</span> Esperados para o Dia (Total Agendado)
                 </h4>
                 ${formatList(scheduledAppts, 'Ninguém agendado para este dia.')}
             </section>
-
             <section>
                 <h4 style="color: var(--purple-700); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 8px;">
-                    <span style="background: var(--purple-100); padding: 4px; border-radius: 4px;">👥</span> 
-                    Comparecimentos (Visitas Reais)
+                    <span style="background: var(--purple-100); padding: 4px; border-radius: 4px;">👥</span> Comparecimentos (Visitas Reais)
                 </h4>
                 ${formatList(Array.from(uniqueVisits.values()), 'Nenhum comparecimento registrado.')}
             </section>
-
             <section>
                 <h4 style="color: var(--success-700); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 8px;">
-                    <span style="background: var(--success-100); padding: 4px; border-radius: 4px;">💰</span> 
-                    Vendas Realizadas
+                    <span style="background: var(--success-100); padding: 4px; border-radius: 4px;">💰</span> Vendas Realizadas
                 </h4>
                 ${formatList(salesList, 'Nenhuma venda fechada neste dia.')}
             </section>
         </div>
-    `;
-
-    openModal(`Detalhamento: ${capitalize(displayDate)}`, modalHTML, [
-        { label: 'Fechar', class: 'btn-secondary', onclick: 'closeModal()' }
-    ]);
+    `, [{ label: 'Fechar', class: 'btn-secondary', onclick: 'closeModal()' }]);
 }

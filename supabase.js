@@ -110,7 +110,7 @@ const DB_COLUMNS = {
     ],
     old_patients: [
         'id', 'user_id', 'name', 'phone', 'last_consultation', 'interest',
-        'status', 'notes', 'created_at', 'updated_at'
+        'status', 'notes', 'recovered_at', 'created_at', 'updated_at'
     ]
 };
 
@@ -201,13 +201,15 @@ const FIELD_MAP = {
     old_patients: {
         toDb: {
             lastConsultation: 'last_consultation',
+            recoveredAt: 'recovered_at',
             createdAt: 'created_at',
             updatedAt: 'updated_at'
         },
         toApp: {
             last_consultation: 'lastConsultation',
+            recovered_at: 'recoveredAt',
             created_at: 'createdAt',
-            updated_at: 'updated_at'
+            updated_at: 'updatedAt'
         }
     }
 };
