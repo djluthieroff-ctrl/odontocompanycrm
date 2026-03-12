@@ -42,7 +42,7 @@ function showLoading(text = 'Carregando...') {
     const overlay = document.getElementById('loadingOverlay');
     const textEl = document.getElementById('loadingText');
     if (overlay) {
-        if (textEl) textEl.textContent = text;
+        if (textEl) textEl.textContent = SecurityUtils.sanitizeHTML(text);
         overlay.style.display = 'flex';
     }
 }
@@ -92,7 +92,7 @@ function showNotification(message, type = 'info') {
 
     toast.innerHTML = `
         <span>${icons[type] || icons.info}</span>
-        <span>${message}</span>
+        <span>${SecurityUtils.sanitizeHTML(message)}</span>
     `;
 
     container.appendChild(toast);
@@ -140,6 +140,12 @@ window.showNotification = showNotification;
 function debounce(func, wait) {
     let timeout;
     return function executedFunction(...args) {
+        // Rate limiting check
+        if (!SecurityUtils.checkRateLimit('debounce_' + func.name, 10, 10000)) {
+            console.warn('Rate limit exceeded for debounced function');
+            return;
+        }
+
         const later = () => {
             clearTimeout(timeout);
             func(...args);
@@ -149,3 +155,47 @@ function debounce(func, wait) {
     };
 }
 window.debounce = debounce;
+
+// ─── Input Validation Utility ───────────────────────────────────────────
+function validateInput(value, type = 'string', maxLength = 255) {
+    return SecurityUtils.validateInput(value, type, maxLength);
+}
+
+// ─── Currency Formatting ────────────────────────────────────────────────
+function formatCurrency(value) {
+    const numValue = parseFloat(value);
+    if (isNaN(numValue)) return 'R$ 0,00';
+    return new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+    }).format(numValue);
+}
+
+// ─── Date Formatting ────────────────────────────────────────────────────
+function formatDate(dateString) {
+    if (!dateString) return '';
+    try {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return '';
+        return date.toLocaleDateString('pt-BR');
+    } catch (e) {
+        return '';
+    }
+}
+
+function formatDateTime(dateString) {
+    if (!dateString) return '';
+    try {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return '';
+        return date.toLocaleString('pt-BR');
+    } catch (e) {
+        return '';
+    }
+}
+
+// Export additional utilities
+window.validateInput = validateInput;
+window.formatCurrency = formatCurrency;
+window.formatDate = formatDate;
+window.formatDateTime = formatDateTime;

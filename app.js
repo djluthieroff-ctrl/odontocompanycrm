@@ -52,6 +52,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // Initialize App UI
 function initializeAppUI() {
+    // Initialize accessibility features
+    if (typeof initAccessibility === 'function') {
+        initAccessibility();
+    }
+
     initializeNavigation();
     initializeGlobalSearch();
 
