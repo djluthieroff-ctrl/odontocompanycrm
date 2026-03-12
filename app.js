@@ -14,6 +14,11 @@ const AppState = {
         commissionValue: 50,
         weeklyAppointmentsGoal: 80,
         weeklyVisitsGoal: 40
+    },
+    finances: {
+        receivedPayments: [],
+        deviceMaintenances: [],
+        debtorQueue: []
     }
 };
 
@@ -23,7 +28,10 @@ const STORAGE_KEYS = {
     PATIENTS: 'odontocrm_patients',
     APPOINTMENTS: 'odontocrm_appointments',
     SETTINGS: 'odontocrm_settings',
-    OLD_PATIENTS: 'odontocrm_old_patients'
+    OLD_PATIENTS: 'odontocrm_old_patients',
+    FINANCE_PAYMENTS: 'odontocrm_finance_payments',
+    FINANCE_MAINTENANCE: 'odontocrm_finance_maintenance',
+    FINANCE_DEBTORS: 'odontocrm_finance_debtors'
 };
 
 // Initialize App
@@ -194,6 +202,19 @@ function loadDataFromStorage() {
         if (settingsData) AppState.settings = JSON.parse(settingsData);
         const oldPatientsData = localStorage.getItem(STORAGE_KEYS.OLD_PATIENTS);
         if (oldPatientsData) AppState.oldPatients = JSON.parse(oldPatientsData);
+        const paymentsData = localStorage.getItem(STORAGE_KEYS.FINANCE_PAYMENTS);
+        const maintenanceData = localStorage.getItem(STORAGE_KEYS.FINANCE_MAINTENANCE);
+        const debtorsData = localStorage.getItem(STORAGE_KEYS.FINANCE_DEBTORS);
+        if (!AppState.finances) {
+            AppState.finances = {
+                receivedPayments: [],
+                deviceMaintenances: [],
+                debtorQueue: []
+            };
+        }
+        if (paymentsData) AppState.finances.receivedPayments = JSON.parse(paymentsData);
+        if (maintenanceData) AppState.finances.deviceMaintenances = JSON.parse(maintenanceData);
+        if (debtorsData) AppState.finances.debtorQueue = JSON.parse(debtorsData);
 
         // DEFAULT SETTINGS IF MISSING
         if (!AppState.settings || Object.keys(AppState.settings).length === 0) {
@@ -210,6 +231,9 @@ function loadDataFromStorage() {
         if (!Array.isArray(AppState.leads)) AppState.leads = [];
         if (!Array.isArray(AppState.patients)) AppState.patients = [];
         if (!Array.isArray(AppState.appointments)) AppState.appointments = [];
+        if (!Array.isArray(AppState.finances.receivedPayments)) AppState.finances.receivedPayments = [];
+        if (!Array.isArray(AppState.finances.deviceMaintenances)) AppState.finances.deviceMaintenances = [];
+        if (!Array.isArray(AppState.finances.debtorQueue)) AppState.finances.debtorQueue = [];
 
         console.log('✅ Data loaded successfully:', {
             leads: AppState.leads.length,
@@ -243,6 +267,9 @@ function saveToStorage(key, data) {
             tableMap[STORAGE_KEYS.APPOINTMENTS] = 'appointments';
             tableMap[STORAGE_KEYS.SETTINGS] = 'settings';
             tableMap[STORAGE_KEYS.OLD_PATIENTS] = 'old_patients';
+            tableMap[STORAGE_KEYS.FINANCE_PAYMENTS] = 'received_payments';
+            tableMap[STORAGE_KEYS.FINANCE_MAINTENANCE] = 'device_maintenances';
+            tableMap[STORAGE_KEYS.FINANCE_DEBTORS] = 'debtor_notifications';
             const table = tableMap[key];
             if (table) {
                 // Fire-and-forget async save to Supabase

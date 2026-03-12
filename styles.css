@@ -535,6 +535,217 @@ body {
     gap: var(--spacing-lg);
 }
 
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: var(--spacing-lg);
+}
+
+.finance-layout {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: var(--spacing-lg);
+    margin-top: var(--spacing-md);
+}
+
+.finance-section {
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-xl);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+}
+
+.finance-section--wide {
+    grid-column: span 2;
+}
+
+.finance-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--spacing-lg);
+    flex-wrap: wrap;
+}
+
+.finance-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.finance-subtitle {
+    color: var(--gray-500);
+    font-size: 0.9rem;
+}
+
+.finance-summary-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: var(--spacing-lg);
+}
+
+.finance-summary-card {
+    padding: var(--spacing-md);
+    border-radius: var(--radius-lg);
+    border: 1px dashed var(--gray-200);
+    background: var(--gray-50);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--spacing-md);
+    font-size: 0.9rem;
+}
+
+.finance-table-wrapper {
+    overflow-x: auto;
+}
+
+.finance-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.finance-table th,
+.finance-table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--gray-100);
+    text-align: left;
+}
+
+.finance-table th {
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    color: var(--gray-500);
+    letter-spacing: 0.05em;
+}
+
+.finance-table-subtext {
+    font-size: 0.75rem;
+    color: var(--gray-500);
+}
+
+.finance-maintenance-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.finance-maintenance-item {
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-md);
+    display: flex;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+    flex-wrap: wrap;
+    background: var(--gray-50);
+}
+
+.finance-maintenance-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    font-size: 0.85rem;
+    color: var(--gray-600);
+    flex: 1;
+    min-width: 180px;
+}
+
+.finance-maintenance-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    align-items: flex-end;
+}
+
+.finance-reminders {
+    margin-top: var(--spacing-sm);
+}
+
+.finance-reminder-card {
+    background: #f4f3ff;
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-md);
+    border: 1px solid var(--primary-100);
+}
+
+.finance-reminder-card ul {
+    margin: 0;
+    padding-left: 1rem;
+    color: var(--gray-700);
+}
+
+.finance-debtor-filters {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: var(--spacing-md);
+}
+
+.finance-debtor-cta {
+    display: flex;
+    gap: var(--spacing-sm);
+    flex-wrap: wrap;
+}
+
+.finance-debtor-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.finance-debtor-item {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-sm);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    background: var(--gray-50);
+}
+
+.finance-debtor-item input[type=\"checkbox\"] {
+    accent-color: var(--primary-600);
+    transform: scale(1.2);
+}
+
+.finance-debtor-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    color: var(--gray-600);
+    text-align: right;
+}
+
+.finance-debtor-meta span {
+    display: inline-block;
+}
+
+@media (max-width: 1024px) {
+    .finance-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .finance-section--wide {
+        grid-column: span 1;
+    }
+
+    .finance-debtor-item {
+        grid-template-columns: auto 1fr;
+        text-align: left;
+    }
+
+    .finance-debtor-meta {
+        text-align: left;
+    }
+}
+
 /* Modal */
 #modalContainer {
     display: none;

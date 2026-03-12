@@ -114,6 +114,52 @@ CREATE TABLE IF NOT EXISTS old_patients (
 );
 
 -- =====================================================
+-- 6. FINANCE TABLES
+-- =====================================================
+CREATE TABLE IF NOT EXISTS received_payments (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    patient_name TEXT DEFAULT '',
+    origin TEXT,
+    category TEXT DEFAULT 'outros' CHECK (category IN ('inicio','recorrente','ortodontia','outros')),
+    amount NUMERIC DEFAULT 0,
+    method TEXT,
+    notes TEXT,
+    payment_date TIMESTAMPTZ DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS device_maintenances (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    device TEXT NOT NULL,
+    provider TEXT,
+    cost NUMERIC DEFAULT 0,
+    due_date TIMESTAMPTZ NOT NULL,
+    status TEXT DEFAULT 'pending' CHECK (status IN ('pending','scheduled','negotiating','paid')),
+    notes TEXT,
+    paid_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS debtor_notifications (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    name TEXT NOT NULL,
+    phone TEXT,
+    channel TEXT DEFAULT 'whatsapp' CHECK (channel IN ('whatsapp','sms','email')),
+    amount NUMERIC DEFAULT 0,
+    overdue_days INTEGER DEFAULT 0,
+    status TEXT DEFAULT 'overdue' CHECK (status IN ('overdue','negotiating')),
+    notes TEXT,
+    last_contacted TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
+);
+
+-- =====================================================
 -- 5. UNISOFT SYNC TABLE (for n8n Firebird integration)
 -- =====================================================
 CREATE TABLE IF NOT EXISTS unisoft_sync (
@@ -136,6 +182,9 @@ ALTER TABLE patients ENABLE ROW LEVEL SECURITY;
 ALTER TABLE appointments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE old_patients ENABLE ROW LEVEL SECURITY;
+ALTER TABLE received_payments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE device_maintenances ENABLE ROW LEVEL SECURITY;
+ALTER TABLE debtor_notifications ENABLE ROW LEVEL SECURITY;
 
 -- Leads policies
 CREATE POLICY "Users can view own leads" ON leads
@@ -185,6 +234,36 @@ CREATE POLICY "Users can update own old patients" ON old_patients
 CREATE POLICY "Users can delete own old patients" ON old_patients
     FOR DELETE USING (auth.uid() = user_id);
 
+-- Received payments policies
+CREATE POLICY "Users can view own received payments" ON received_payments
+    FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own received payments" ON received_payments
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own received payments" ON received_payments
+    FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete own received payments" ON received_payments
+    FOR DELETE USING (auth.uid() = user_id);
+
+-- Maintenance policies
+CREATE POLICY "Users can view own maintenances" ON device_maintenances
+    FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own maintenances" ON device_maintenances
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own maintenances" ON device_maintenances
+    FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete own maintenances" ON device_maintenances
+    FOR DELETE USING (auth.uid() = user_id);
+
+-- Debtor notifications policies
+CREATE POLICY "Users can view own debtors" ON debtor_notifications
+    FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own debtors" ON debtor_notifications
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own debtors" ON debtor_notifications
+    FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete own debtors" ON debtor_notifications
+    FOR DELETE USING (auth.uid() = user_id);
+
 -- Unisoft Sync: Allow n8n service role access (no RLS - managed by service key)
 -- The anon key cannot access this table, only the service_role key from n8n
 ALTER TABLE unisoft_sync ENABLE ROW LEVEL SECURITY;
@@ -203,6 +282,9 @@ CREATE INDEX IF NOT EXISTS idx_appointments_patient_id ON appointments(patient_i
 CREATE INDEX IF NOT EXISTS idx_old_patients_user_id ON old_patients(user_id);
 CREATE INDEX IF NOT EXISTS idx_old_patients_status ON old_patients(status);
 CREATE INDEX IF NOT EXISTS idx_unisoft_sync_processed ON unisoft_sync(processed);
+CREATE INDEX IF NOT EXISTS idx_received_payments_user_id ON received_payments(user_id);
+CREATE INDEX IF NOT EXISTS idx_device_maintenances_user_id ON device_maintenances(user_id);
+CREATE INDEX IF NOT EXISTS idx_debtor_notifications_user_id ON debtor_notifications(user_id);
 
 -- =====================================================
 -- 8. AUTO-UPDATE updated_at TRIGGER
@@ -233,6 +315,18 @@ CREATE TRIGGER update_settings_updated_at
 
 CREATE TRIGGER update_old_patients_updated_at
     BEFORE UPDATE ON old_patients
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_received_payments_updated_at
+    BEFORE UPDATE ON received_payments
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_device_maintenances_updated_at
+    BEFORE UPDATE ON device_maintenances
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_debtor_notifications_updated_at
+    BEFORE UPDATE ON debtor_notifications
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- =====================================================

@@ -111,6 +111,18 @@ const DB_COLUMNS = {
     old_patients: [
         'id', 'user_id', 'name', 'phone', 'last_consultation', 'interest',
         'status', 'notes', 'recovered_at', 'created_at', 'updated_at'
+    ],
+    received_payments: [
+        'id', 'legacy_id', 'user_id', 'patient_name', 'origin', 'category',
+        'amount', 'method', 'notes', 'payment_date', 'created_at', 'updated_at'
+    ],
+    device_maintenances: [
+        'id', 'legacy_id', 'user_id', 'device', 'provider', 'cost', 'due_date',
+        'status', 'notes', 'paid_at', 'created_at', 'updated_at'
+    ],
+    debtor_notifications: [
+        'id', 'legacy_id', 'user_id', 'name', 'phone', 'channel', 'amount',
+        'overdue_days', 'status', 'notes', 'last_contacted', 'created_at', 'updated_at'
     ]
 };
 
@@ -211,6 +223,48 @@ const FIELD_MAP = {
             created_at: 'createdAt',
             updated_at: 'updatedAt'
         }
+    },
+    received_payments: {
+        toDb: {
+            patientName: 'patient_name',
+            paymentDate: 'payment_date',
+            createdAt: 'created_at',
+            updatedAt: 'updated_at'
+        },
+        toApp: {
+            patient_name: 'patientName',
+            payment_date: 'paymentDate',
+            created_at: 'createdAt',
+            updated_at: 'updatedAt'
+        }
+    },
+    device_maintenances: {
+        toDb: {
+            dueDate: 'due_date',
+            paidAt: 'paid_at',
+            createdAt: 'created_at',
+            updatedAt: 'updated_at'
+        },
+        toApp: {
+            due_date: 'dueDate',
+            paid_at: 'paidAt',
+            created_at: 'createdAt',
+            updated_at: 'updatedAt'
+        }
+    },
+    debtor_notifications: {
+        toDb: {
+            overdueDays: 'overdue_days',
+            lastContacted: 'last_contacted',
+            createdAt: 'created_at',
+            updatedAt: 'updated_at'
+        },
+        toApp: {
+            overdue_days: 'overdueDays',
+            last_contacted: 'lastContacted',
+            created_at: 'createdAt',
+            updated_at: 'updatedAt'
+        }
     }
 };
 
@@ -307,12 +361,15 @@ async function loadDataFromSupabase() {
             }
         }
 
-        const [leadsRes, patientsRes, appointmentsRes, settingsRes, oldPatientsRes] = await Promise.all([
+        const [leadsRes, patientsRes, appointmentsRes, settingsRes, oldPatientsRes, paymentsRes, maintenanceRes, debtorsRes] = await Promise.all([
             fetchTable('leads'),
             fetchTable('patients'),
             fetchTable('appointments'),
             fetchTable('settings'),
-            fetchTable('old_patients')
+            fetchTable('old_patients'),
+            fetchTable('received_payments'),
+            fetchTable('device_maintenances'),
+            fetchTable('debtor_notifications')
         ]);
 
         if (leadsRes.data) AppState.leads = leadsRes.data.map(row => mapToApp('leads', row));
@@ -320,6 +377,9 @@ async function loadDataFromSupabase() {
         if (appointmentsRes.data) AppState.appointments = appointmentsRes.data.map(row => mapToApp('appointments', row));
         if (settingsRes.data) AppState.settings = mapToApp('settings', settingsRes.data);
         if (oldPatientsRes.data) AppState.oldPatients = oldPatientsRes.data.map(row => mapToApp('old_patients', row));
+        if (paymentsRes.data) AppState.finances.receivedPayments = paymentsRes.data.map(row => mapToApp('received_payments', row));
+        if (maintenanceRes.data) AppState.finances.deviceMaintenances = maintenanceRes.data.map(row => mapToApp('device_maintenances', row));
+        if (debtorsRes.data) AppState.finances.debtorQueue = debtorsRes.data.map(row => mapToApp('debtor_notifications', row));
 
         // Validate
         if (!Array.isArray(AppState.leads)) AppState.leads = [];
@@ -339,6 +399,9 @@ async function loadDataFromSupabase() {
         localStorage.setItem(STORAGE_KEYS.APPOINTMENTS, JSON.stringify(AppState.appointments));
         if (AppState.settings) localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(AppState.settings));
         localStorage.setItem('odontocrm_old_patients', JSON.stringify(AppState.oldPatients));
+        localStorage.setItem('odontocrm_finance_payments', JSON.stringify(AppState.finances.receivedPayments));
+        localStorage.setItem('odontocrm_finance_maintenance', JSON.stringify(AppState.finances.deviceMaintenances));
+        localStorage.setItem('odontocrm_finance_debtors', JSON.stringify(AppState.finances.debtorQueue));
 
         return true;
     } catch (error) {
