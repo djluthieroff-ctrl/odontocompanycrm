@@ -1,6 +1,8 @@
 // Error Handling Utilities - CRM Odonto Company
 // ================================================
 
+const safeEnv = typeof process !== 'undefined' && process.env ? process.env : {};
+
 /**
  * Centralized error handler
  */
@@ -8,7 +10,7 @@ class ErrorHandler {
     constructor() {
         this.errorLog = [];
         this.maxLogSize = 100;
-        this.isDevelopment = process.env.NODE_ENV !== 'production';
+        this.isDevelopment = safeEnv.NODE_ENV !== 'production';
     }
 
     /**
