@@ -106,7 +106,9 @@ const DB_COLUMNS = {
     ],
     settings: [
         'id', 'user_id', 'crc_name', 'daily_goal', 'commission_value',
-        'weekly_appointments_goal', 'weekly_visits_goal', 'updated_at'
+        'weekly_appointments_goal', 'weekly_visits_goal', 'updated_at',
+        'zapi_instance', 'zapi_token', 'zapi_client_token',
+        'chatwoot_account_id', 'n8n_webhook_leads', 'n8n_webhook_appointments'
     ],
     old_patients: [
         'id', 'user_id', 'name', 'phone', 'last_consultation', 'interest',
@@ -199,7 +201,13 @@ const FIELD_MAP = {
             commissionValue: 'commission_value',
             weeklyAppointmentsGoal: 'weekly_appointments_goal',
             weeklyVisitsGoal: 'weekly_visits_goal',
-            updatedAt: 'updated_at'
+            updatedAt: 'updated_at',
+            zapiInstance: 'zapi_instance',
+            zapiToken: 'zapi_token',
+            zapiClientToken: 'zapi_client_token',
+            n8nWebhookLeads: 'n8n_webhook_leads',
+            n8nWebhookAppointments: 'n8n_webhook_appointments',
+            chatwootAccountId: 'chatwoot_account_id'
         },
         toApp: {
             crc_name: 'crcName',
@@ -207,7 +215,13 @@ const FIELD_MAP = {
             commission_value: 'commissionValue',
             weekly_appointments_goal: 'weeklyAppointmentsGoal',
             weekly_visits_goal: 'weeklyVisitsGoal',
-            updated_at: 'updatedAt'
+            updated_at: 'updatedAt',
+            zapi_instance: 'zapiInstance',
+            zapi_token: 'zapiToken',
+            zapi_client_token: 'zapiClientToken',
+            n8n_webhook_leads: 'n8nWebhookLeads',
+            n8n_webhook_appointments: 'n8nWebhookAppointments',
+            chatwoot_account_id: 'chatwootAccountId'
         }
     },
     old_patients: {

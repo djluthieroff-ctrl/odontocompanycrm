@@ -47,19 +47,53 @@ function renderSettingsView() {
                 </div>
 
                 <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid var(--gray-200);">
-                <h4 style="margin-bottom: 1rem; color: var(--gray-700); font-size: 1.1rem;">🎯 Metas Semanais</h4>
+                <h4 style="margin-bottom: 1rem; color: var(--gray-700); font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem;">
+                    🔌 Integrações (API & Webhooks)
+                </h4>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                    <div class="form-group">
-                        <label class="form-label">Meta de Agendamentos / Semana</label>
-                        <input type="number" class="form-input" name="weeklyAppointmentsGoal" value="${settings.weeklyAppointmentsGoal || 80}" min="1" required>
+                <div style="display: grid; gap: 1.5rem;">
+                    <!-- Z-API -->
+                    <div style="background: var(--gray-50); padding: var(--spacing-md); border-radius: var(--radius-md); border: 1px solid var(--gray-200);">
+                        <h5 style="margin-bottom: 0.75rem; color: var(--gray-800); font-size: 0.9rem;">🟦 Z-API (WhatsApp)</h5>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div class="form-group">
+                                <label class="form-label">ID da Instância</label>
+                                <input type="text" class="form-input" name="zapiInstance" value="${escapeHTML(settings.zapiInstance || '')}" placeholder="Ex: 3C...">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Instance Token</label>
+                                <input type="password" class="form-input" name="zapiToken" value="${escapeHTML(settings.zapiToken || '')}" placeholder="Seu Token">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Client Token</label>
+                            <input type="password" class="form-input" name="zapiClientToken" value="${escapeHTML(settings.zapiClientToken || '')}" placeholder="Token do Cliente">
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Meta de Visitas / Semana</label>
-                        <input type="number" class="form-input" name="weeklyVisitsGoal" value="${settings.weeklyVisitsGoal || 40}" min="1" required>
+
+                    <!-- Webhooks n8n -->
+                    <div style="background: var(--gray-50); padding: var(--spacing-md); border-radius: var(--radius-md); border: 1px solid var(--gray-200);">
+                        <h5 style="margin-bottom: 0.75rem; color: var(--gray-800); font-size: 0.9rem;">🤖 n8n / Webhooks</h5>
+                        <div class="form-group">
+                            <label class="form-label">Webhook URL: Novos Leads</label>
+                            <input type="url" class="form-input" name="n8nWebhookLeads" value="${escapeHTML(settings.n8nWebhookLeads || '')}" placeholder="https://n8n.seu-servidor.com/webhook/...">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Webhook URL: Novos Agendamentos</label>
+                            <input type="url" class="form-input" name="n8nWebhookAppointments" value="${escapeHTML(settings.n8nWebhookAppointments || '')}" placeholder="https://n8n.seu-servidor.com/webhook/...">
+                        </div>
+                    </div>
+
+                    <!-- Chatwoot -->
+                    <div style="background: var(--gray-50); padding: var(--spacing-md); border-radius: var(--radius-md); border: 1px solid var(--gray-200);">
+                        <h5 style="margin-bottom: 0.75rem; color: var(--gray-800); font-size: 0.9rem;">💬 Chatwoot</h5>
+                        <div class="form-group">
+                            <label class="form-label">ID da Conta (Account ID)</label>
+                            <input type="text" class="form-input" name="chatwootAccountId" value="${escapeHTML(settings.chatwootAccountId || '')}" placeholder="Ex: 1">
+                        </div>
                     </div>
                 </div>
-                
+
                 <button type="submit" class="btn btn-primary" style="margin-top: var(--spacing-lg);">
                     💾 Salvar Configurações
                 </button>
@@ -228,7 +262,13 @@ function saveSettings(event) {
         dailyGoal: parseInt(formData.get('dailyGoal')),
         commissionValue: parseFloat(formData.get('commissionValue')),
         weeklyAppointmentsGoal: parseInt(formData.get('weeklyAppointmentsGoal')) || 80,
-        weeklyVisitsGoal: parseInt(formData.get('weeklyVisitsGoal')) || 40
+        weeklyVisitsGoal: parseInt(formData.get('weeklyVisitsGoal')) || 40,
+        zapiInstance: formData.get('zapiInstance') || '',
+        zapiToken: formData.get('zapiToken') || '',
+        zapiClientToken: formData.get('zapiClientToken') || '',
+        n8nWebhookLeads: formData.get('n8nWebhookLeads') || '',
+        n8nWebhookAppointments: formData.get('n8nWebhookAppointments') || '',
+        chatwootAccountId: formData.get('chatwootAccountId') || ''
     };
 
     saveToStorage(STORAGE_KEYS.SETTINGS, AppState.settings);
