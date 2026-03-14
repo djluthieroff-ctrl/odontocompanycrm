@@ -389,14 +389,18 @@ function renderLeadsList() {
                             </h5>
                             <div class="interaction-timeline" style="display: flex; flex-direction: column; gap: var(--spacing-sm);">
                                 ${lead.interactions && lead.interactions.length > 0 ?
-                    lead.interactions.map(idx => `
-                                        <div class="interaction-item" style="background: var(--gray-50); padding: var(--spacing-sm) var(--spacing-md); border-radius: var(--radius-md); border-left: 3px solid var(--primary-300);">
-                                            <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--gray-500); margin-bottom: 0.25rem;">
-                                                <span>${formatDateTime(idx.date)}</span>
-                                            </div>
-                                            <p style="font-size: 0.875rem; color: var(--gray-700); margin: 0;">${escapeHTML(idx.note)}</p>
-                                        </div>
-                                    `).join('')
+                    lead.interactions.map(idx => {
+                        const isChatwoot = idx.note.startsWith('💬 Chatwoot:');
+                        return `
+                            <div class="interaction-item" style="background: var(--gray-50); padding: var(--spacing-sm) var(--spacing-md); border-radius: var(--radius-md); border-left: 3px solid ${isChatwoot ? '#8b5cf6' : 'var(--primary-300)'};">
+                                <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--gray-500); margin-bottom: 0.25rem;">
+                                    <span>${formatDateTime(idx.date)}</span>
+                                    ${isChatwoot ? '<span style="color: #8b5cf6; font-weight: 700;">󱔗 CHATWOOT</span>' : ''}
+                                </div>
+                                <p style="font-size: 0.875rem; color: var(--gray-700); margin: 0;">${escapeHTML(idx.note)}</p>
+                            </div>
+                        `;
+                    }).join('')
                     : '<p style="font-size: 0.875rem; color: var(--gray-400); font-style: italic;">Nenhuma interação registrada.</p>'
                 }
                             </div>

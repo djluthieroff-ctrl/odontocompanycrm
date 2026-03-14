@@ -855,6 +855,126 @@ async function processUnprocessedSyncRecords() {
         if (AppState.currentModule === 'kanban' && typeof renderKanban === 'function') renderKanban();
     }
 }
+
+// ─── Chatwoot Sync Processor ──────────────────────────────────────────
+
+async function fetchUnprocessedChatwootSync() {
+    if (!isCloudConnected()) return [];
+
+    try {
+        const { data, error } = await supabaseClient
+            .from('chatwoot_sync')
+            .select('*')
+            .eq('processed', false)
+            .eq('user_id', currentUser.id)
+            .order('created_at', { ascending: true })
+            .limit(20);
+
+        if (error) throw error;
+        return data || [];
+    } catch (error) {
+        console.error('❌ Error fetching Chatwoot sync records:', error);
+        return [];
+    }
+}
+
+async function markChatwootSyncProcessed(syncId) {
+    if (!isCloudConnected()) return;
+    try {
+        const { error } = await supabaseClient
+            .from('chatwoot_sync')
+            .update({ processed: true, processed_at: new Date().toISOString() })
+            .eq('id', syncId);
+        if (error) throw error;
+    } catch (error) {
+        console.error('❌ Error marking Chatwoot record as processed:', error);
+    }
+}
+
+async function processChatwootSyncRecords() {
+    if (!isCloudConnected()) return;
+
+    const records = await fetchUnprocessedChatwootSync();
+    if (records.length === 0) return;
+
+    console.log(`🔄 Processing ${records.length} Chatwoot sync records...`);
+    let processedCount = 0;
+    let leadsChanged = false;
+
+    for (const record of records) {
+        try {
+            const { phone, name, label, interaction_text } = record;
+            const cleanPhone = phone ? phone.replace(/\D/g, '') : '';
+            
+            // Find lead or patient
+            let lead = AppState.leads.find(l => 
+                (cleanPhone && l.phone && l.phone.replace(/\D/g, '') === cleanPhone) ||
+                (name && l.name && l.name.toLowerCase() === name.toLowerCase())
+            );
+
+            // If not found and it's a new lead label, create it
+            if (!lead && label === 'leadnovo') {
+                lead = {
+                    id: generateId(),
+                    name: name || 'Novo Lead Chatwoot',
+                    phone: phone || '',
+                    status: 'new',
+                    source: 'Chatwoot',
+                    channel: 'WhatsApp',
+                    interactions: [],
+                    createdAt: new Date().toISOString()
+                };
+                AppState.leads.push(lead);
+                leadsChanged = true;
+            }
+
+            if (lead) {
+                // Map labels to status
+                const labelMap = {
+                    'leadnovo': 'new',
+                    'agendamentogustavo': 'scheduled',
+                    'vendas_concluidas': 'converted'
+                };
+
+                if (labelMap[label]) {
+                    lead.status = labelMap[label];
+                    if (label === 'vendas_concluidas') {
+                        lead.saleStatus = 'sold';
+                    }
+                    leadsChanged = true;
+                }
+
+                // Add interaction text if present
+                if (interaction_text) {
+                    if (!lead.interactions) lead.interactions = [];
+                    lead.interactions.push({
+                        date: new Date().toISOString(),
+                        note: `💬 Chatwoot: ${interaction_text}`
+                    });
+                    leadsChanged = true;
+                }
+
+                lead.updatedAt = new Date().toISOString();
+            }
+
+            // Mark processed
+            await markChatwootSyncProcessed(record.id);
+            processedCount++;
+        } catch (err) {
+            console.error('❌ Failed to process Chatwoot record:', record.id, err);
+        }
+    }
+
+    if (processedCount > 0) {
+        if (leadsChanged) {
+            await saveToSupabase('leads', AppState.leads);
+            showNotification(`${processedCount} atualizações vindas do Chatwoot`, 'info');
+            updateDashboard();
+            if (AppState.currentModule === 'leads' && typeof renderLeadsList === 'function') renderLeadsList();
+        }
+    }
+}
+
 function isCloudConnected() {
     return isSupabaseReady && currentUser !== null;
 }

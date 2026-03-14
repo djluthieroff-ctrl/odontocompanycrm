@@ -98,12 +98,15 @@ function initializeAppUI() {
         };
     }
 
-    // Start external sync loop (Unisoft/n8n)
+    // Start external sync loop (Unisoft/Chatwoot/n8n)
     setTimeout(() => {
-        if (typeof processUnprocessedSyncRecords === 'function') {
-            processUnprocessedSyncRecords();
-            setInterval(processUnprocessedSyncRecords, 5 * 60 * 1000);
-        }
+        if (typeof processUnprocessedSyncRecords === 'function') processUnprocessedSyncRecords();
+        if (typeof processChatwootSyncRecords === 'function') processChatwootSyncRecords();
+        
+        setInterval(() => {
+            if (typeof processUnprocessedSyncRecords === 'function') processUnprocessedSyncRecords();
+            if (typeof processChatwootSyncRecords === 'function') processChatwootSyncRecords();
+        }, 5 * 60 * 1000);
     }, 5000);
 }
 
