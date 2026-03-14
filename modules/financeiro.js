@@ -1,4 +1,4 @@
-﻿// Financeiro Module - CRM Odonto Company
+// Financeiro Module - CRM Odonto Company
 // ========================================
 
 const FINANCE_PAYMENT_CATEGORIES = {
@@ -183,7 +183,10 @@ function renderReceivedPaymentsTable() {
             <td>${escapeHTML(payment.method || 'PIX/Cartão')}</td>
             <td>${formatCurrency(payment.amount)}</td>
             <td>${formatDate(payment.date)}</td>
-            <td>${escapeHTML(payment.notes || '—')}</td>
+            <td>
+                ${payment.receiptUrl ? `<a href="${payment.receiptUrl}" target="_blank" class="btn-icon" title="Ver Comprovante">📄</a>` : ''}
+                ${escapeHTML(payment.notes || '—')}
+            </td>
         </tr>
     `).join('');
 }
@@ -330,6 +333,10 @@ function openNewFinancePaymentForm() {
                 </div>
             </div>
             <div class="form-group">
+                <label>Link do Comprovante (Opcional)</label>
+                <input type="url" name="receiptUrl" class="form-input" placeholder="https://...">
+            </div>
+            <div class="form-group">
                 <label>Observações</label>
                 <textarea name="notes" class="form-textarea" rows="3"></textarea>
             </div>
@@ -353,6 +360,7 @@ function saveFinancePayment(event) {
         amount: parseFloat(data.get('amount')) || 0,
         date: data.get('date') || new Date().toISOString(),
         method: data.get('method') || 'PIX',
+        receiptUrl: data.get('receiptUrl') || '',
         notes: data.get('notes') || '',
         origin: data.get('patientName')
     };

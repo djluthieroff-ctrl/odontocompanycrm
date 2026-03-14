@@ -19,7 +19,9 @@ const AppState = {
         receivedPayments: [],
         deviceMaintenances: [],
         debtorQueue: []
-    }
+    },
+    inventoryItems: [],
+    prostheticServices: []
 };
 
 // LocalStorage Keys
@@ -31,7 +33,9 @@ const STORAGE_KEYS = {
     OLD_PATIENTS: 'odontocrm_old_patients',
     FINANCE_PAYMENTS: 'odontocrm_finance_payments',
     FINANCE_MAINTENANCE: 'odontocrm_finance_maintenance',
-    FINANCE_DEBTORS: 'odontocrm_finance_debtors'
+    FINANCE_DEBTORS: 'odontocrm_finance_debtors',
+    INVENTORY_ITEMS: 'odontocrm_inventory_items',
+    PROSTHETIC_SERVICES: 'odontocrm_prosthetic_services'
 };
 
 // Initialize App
@@ -229,6 +233,11 @@ function loadDataFromStorage() {
         if (maintenanceData) AppState.finances.deviceMaintenances = JSON.parse(maintenanceData);
         if (debtorsData) AppState.finances.debtorQueue = JSON.parse(debtorsData);
 
+        const inventoryData = localStorage.getItem(STORAGE_KEYS.INVENTORY_ITEMS);
+        const prostheticData = localStorage.getItem(STORAGE_KEYS.PROSTHETIC_SERVICES);
+        if (inventoryData) AppState.inventoryItems = JSON.parse(inventoryData);
+        if (prostheticData) AppState.prostheticServices = JSON.parse(prostheticData);
+
         // DEFAULT SETTINGS IF MISSING
         if (!AppState.settings || Object.keys(AppState.settings).length === 0) {
             AppState.settings = {
@@ -247,6 +256,8 @@ function loadDataFromStorage() {
         if (!Array.isArray(AppState.finances.receivedPayments)) AppState.finances.receivedPayments = [];
         if (!Array.isArray(AppState.finances.deviceMaintenances)) AppState.finances.deviceMaintenances = [];
         if (!Array.isArray(AppState.finances.debtorQueue)) AppState.finances.debtorQueue = [];
+        if (!Array.isArray(AppState.inventoryItems)) AppState.inventoryItems = [];
+        if (!Array.isArray(AppState.prostheticServices)) AppState.prostheticServices = [];
 
         console.log('✅ Data loaded successfully:', {
             leads: AppState.leads.length,
@@ -283,6 +294,8 @@ function saveToStorage(key, data) {
             tableMap[STORAGE_KEYS.FINANCE_PAYMENTS] = 'received_payments';
             tableMap[STORAGE_KEYS.FINANCE_MAINTENANCE] = 'device_maintenances';
             tableMap[STORAGE_KEYS.FINANCE_DEBTORS] = 'debtor_notifications';
+            tableMap[STORAGE_KEYS.INVENTORY_ITEMS] = 'inventory_items';
+            tableMap[STORAGE_KEYS.PROSTHETIC_SERVICES] = 'prosthetic_services';
             const table = tableMap[key];
             if (table) {
                 // Fire-and-forget async save to Supabase

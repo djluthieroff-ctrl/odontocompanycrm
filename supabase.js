@@ -116,7 +116,7 @@ const DB_COLUMNS = {
     ],
     received_payments: [
         'id', 'legacy_id', 'user_id', 'patient_name', 'origin', 'category',
-        'amount', 'method', 'notes', 'payment_date', 'created_at', 'updated_at'
+        'amount', 'method', 'notes', 'payment_date', 'receipt_url', 'created_at', 'updated_at'
     ],
     device_maintenances: [
         'id', 'legacy_id', 'user_id', 'device', 'provider', 'cost', 'due_date',
@@ -125,6 +125,12 @@ const DB_COLUMNS = {
     debtor_notifications: [
         'id', 'legacy_id', 'user_id', 'name', 'phone', 'channel', 'amount',
         'overdue_days', 'status', 'notes', 'last_contacted', 'created_at', 'updated_at'
+    ],
+    inventory_items: [
+        'id', 'user_id', 'name', 'category', 'quantity', 'min_quantity', 'unit', 'notes', 'created_at', 'updated_at'
+    ],
+    prosthetic_services: [
+        'id', 'user_id', 'patient_name', 'service_name', 'lab_name', 'cost', 'status', 'due_date', 'created_at', 'updated_at'
     ]
 };
 
@@ -242,12 +248,14 @@ const FIELD_MAP = {
         toDb: {
             patientName: 'patient_name',
             paymentDate: 'payment_date',
+            receiptUrl: 'receipt_url',
             createdAt: 'created_at',
             updatedAt: 'updated_at'
         },
         toApp: {
             patient_name: 'patientName',
             payment_date: 'paymentDate',
+            receipt_url: 'receiptUrl',
             created_at: 'createdAt',
             updated_at: 'updatedAt'
         }
@@ -276,6 +284,36 @@ const FIELD_MAP = {
         toApp: {
             overdue_days: 'overdueDays',
             last_contacted: 'lastContacted',
+            created_at: 'createdAt',
+            updated_at: 'updatedAt'
+        }
+    },
+    inventory_items: {
+        toDb: {
+            minQuantity: 'min_quantity',
+            createdAt: 'created_at',
+            updatedAt: 'updated_at'
+        },
+        toApp: {
+            min_quantity: 'minQuantity',
+            created_at: 'createdAt',
+            updated_at: 'updatedAt'
+        }
+    },
+    prosthetic_services: {
+        toDb: {
+            patientName: 'patient_name',
+            serviceName: 'service_name',
+            labName: 'lab_name',
+            dueDate: 'due_date',
+            createdAt: 'created_at',
+            updatedAt: 'updated_at'
+        },
+        toApp: {
+            patient_name: 'patientName',
+            service_name: 'serviceName',
+            lab_name: 'labName',
+            due_date: 'dueDate',
             created_at: 'createdAt',
             updated_at: 'updatedAt'
         }
@@ -375,7 +413,7 @@ async function loadDataFromSupabase() {
             }
         }
 
-        const [leadsRes, patientsRes, appointmentsRes, settingsRes, oldPatientsRes, paymentsRes, maintenanceRes, debtorsRes] = await Promise.all([
+        const [leadsRes, patientsRes, appointmentsRes, settingsRes, oldPatientsRes, paymentsRes, maintenanceRes, debtorsRes, inventoryRes, prostheticRes] = await Promise.all([
             fetchTable('leads'),
             fetchTable('patients'),
             fetchTable('appointments'),
@@ -383,7 +421,9 @@ async function loadDataFromSupabase() {
             fetchTable('old_patients'),
             fetchTable('received_payments'),
             fetchTable('device_maintenances'),
-            fetchTable('debtor_notifications')
+            fetchTable('debtor_notifications'),
+            fetchTable('inventory_items'),
+            fetchTable('prosthetic_services')
         ]);
 
         if (leadsRes.data) AppState.leads = leadsRes.data.map(row => mapToApp('leads', row));
@@ -394,6 +434,8 @@ async function loadDataFromSupabase() {
         if (paymentsRes.data) AppState.finances.receivedPayments = paymentsRes.data.map(row => mapToApp('received_payments', row));
         if (maintenanceRes.data) AppState.finances.deviceMaintenances = maintenanceRes.data.map(row => mapToApp('device_maintenances', row));
         if (debtorsRes.data) AppState.finances.debtorQueue = debtorsRes.data.map(row => mapToApp('debtor_notifications', row));
+        if (inventoryRes.data) AppState.inventoryItems = inventoryRes.data.map(row => mapToApp('inventory_items', row));
+        if (prostheticRes.data) AppState.prostheticServices = prostheticRes.data.map(row => mapToApp('prosthetic_services', row));
 
         // Validate
         if (!Array.isArray(AppState.leads)) AppState.leads = [];
@@ -416,6 +458,8 @@ async function loadDataFromSupabase() {
         localStorage.setItem('odontocrm_finance_payments', JSON.stringify(AppState.finances.receivedPayments));
         localStorage.setItem('odontocrm_finance_maintenance', JSON.stringify(AppState.finances.deviceMaintenances));
         localStorage.setItem('odontocrm_finance_debtors', JSON.stringify(AppState.finances.debtorQueue));
+        localStorage.setItem('odontocrm_inventory_items', JSON.stringify(AppState.inventoryItems));
+        localStorage.setItem('odontocrm_prosthetic_services', JSON.stringify(AppState.prostheticServices));
 
         return true;
     } catch (error) {
