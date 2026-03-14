@@ -4,8 +4,14 @@
 
 function initAuth() {
     if (!isSupabaseReady || (typeof isSupabaseReady === 'function' && !isSupabaseReady())) {
-        console.error('❌ Supabase não configurado. O sistema requer nuvem para funcionar.');
-        showApp(); // Fallback for dev, but show error in production
+        console.warn('⚠️ Supabase não configurado. Entrando em modo LocalStorage.');
+        showApp();
+        if (typeof loadDataFromStorage === 'function') loadDataFromStorage();
+        if (typeof initializeAppUI === 'function') initializeAppUI();
+        
+        if (typeof showNotification === 'function') {
+            showNotification('Sistema em modo offline (dados salvos localmente)', 'warning');
+        }
         return;
     }
     checkExistingSession();

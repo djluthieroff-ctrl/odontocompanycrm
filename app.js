@@ -38,13 +38,18 @@ const STORAGE_KEYS = {
 document.addEventListener('DOMContentLoaded', async () => {
     initializeLoadingOverlay();
 
+    // Tenta inicializar Supabase
     const supabaseOk = typeof initSupabase === 'function' && initSupabase();
 
     if (supabaseOk) {
-        console.log('☁️ Cloud mode — starting auth flow');
-        initAuth();
+        console.log('☁️ Modo Nuvem — Iniciando fluxo de autenticação');
     } else {
-        console.error('❌ Cloud mode failed — Supabase not ready');
+        console.warn('⚠️ Modo Local — Supabase não configurado ou inacessível');
+    }
+
+    // Inicia fluxo de Auth (que já trata o caso offline internamente)
+    if (typeof initAuth === 'function') {
+        initAuth();
     }
 
     console.log('🦷 CRM Odonto Company Initialized');
