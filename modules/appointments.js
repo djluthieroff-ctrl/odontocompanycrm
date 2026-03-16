@@ -232,7 +232,7 @@ function renderTimelineItem(apt) {
             return '';
         })()}
                         </h4>
-                        <span style="font-size: 0.85rem; color: var(--gray-500);">${escapeHTML(apt.procedure)} • ⏱️ ${apt.duration} min</span>
+                        <span style="font-size: 0.85rem; color: var(--gray-500);">${escapeHTML(apt.procedure)} • ⏱️ ${apt.duration} min ${phone ? `• 📞 ${phone}` : ''}</span>
                     </div>
                     <span class="badge" style="background: white; border: 1px solid var(--gray-200);">${statusLabel}</span>
                 </div>
