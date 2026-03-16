@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste de Campanhas - CRM Odonto Company</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+            background: #f8fafc;
+        }
+
+        .test-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+            border: 1px solid #e2e8f0;
+        }
+
+        .test-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 1rem;
+        }
+
+        .status-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 999px;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .status-success {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .status-error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .status-warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .test-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .test-item:last-child {
+            border-bottom: none;
+        }
+
+        .test-name {
+            font-weight: 600;
+            color: #334155;
+        }
+
+        .test-desc {
+            font-size: 0.875rem;
+            color: #64748b;
+            margin-top: 0.25rem;
+        }
+
+        .actions {
+            display: flex;
+            gap: 1rem;
+        }
+
+        button {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+
+        .btn-secondary {
+            background: #94a3b8;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #64748b;
+        }
+
+        .console-output {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.875rem;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 1rem;
+        }
+
+        .highlight {
+            background: #fde68a;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-weight: 700;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="test-card">
+        <div class="test-header">
+            <div>
+                <h1>🧪 Teste de Campanhas</h1>
+                <p>Validação do módulo de campanhas do CRM Odonto Company</p>
+            </div>
+            <div id="overallStatus" class="status-badge status-warning">Aguardando Testes</div>
+        </div>
+
+        <div id="testResults">
+            <!-- Testes serão inseridos aqui -->
+        </div>
+
+        <div class="console-output" id="consoleOutput">
+            > Iniciando testes do módulo de campanhas...
+        </div>
+
+        <div style="margin-top: 2rem; display: flex; gap: 1rem;">
+            <button class="btn-primary" onclick="runAllTests()">🚀 Executar Todos os Testes</button>
+            <button class="btn-secondary" onclick="clearConsole()">🧹 Limpar Console</button>
+        </div>
+    </div>
+
+    <!-- Scripts do CRM -->
+    <script src="utils/security.js"></script>
+    <script src="utils/ui-utils.js"></script>
+    <script src="utils/sanitize.js"></script>
+    <script src="utils/masks.js"></script>
+    <script src="utils/whatsapp.js"></script>
+    <script src="utils/weekly-goals.js"></script>
+    <script src="utils/import-export.js"></script>
+    <script src="utils/performance.js"></script>
+    <script src="utils/error-handler.js"></script>
+    <script src="utils/accessibility.js"></script>
+    <script src="utils/csv-parser.js"></script>
+    <script src="utils/rate-limiter.js"></script>
+    <script src="utils/campaign-scheduler.js"></script>
+    <script src="utils/template-system.js"></script>
+    <script src="utils/module-integration.js"></script>
+    <script src="utils/test-validation.js"></script>
+    <script src="config.js"></script>
+    <script src="supabase.js"></script>
+    <script src="auth.js"></script>
+    <script src="modules/leads.js"></script>
+    <script src="modules/kanban.js"></script>
+    <script src="modules/patients.js"></script>
+    <script src="modules/appointments.js"></script>
+    <script src="modules/reports.js"></script>
+    <script src="modules/red-folder.js"></script>
+    <script src="modules/old-patients.js"></script>
+    <script src="modules/financeiro.js"></script>
+    <script src="modules/estoque.js"></script>
+    <script src="modules/settings.js"></script>
+    <script src="modules/campaigns.js"></script>
+
+    <script>
+        // Sistema de logs
+        const consoleOutput = document.getElementById('consoleOutput');
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#ef4444' : type === 'success' ? '#22c55e' : '#93c5fd';
+            consoleOutput.innerHTML += `<div style="color: ${color}">[${timestamp}] ${message}</div>`;
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+
+        function addTestResult(name, description, status, details = '') {
+            const testResults = document.getElementById('testResults');
+            const statusClass = status === 'success' ? 'status-success' : status === 'error' ? 'status-error' : 'status-warning';
+            const statusText = status === 'success' ? '✅ Concluído' : status === 'error' ? '❌ Falhou' : '⚠️ Atenção';
+
+            const testDiv = document.createElement('div');
+            testDiv.className = 'test-item';
+            testDiv.innerHTML = `
+                <div>
+                    <div class="test-name">${name}</div>
+                    <div class="test-desc">${description}</div>
+                    ${details ? `<div style="font-size: 0.75rem; color: #64748b; margin-top: 0.5rem;">${details}</div>` : ''}
+                </div>
+                <div class="status-badge ${statusClass}">${statusText}</div>
+            `;
+
+            testResults.appendChild(testDiv);
+        }
+
+        // Testes do módulo de campanhas
+        async function testCampaignsModule() {
+            log('Iniciando testes do módulo de campanhas...', 'info');
+
+            let passed = 0;
+            let total = 0;
+
+            // Teste 1: Verificar se o módulo foi carregado
+            total++;
+            try {
+                if (typeof initCampaignsModule === 'function') {
+                    log('✅ Módulo de campanhas carregado com sucesso', 'success');
+                    addTestResult('Carregamento do Módulo', 'Verifica se o módulo de campanhas foi carregado corretamente', 'success');
+                    passed++;
+                } else {
+                    throw new Error('initCampaignsModule não encontrado');
+                }
+            } catch (error) {
+                log(`❌ Erro no carregamento do módulo: ${error.message}`, 'error');
+                addTestResult('Carregamento do Módulo', 'Verifica se o módulo de campanhas foi carregado corretamente', 'error', error.message);
+            }
+
+            // Teste 2: Verificar funções globais
+            total++;
+            try {
+                const requiredFunctions = [
+                    'renderCampaignsDashboard',
+                    'renderCampaignsList',
+                    'filterCampaigns',
+                    'showCreateCampaignForm',
+                    'showCampaignDetails',
+                    'saveCampaign'
+                ];
+
+                const missingFunctions = requiredFunctions.filter(func => typeof window[func] !== 'function');
+
+                if (missingFunctions.length === 0) {
+                    log('✅ Todas as funções globais do módulo estão disponíveis', 'success');
+                    addTestResult('Funções Globais', 'Verifica se todas as funções necessárias estão disponíveis globalmente', 'success');
+                    passed++;
+                } else {
+                    throw new Error(`Funções faltando: ${missingFunctions.join(', ')}`);
+                }
+            } catch (error) {
+                log(`❌ Erro nas funções globais: ${error.message}`, 'error');
+                addTestResult('Funções Globais', 'Verifica se todas as funções necessárias estão disponíveis globalmente', 'error', error.message);
+            }
+
+            // Teste 3: Verificar estado inicial
+            total++;
+            try {
+                if (typeof CampaignsState !== 'undefined') {
+                    log('✅ Estado do módulo de campanhas inicializado', 'success');
+                    addTestResult('Estado do Módulo', 'Verifica se o estado do módulo foi inicializado corretamente', 'success',
+                        `Campanhas: ${CampaignsState.campaigns.length}, Templates: ${CampaignsState.templates.length}`);
+                    passed++;
+                } else {
+                    throw new Error('CampaignsState não encontrado');
+                }
+            } catch (error) {
+                log(`❌ Erro no estado do módulo: ${error.message}`, 'error');
+                addTestResult('Estado do Módulo', 'Verifica se o estado do módulo foi inicializado corretamente', 'error', error.message);
+            }
+
+            // Teste 4: Verificar templates padrão
+            total++;
+            try {
+                if (CampaignsState.templates && CampaignsState.templates.length > 0) {
+                    log(`✅ Templates padrão carregados (${CampaignsState.templates.length} templates)`, 'success');
+                    addTestResult('Templates Padrão', 'Verifica se os templates padrão foram carregados', 'success',
+                        `Templates disponíveis: ${CampaignsState.templates.map(t => t.name).join(', ')}`);
+                    passed++;
+                } else {
+                    throw new Error('Nenhum template padrão encontrado');
+                }
+            } catch (error) {
+                log(`❌ Erro nos templates padrão: ${error.message}`, 'error');
+                addTestResult('Templates Padrão', 'Verifica se os templates padrão foram carregados', 'error', error.message);
+            }
+
+            // Teste 5: Verificar funções de utilitários
+            total++;
+            try {
+                const utilsFunctions = [
+                    'parseCSVContent',
+                    'initRateLimiter',
+                    'initCampaignScheduler',
+                    'createTemplate',
+                    'initModuleIntegration'
+                ];
+
+                const missingUtils = utilsFunctions.filter(func => typeof window[func] !== 'function');
+
+                if (missingUtils.length === 0) {
+                    log('✅ Funções de utilitários carregadas', 'success');
+                    addTestResult('Utilitários', 'Verifica se as funções de utilitários foram carregadas', 'success');
+                    passed++;
+                } else {
+                    throw new Error(`Utilitários faltando: ${missingUtils.join(', ')}`);
+                }
+            } catch (error) {
+                log(`❌ Erro nos utilitários: ${error.message}`, 'error');
+                addTestResult('Utilitários', 'Verifica se as funções de utilitários foram carregadas', 'error', error.message);
+            }
+
+            // Teste 6: Testar inicialização do módulo
+            total++;
+            try {
+                // Simular inicialização
+                if (typeof initCampaignsModule === 'function') {
+                    initCampaignsModule();
+                    log('✅ Inicialização do módulo executada com sucesso', 'success');
+                    addTestResult('Inicialização', 'Testa a execução da função de inicialização do módulo', 'success');
+                    passed++;
+                } else {
+                    throw new Error('initCampaignsModule não disponível');
+                }
+            } catch (error) {
+                log(`❌ Erro na inicialização: ${error.message}`, 'error');
+                addTestResult('Inicialização', 'Testa a execução da função de inicialização do módulo', 'error', error.message);
+            }
+
+            // Atualizar status geral
+            const overallStatus = document.getElementById('overallStatus');
+            if (passed === total) {
+                overallStatus.textContent = `✅ Todos os testes passaram (${passed}/${total})`;
+                overallStatus.className = 'status-badge status-success';
+                log(`🎉 Todos os testes passaram! Módulo de campanhas está funcionando corretamente.`, 'success');
+            } else {
+                overallStatus.textContent = `⚠️ ${total - passed} testes falharam (${passed}/${total})`;
+                overallStatus.className = 'status-badge status-warning';
+                log(`⚠️ Alguns testes falharam. Verifique os detalhes acima.`, 'warning');
+            }
+
+            log(`Resumo: ${passed}/${total} testes passaram`, 'info');
+        }
+
+        // Funções globais para o HTML
+        window.runAllTests = testCampaignsModule;
+        window.clearConsole = () => {
+            consoleOutput.innerHTML = '> Console limpo. Iniciando testes do módulo de campanhas...';
+        };
+
+        // Executar testes automaticamente ao carregar
+        document.addEventListener('DOMContentLoaded', () => {
+            log('Página carregada. Pronto para testes.', 'info');
+            log('Clique em "Executar Todos os Testes" para iniciar.', 'info');
+        });
+    </script>
+</body>
+
+</html>

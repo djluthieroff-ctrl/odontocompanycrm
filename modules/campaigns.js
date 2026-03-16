@@ -168,27 +168,6 @@ function loadDefaultTemplates() {
 
 // Setup Event Listeners
 function setupCampaignsEventListeners() {
-    const container = document.getElementById('campaignsContent');
-
-    // Search input
-    const searchInput = document.getElementById('campaignsSearch');
-    if (searchInput) {
-        searchInput.addEventListener('input', (e) => {
-            CampaignsState.searchTerm = e.target.value;
-            renderCampaignsList();
-        });
-    }
-
-    // Filter buttons
-    const filterButtons = container.querySelectorAll('.campaign-filter-btn');
-    filterButtons.forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            CampaignsState.filterStatus = e.target.dataset.status;
-            CampaignsState.filterType = e.target.dataset.type || 'all';
-            renderCampaignsList();
-        });
-    });
-
     // Import contacts button
     const importBtn = document.getElementById('importContactsBtn');
     if (importBtn) {
@@ -206,6 +185,31 @@ function setupCampaignsEventListeners() {
     if (newCampaignBtn) {
         newCampaignBtn.addEventListener('click', showCreateCampaignForm);
     }
+
+    // Setup search and filter events after content is rendered
+    setTimeout(() => {
+        const container = document.getElementById('campaignsContent');
+        if (!container) return;
+
+        // Search input
+        const searchInput = document.getElementById('campaignsSearch');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                CampaignsState.searchTerm = e.target.value;
+                renderCampaignsList();
+            });
+        }
+
+        // Filter buttons
+        const filterButtons = container.querySelectorAll('.campaign-filter-btn');
+        filterButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                CampaignsState.filterStatus = e.target.dataset.status;
+                CampaignsState.filterType = e.target.dataset.type || 'all';
+                renderCampaignsList();
+            });
+        });
+    }, 100);
 }
 
 // Render Campaigns Dashboard

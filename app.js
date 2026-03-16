@@ -102,11 +102,16 @@ function initializeAppUI() {
         };
     }
 
+    // Initialize Campaigns Module
+    if (typeof initCampaignsModule === 'function') {
+        initCampaignsModule();
+    }
+
     // Start external sync loop (Unisoft/Chatwoot/n8n)
     setTimeout(() => {
         if (typeof processUnprocessedSyncRecords === 'function') processUnprocessedSyncRecords();
         if (typeof processChatwootSyncRecords === 'function') processChatwootSyncRecords();
-        
+
         setInterval(() => {
             if (typeof processUnprocessedSyncRecords === 'function') processUnprocessedSyncRecords();
             if (typeof processChatwootSyncRecords === 'function') processChatwootSyncRecords();
