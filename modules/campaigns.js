@@ -383,9 +383,12 @@ function renderCampaignsListHTML() {
 
 // Render Campaigns List (for list view)
 function renderCampaignsList() {
-    const container = document.getElementById('campaignsContent');
-    container.innerHTML = renderCampaignsListHTML();
-    setupCampaignsEventListeners();
+    const listContainer = document.querySelector('#campaignsContent .campaigns-list');
+    if (!listContainer) {
+        renderCampaignsDashboard();
+        return;
+    }
+    listContainer.innerHTML = renderCampaignsListHTML();
 }
 
 // Filter Campaigns

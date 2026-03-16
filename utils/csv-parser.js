@@ -6,6 +6,12 @@ const CSVParserState = {
     currentFile: null,
     parsedData: [],
     headers: [],
+    originalHeaders: [],
+    columnMapping: {
+        name: '',
+        phone: '',
+        amount: ''
+    },
     previewData: [],
     errors: [],
     warnings: []
@@ -85,6 +91,8 @@ function handleFile(file) {
     CSVParserState.currentFile = file;
     CSVParserState.errors = [];
     CSVParserState.warnings = [];
+    CSVParserState.originalHeaders = [];
+    resetColumnMapping();
 
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -108,6 +116,7 @@ function parseCSVContent(content) {
         // Parse headers
         const headers = parseHeaders(lines[0]);
         CSVParserState.headers = headers;
+        setDefaultColumnMapping(headers);
 
         // Parse data
         const data = parseData(lines.slice(1), headers);
@@ -160,8 +169,9 @@ function parseHeaders(headerLine) {
         }
     }
 
-    const headers = parseCSVLine(headerLine, delimiter);
-    return headers.map(h => h.trim().toLowerCase());
+    const rawHeaders = parseCSVLine(headerLine, delimiter).map(h => h.trim());
+    CSVParserState.originalHeaders = rawHeaders;
+    return rawHeaders.map(h => h.toLowerCase());
 }
 
 // Parse CSV Line
@@ -199,6 +209,66 @@ function parseCSVLine(line, delimiter = ',') {
 // Escape Regex
 function escapeRegex(string) {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+const NAME_FALLBACKS = ['nome', 'name', 'cliente', 'paciente', 'contato'];
+const PHONE_FALLBACKS = ['telefone', 'phone', 'celular', 'whatsapp', 'contato', 'fone'];
+const AMOUNT_FALLBACKS = ['valor', 'amount', 'valor_total', 'total', 'price', 'cobranca', 'cobrança', 'billing', 'receita'];
+
+function setDefaultColumnMapping(headers) {
+    CSVParserState.columnMapping = {
+        name: matchHeader(headers, NAME_FALLBACKS),
+        phone: matchHeader(headers, PHONE_FALLBACKS),
+        amount: matchHeader(headers, AMOUNT_FALLBACKS)
+    };
+}
+
+function matchHeader(headers, keywords) {
+    if (!headers || headers.length === 0) return '';
+    for (const keyword of keywords) {
+        const normalized = keyword.toLowerCase();
+        const match = headers.find(header => header.includes(normalized));
+        if (match) return match;
+    }
+    return '';
+}
+
+function resetColumnMapping() {
+    CSVParserState.columnMapping = {
+        name: '',
+        phone: '',
+        amount: ''
+    };
+}
+
+function setCSVColumnMapping(field, column) {
+    if (!CSVParserState.columnMapping) {
+        resetColumnMapping();
+    }
+    CSVParserState.columnMapping[field] = column || '';
+}
+
+function escapeAttributeValue(value) {
+    if (value == null) return '';
+    return value
+        .toString()
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+function sanitizeDisplayLabel(value) {
+    if (!value) return '';
+    if (window.SecurityUtils && typeof SecurityUtils.sanitizeHTML === 'function') {
+        return SecurityUtils.sanitizeHTML(value);
+    }
+    return value
+        .toString()
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
 }
 
 // Parse Data
@@ -243,41 +313,37 @@ function sanitizeValue(value) {
 
 // Validate Data
 function validateData(data, headers) {
-    // Check required fields
+    const mapping = CSVParserState.columnMapping || {};
     const requiredFields = ['nome', 'phone', 'telefone'];
-    const hasRequired = requiredFields.some(field => headers.includes(field));
+    const hasRequired = mapping.name || mapping.phone || requiredFields.some(field => headers.includes(field));
 
     if (!hasRequired) {
         CSVParserState.warnings.push('O arquivo não contém os campos obrigatórios: nome e telefone');
     }
 
-    // Validate each record
     data.forEach((record, index) => {
         const rowNumber = record._row || (index + 2);
-
-        // Check name
-        if (!record.nome && !record.name) {
+        const nameValue = getMappedValue(record, mapping.name, NAME_FALLBACKS);
+        if (!nameValue) {
             CSVParserState.warnings.push(`Linha ${rowNumber}: Nome não encontrado`);
         }
 
-        // Check phone
-        const phone = record.phone || record.telefone || record.celular || record.whatsapp;
-        if (!phone) {
+        const phoneValue = getMappedValue(record, mapping.phone, PHONE_FALLBACKS);
+        const normalizedPhone = phoneValue ? formatPhone(phoneValue) : '';
+        if (!phoneValue) {
             CSVParserState.warnings.push(`Linha ${rowNumber}: Telefone não encontrado`);
-        } else if (!isValidPhone(phone)) {
-            CSVParserState.warnings.push(`Linha ${rowNumber}: Telefone inválido: ${phone}`);
+        } else if (!isValidPhone(normalizedPhone)) {
+            CSVParserState.warnings.push(`Linha ${rowNumber}: Telefone inválido: ${phoneValue}`);
         }
 
-        // Check for duplicates
-        const currentPhone = phone;
-        if (currentPhone) {
+        if (normalizedPhone) {
             const duplicates = data.filter(r => {
-                const rPhone = r.phone || r.telefone || r.celular || r.whatsapp;
-                return rPhone === currentPhone && r !== record;
+                const otherPhone = formatPhone(getMappedValue(r, mapping.phone, PHONE_FALLBACKS) || '');
+                return otherPhone === normalizedPhone && r !== record;
             });
 
             if (duplicates.length > 0) {
-                CSVParserState.warnings.push(`Linha ${rowNumber}: Telefone duplicado: ${currentPhone}`);
+                CSVParserState.warnings.push(`Linha ${rowNumber}: Telefone duplicado: ${phoneValue}`);
             }
         }
     });
@@ -306,10 +372,78 @@ function renderCSVPreview() {
     const container = document.getElementById('csvPreviewContainer');
     if (!container) return;
 
+    const columns = CSVParserState.headers || [];
+    const displayColumns = CSVParserState.originalHeaders.length ? CSVParserState.originalHeaders : columns;
+    const hasColumns = columns.length > 0;
+    const columnLabel = (index) => displayColumns[index] || columns[index] || '';
+    const optionalPlaceholder = `<option value="">${hasColumns ? 'Nenhuma' : 'Nenhum campo detectado'}</option>`;
+    const columnsOptions = columns.map((column, index) => `
+        <option value="${escapeAttributeValue(column)}">${sanitizeDisplayLabel(columnLabel(index))}</option>
+    `).join('');
+    const optionalOptions = optionalPlaceholder + columnsOptions;
+    const disabledAttr = hasColumns ? '' : 'disabled';
+    const buildMappingOptions = (field) => {
+        const placeholderText = hasColumns ? 'Selecione...' : 'Nenhum campo detectado';
+        const placeholderSelected = !CSVParserState.columnMapping[field];
+        let html = `<option value="" ${placeholderSelected ? 'selected' : ''}>${placeholderText}</option>`;
+        html += columns.map((column, index) => {
+            const selected = CSVParserState.columnMapping[field] === column ? 'selected' : '';
+            return `<option value="${escapeAttributeValue(column)}" ${selected}>${sanitizeDisplayLabel(columnLabel(index))}</option>`;
+        }).join('');
+        return html;
+    };
+
     const stats = calculateCSVStats();
 
     container.innerHTML = `
         <div class="csv-preview">
+            <div class="csv-mapping" style="background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 12px; padding: 1.25rem; margin-bottom: 2rem;">
+                <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 200px;">
+                        <label class="form-label">Coluna do Nome *</label>
+                        <select id="nameColumn" class="form-select" ${disabledAttr} onchange="setCSVColumnMapping('name', this.value)">
+                            ${buildMappingOptions('name')}
+                        </select>
+                    </div>
+                    <div style="flex: 1; min-width: 200px;">
+                        <label class="form-label">Coluna do Telefone *</label>
+                        <select id="phoneColumn" class="form-select" ${disabledAttr} onchange="setCSVColumnMapping('phone', this.value)">
+                            ${buildMappingOptions('phone')}
+                        </select>
+                    </div>
+                    <div style="flex: 1; min-width: 200px;">
+                        <label class="form-label">Coluna de Valor (Cobrança)</label>
+                        <select id="billingColumn" class="form-select" ${disabledAttr} onchange="setCSVColumnMapping('amount', this.value)">
+                            ${buildMappingOptions('amount')}
+                        </select>
+                    </div>
+                </div>
+                <p style="margin-top: 0.75rem; color: var(--gray-500); font-size: 0.75rem;">
+                    Cada importação pode mapear manualmente Nome, Telefone e Valores de Cobrança, permitindo ajustes por arquivo.
+                </p>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                <div class="form-group">
+                    <label class="form-label">Coluna de Canal (opcional)</label>
+                    <select id="channelColumn" class="form-select" ${disabledAttr}>
+                        ${optionalOptions}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Coluna de Agendamento (opcional)</label>
+                    <select id="appointmentColumn" class="form-select" ${disabledAttr}>
+                        ${optionalOptions}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Coluna de Ação/Resultado (opcional)</label>
+                    <select id="actionColumn" class="form-select" ${disabledAttr}>
+                        ${optionalOptions}
+                    </select>
+                </div>
+            </div>
+
             <!-- Stats -->
             <div class="csv-stats" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem;">
                 <div class="stat-card">
@@ -350,9 +484,11 @@ function renderCSVPreview() {
             <div style="margin-bottom: 2rem;">
                 <h4 style="margin-bottom: 1rem; border-bottom: 2px solid var(--primary-100); padding-bottom: 0.5rem;">Campos Identificados</h4>
                 <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
-                    ${CSVParserState.headers.map(header => `
-                        <span class="badge badge-primary" style="font-size: 0.8rem; padding: 0.25rem 0.5rem;">${header}</span>
-                    `).join('')}
+                    ${columns.length > 0 ? columns.map((header, index) => `
+                        <span class="badge badge-primary" style="font-size: 0.8rem; padding: 0.25rem 0.5rem;">${sanitizeDisplayLabel(columnLabel(index))}</span>
+                    `).join('') : `
+                        <span class="badge badge-gray" style="font-size: 0.75rem;">Nenhum cabeçalho detectado</span>
+                    `}
                 </div>
             </div>
 
@@ -363,15 +499,15 @@ function renderCSVPreview() {
                     <table class="csv-preview-table" style="width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: var(--shadow-sm);">
                         <thead style="background: var(--gray-50);">
                             <tr>
-                                ${CSVParserState.headers.map(header => `
-                                    <th style="padding: 0.75rem; text-align: left; font-size: 0.875rem; color: var(--gray-600); border-bottom: 1px solid var(--gray-200);">${header}</th>
+                                ${columns.map((header, index) => `
+                                    <th style="padding: 0.75rem; text-align: left; font-size: 0.875rem; color: var(--gray-600); border-bottom: 1px solid var(--gray-200);">${sanitizeDisplayLabel(columnLabel(index))}</th>
                                 `).join('')}
                             </tr>
                         </thead>
                         <tbody>
                             ${CSVParserState.previewData.map((record, index) => `
                                 <tr style="border-bottom: 1px solid var(--gray-100);">
-                                    ${CSVParserState.headers.map(header => {
+                                    ${columns.map(header => {
         const value = record[header] || '';
         const isPhone = header.includes('phone') || header.includes('tel') || header.includes('cel');
         return `<td style="padding: 0.75rem; font-size: 0.875rem; color: var(--gray-700); ${isPhone ? 'font-family: monospace; background: var(--gray-50);' : ''}">${escapeHTML(value)}</td>`;
@@ -411,6 +547,18 @@ function calculateCSVStats() {
         warnings: CSVParserState.warnings.length,
         errors: CSVParserState.errors.length
     };
+}
+
+function getMappedValue(record, column, fallbacks = []) {
+    if (column && record[column]) {
+        return record[column];
+    }
+    for (const fallback of fallbacks) {
+        if (record[fallback]) {
+            return record[fallback];
+        }
+    }
+    return '';
 }
 
 // Show CSV Errors
@@ -519,10 +667,12 @@ function confirmCSVImport() {
 function processCSVImport() {
     closeModal();
 
-    // Filter out invalid records
+    const mapping = CSVParserState.columnMapping || {};
     const validRecords = CSVParserState.parsedData.filter(record => {
-        const phone = record.phone || record.telefone || record.celular || record.whatsapp;
-        return phone && isValidPhone(phone) && (record.nome || record.name);
+        const nameValue = getMappedValue(record, mapping.name, NAME_FALLBACKS);
+        const phoneValue = getMappedValue(record, mapping.phone, PHONE_FALLBACKS);
+        const normalizedPhone = formatPhone(phoneValue || '');
+        return nameValue && phoneValue && isValidPhone(normalizedPhone);
     });
 
     if (validRecords.length === 0) {
@@ -530,7 +680,6 @@ function processCSVImport() {
         return;
     }
 
-    // Create contact list
     const contactList = {
         id: generateId(),
         name: `Importação ${new Date().toLocaleDateString('pt-BR')}`,
@@ -541,24 +690,30 @@ function processCSVImport() {
         updated_at: new Date().toISOString()
     };
 
-    // Process contacts
-    const contacts = validRecords.map(record => {
-        const phone = record.phone || record.telefone || record.celular || record.whatsapp;
-        const name = record.nome || record.name || 'Sem Nome';
+    const skipFields = new Set(['nome', 'name', 'phone', 'telefone', 'celular', 'whatsapp', '_row', ...AMOUNT_FALLBACKS]);
 
-        // Extract variables from record
+    const contacts = validRecords.map(record => {
+        const nameValue = getMappedValue(record, mapping.name, NAME_FALLBACKS) || 'Sem Nome';
+        const rawPhone = getMappedValue(record, mapping.phone, PHONE_FALLBACKS) || '';
+        const normalizedPhone = formatPhone(rawPhone);
+        const amountValue = getMappedValue(record, mapping.amount, AMOUNT_FALLBACKS);
+
         const variables = {};
         Object.keys(record).forEach(key => {
-            if (key !== 'nome' && key !== 'name' && key !== 'phone' && key !== 'telefone' && key !== 'celular' && key !== 'whatsapp' && key !== '_row') {
+            if (!skipFields.has(key)) {
                 variables[key] = record[key];
             }
         });
 
+        if (amountValue) {
+            variables.valor = amountValue;
+        }
+
         return {
             id: generateId(),
             contact_list_id: contactList.id,
-            name: name,
-            phone: formatPhone(phone),
+            name: nameValue,
+            phone: normalizedPhone || rawPhone,
             email: record.email || '',
             status: 'valid',
             variables: variables,
@@ -568,7 +723,6 @@ function processCSVImport() {
         };
     });
 
-    // Save to storage
     CampaignsState.contactLists.push(contactList);
     CampaignsState.contacts = CampaignsState.contacts.concat(contacts);
     saveCampaignsData();
@@ -596,9 +750,11 @@ function cancelCSVImport() {
     CSVParserState.currentFile = null;
     CSVParserState.parsedData = [];
     CSVParserState.headers = [];
+    CSVParserState.originalHeaders = [];
     CSVParserState.previewData = [];
     CSVParserState.errors = [];
     CSVParserState.warnings = [];
+    resetColumnMapping();
 
     closeModal();
     showNotification('Importação cancelada', 'info');
@@ -650,3 +806,4 @@ window.validateData = validateData;
 window.generatePreview = generatePreview;
 window.renderCSVPreview = renderCSVPreview;
 window.calculateCSVStats = calculateCSVStats;
+window.setCSVColumnMapping = setCSVColumnMapping;
