@@ -1,0 +1,752 @@
+/* ===============================================
+   CAMPAIGNS MODULE STYLES
+   =============================================== */
+
+/* Campaign Dashboard */
+.campaigns-dashboard {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Campaign Cards */
+.campaign-card {
+    background: white;
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--gray-200);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.campaign-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--primary-200);
+}
+
+.campaign-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: var(--primary-500);
+}
+
+.campaign-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.campaign-stats {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background: var(--gray-50);
+    border-radius: 12px;
+    border: 1px solid var(--gray-200);
+}
+
+/* Campaign Form */
+.campaign-form {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.form-step {
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background: var(--gray-50);
+    border-radius: 12px;
+    border: 1px solid var(--gray-200);
+}
+
+.form-step h4 {
+    margin-bottom: 1.5rem;
+    color: var(--gray-800);
+    font-size: 1.125rem;
+    font-weight: 600;
+}
+
+.template-option,
+.contact-list-option,
+.campaign-type-option {
+    padding: 1rem;
+    border: 2px solid var(--gray-200);
+    border-radius: 12px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    background: white;
+}
+
+.template-option:hover,
+.contact-list-option:hover,
+.campaign-type-option:hover {
+    border-color: var(--primary-300);
+    background: var(--primary-50);
+}
+
+.template-option.selected,
+.contact-list-option.selected,
+.campaign-type-option.selected {
+    border-color: var(--primary-500);
+    background: var(--primary-50);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Campaign Details */
+.campaign-details {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.campaign-details h3 {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    color: var(--gray-900);
+}
+
+.campaign-details h4 {
+    font-size: 1.125rem;
+    margin-bottom: 1rem;
+    color: var(--gray-800);
+    border-bottom: 2px solid var(--primary-100);
+    padding-bottom: 0.5rem;
+}
+
+/* Status Badges */
+.badge-campaign {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.badge-campaign.draft {
+    background: var(--gray-100);
+    color: var(--gray-700);
+    border: 1px solid var(--gray-300);
+}
+
+.badge-campaign.scheduled {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fde68a;
+}
+
+.badge-campaign.running {
+    background: #dbeafe;
+    color: #1e40af;
+    border: 1px solid #bfdbfe;
+}
+
+.badge-campaign.completed {
+    background: #d1fae5;
+    color: #065f46;
+    border: 1px solid #bbf7d0;
+}
+
+.badge-campaign.cancelled {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+
+.badge-campaign.paused {
+    background: #e0e7ff;
+    color: #3730a3;
+    border: 1px solid #c7d2fe;
+}
+
+/* Campaign Type Indicators */
+.campaign-type-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    border: 1px solid var(--gray-200);
+    background: white;
+}
+
+.campaign-type-marketing {
+    color: #1e40af;
+    border-color: #bfdbfe;
+    background: #eff6ff;
+}
+
+.campaign-type-red_folder {
+    color: #991b1b;
+    border-color: #fecaca;
+    background: #fef2f2;
+}
+
+.campaign-type-collection {
+    color: #92400e;
+    border-color: #fde68a;
+    background: #fffbeb;
+}
+
+.campaign-type-birthday {
+    color: #86198f;
+    border-color: #f0abfc;
+    background: #fdf4ff;
+}
+
+.campaign-type-reminder {
+    color: #065f46;
+    border-color: #bbf7d0;
+    background: #f0fdf4;
+}
+
+.campaign-type-promotion {
+    color: #991b1b;
+    border-color: #fecaca;
+    background: #fef2f2;
+}
+
+/* Progress Bars */
+.campaign-progress {
+    height: 8px;
+    background: var(--gray-100);
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 0.5rem 0;
+}
+
+.campaign-progress .progress-fill {
+    height: 100%;
+    transition: width 0.3s ease;
+}
+
+.progress-fill.delivery {
+    background: linear-gradient(90deg, var(--primary-500), var(--primary-600));
+}
+
+.progress-fill.read {
+    background: linear-gradient(90deg, var(--success-500), var(--success-600));
+}
+
+.progress-fill.failure {
+    background: linear-gradient(90deg, var(--error-500), var(--error-600));
+}
+
+/* Import Modal Styles */
+.import-modal {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.import-dropzone {
+    border: 2px dashed var(--gray-300);
+    border-radius: 12px;
+    padding: 2rem;
+    text-align: center;
+    transition: all 0.2s ease;
+    background: var(--gray-50);
+    cursor: pointer;
+}
+
+.import-dropzone:hover {
+    border-color: var(--primary-500);
+    background: var(--primary-50);
+}
+
+.import-dropzone.dragover {
+    border-color: var(--primary-500);
+    background: var(--primary-100);
+    transform: scale(1.02);
+}
+
+.import-preview {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: var(--gray-50);
+    border-radius: 8px;
+    border: 1px solid var(--gray-200);
+}
+
+.import-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.import-stat {
+    text-align: center;
+    padding: 1rem;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid var(--gray-200);
+}
+
+.import-stat h4 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.import-stat p {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--gray-600);
+}
+
+/* Template Manager */
+.template-manager {
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.template-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.template-card {
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: 12px;
+    padding: 1.5rem;
+    transition: all 0.2s ease;
+}
+
+.template-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.template-card h4 {
+    margin: 0 0 0.5rem 0;
+    color: var(--gray-900);
+}
+
+.template-card p {
+    margin: 0 0 1rem 0;
+    color: var(--gray-600);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.template-variables {
+    font-size: 0.75rem;
+    color: var(--primary-600);
+    background: var(--primary-50);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    display: inline-block;
+    margin-top: 0.5rem;
+}
+
+/* Contact List Manager */
+.contact-list-manager {
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.contact-list-card {
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    transition: all 0.2s ease;
+}
+
+.contact-list-card:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.contact-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.contact-stat {
+    text-align: center;
+    padding: 1rem;
+    background: var(--gray-50);
+    border-radius: 8px;
+    border: 1px solid var(--gray-200);
+}
+
+.contact-stat h4 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary-600);
+}
+
+.contact-stat p {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--gray-600);
+}
+
+/* Campaign Actions */
+.campaign-actions {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 2rem;
+    padding: 1.5rem;
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: 12px;
+}
+
+.campaign-action-group {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Status Indicators */
+.status-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.status-indicator.running {
+    background: #d1fae5;
+    color: #065f46;
+    border: 1px solid #bbf7d0;
+}
+
+.status-indicator.paused {
+    background: #e0e7ff;
+    color: #3730a3;
+    border: 1px solid #c7d2fe;
+}
+
+.status-indicator.completed {
+    background: #dbeafe;
+    color: #1e40af;
+    border: 1px solid #bfdbfe;
+}
+
+.status-indicator.cancelled {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+
+/* Dark Mode Support */
+body.dark-mode .campaign-card {
+    background: var(--gray-100);
+    border-color: var(--gray-200);
+}
+
+body.dark-mode .campaign-card:hover {
+    border-color: var(--primary-300);
+}
+
+body.dark-mode .form-step {
+    background: var(--gray-100);
+    border-color: var(--gray-200);
+}
+
+body.dark-mode .template-option,
+body.dark-mode .contact-list-option,
+body.dark-mode .campaign-type-option {
+    background: var(--gray-100);
+    border-color: var(--gray-200);
+}
+
+body.dark-mode .template-option:hover,
+body.dark-mode .contact-list-option:hover,
+body.dark-mode .campaign-type-option:hover {
+    background: var(--gray-200);
+}
+
+body.dark-mode .import-dropzone {
+    background: var(--gray-100);
+    border-color: var(--gray-300);
+}
+
+body.dark-mode .import-preview {
+    background: var(--gray-100);
+    border-color: var(--gray-200);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .campaign-card {
+        padding: 1rem;
+    }
+
+    .campaign-header {
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .campaign-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .import-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .contact-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .campaign-actions {
+        flex-direction: column;
+        gap: 1rem;
+    }
+}
+
+/* Animations */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.campaign-card {
+    animation: fadeInUp 0.4s ease-out;
+}
+
+.campaign-card:nth-child(2) {
+    animation-delay: 0.1s;
+}
+
+.campaign-card:nth-child(3) {
+    animation-delay: 0.2s;
+}
+
+.campaign-card:nth-child(4) {
+    animation-delay: 0.3s;
+}
+
+/* Loading States */
+.campaign-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    color: var(--gray-500);
+}
+
+.campaign-loading::after {
+    content: '';
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--gray-200);
+    border-top: 2px solid var(--primary-500);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-left: 1rem;
+}
+
+/* Empty States */
+.campaign-empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--gray-500);
+}
+
+.campaign-empty-state h3 {
+    color: var(--gray-700);
+    margin-bottom: 1rem;
+}
+
+/* Filters */
+.campaign-filters {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+}
+
+.campaign-filter-btn {
+    padding: 0.5rem 1rem;
+    border-radius: 9999px;
+    border: 1px solid var(--gray-200);
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.campaign-filter-btn:hover {
+    background: var(--gray-100);
+    border-color: var(--gray-300);
+}
+
+.campaign-filter-btn.active {
+    background: var(--primary-500);
+    color: white;
+    border-color: var(--primary-600);
+}
+
+/* Campaign Timeline */
+.campaign-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.timeline-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: var(--gray-50);
+    border-radius: 12px;
+    border: 1px solid var(--gray-200);
+}
+
+.timeline-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--primary-500);
+    flex-shrink: 0;
+}
+
+.timeline-content {
+    flex: 1;
+}
+
+.timeline-content h4 {
+    margin: 0 0 0.25rem 0;
+    font-size: 0.875rem;
+    color: var(--gray-600);
+}
+
+.timeline-content p {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--gray-700);
+}
+
+/* Campaign Metrics */
+.campaign-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+.metric-card {
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: 12px;
+    padding: 1.5rem;
+    text-align: center;
+    transition: all 0.2s ease;
+}
+
+.metric-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.metric-value {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.metric-label {
+    font-size: 0.875rem;
+    color: var(--gray-600);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.metric-change {
+    font-size: 0.75rem;
+    margin-top: 0.5rem;
+}
+
+.metric-change.positive {
+    color: var(--success-600);
+}
+
+.metric-change.negative {
+    color: var(--error-600);
+}
+
+/* Campaign Performance Chart */
+.campaign-chart {
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-top: 2rem;
+}
+
+.chart-container {
+    position: relative;
+    height: 300px;
+    width: 100%;
+}
+
+/* Campaign Settings */
+.campaign-settings {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.setting-group {
+    background: var(--gray-50);
+    border: 1px solid var(--gray-200);
+    border-radius: 12px;
+    padding: 1.5rem;
+}
+
+.setting-group h4 {
+    margin: 0 0 1rem 0;
+    color: var(--gray-800);
+    font-size: 1rem;
+}
+
+.setting-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--primary-600);
+}
+
+.setting-label {
+    font-size: 0.875rem;
+    color: var(--gray-600);
+    margin-top: 0.25rem;
+}
