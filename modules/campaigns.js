@@ -177,7 +177,7 @@ function setupCampaignsEventListeners() {
     // Manage templates button
     const templatesBtn = document.getElementById('manageTemplatesBtn');
     if (templatesBtn) {
-        templatesBtn.addEventListener('click', showTemplatesManager);
+        templatesBtn.addEventListener('click', showTemplateManager);
     }
 
     // New campaign button

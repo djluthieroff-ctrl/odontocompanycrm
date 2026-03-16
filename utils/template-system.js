@@ -495,6 +495,17 @@ function showTemplateManager() {
     setupTemplateEventListeners();
 }
 
+function showCreateTemplateForm() {
+    showTemplateManager();
+    setTimeout(() => {
+        if (typeof clearTemplateForm === 'function') {
+            clearTemplateForm();
+        }
+        const input = document.getElementById('templateName');
+        if (input) input.focus();
+    }, 100);
+}
+
 // Render Templates List HTML (for modal)
 function renderTemplatesListHTML() {
     const templates = TemplateSystemState.templates;
@@ -695,6 +706,8 @@ window.updateVariablesList = updateVariablesList;
 window.filterTemplatesByCategory = filterTemplatesByCategory;
 window.renderTemplatesList = renderTemplatesList;
 window.showTemplateManager = showTemplateManager;
+window.showCreateTemplateForm = showCreateTemplateForm;
+window.showTemplatesManager = showTemplateManager;
 window.saveTemplate = saveTemplate;
 window.editTemplate = editTemplate;
 window.clearTemplateForm = clearTemplateForm;
