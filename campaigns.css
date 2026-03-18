@@ -1,0 +1,361 @@
+/* ═══════════════════════════════════════════════════════
+   CAMPAIGNS MODULE — CSS PREMIUM
+   Central de Disparos — CRM Odonto Company
+═══════════════════════════════════════════════════════ */
+
+/* Container principal */
+.campaigns-module {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+/* Aviso Z-API não configurada */
+.campaigns-zapi-warning {
+    background: #fef3c7;
+    border: 1px solid #fcd34d;
+    border-radius: 12px;
+    padding: .875rem 1.25rem;
+    font-size: .875rem;
+    color: #78350f;
+    margin-bottom: 1.25rem;
+}
+
+/* ─── TABS ─── */
+.campaigns-tabs {
+    display: flex;
+    gap: 0;
+    background: white;
+    border-radius: 16px 16px 0 0;
+    border: 1px solid var(--gray-200);
+    border-bottom: none;
+    overflow: hidden;
+    margin-bottom: 0;
+}
+
+.campaigns-tab {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    padding: 1rem .5rem;
+    background: white;
+    border: none;
+    border-bottom: 3px solid transparent;
+    font-size: .85rem;
+    font-weight: 600;
+    color: var(--gray-500);
+    cursor: pointer;
+    transition: all .2s ease;
+    position: relative;
+}
+
+.campaigns-tab:hover {
+    background: var(--gray-50);
+    color: var(--gray-800);
+}
+
+.campaigns-tab.active {
+    color: var(--primary-600);
+    background: #f0f7ff;
+    border-bottom-color: var(--primary-600);
+}
+
+.tab-badge {
+    background: var(--primary-500);
+    color: white;
+    font-size: .65rem;
+    font-weight: 700;
+    padding: .15rem .4rem;
+    border-radius: 20px;
+    min-width: 18px;
+    text-align: center;
+}
+
+.tab-badge-red {
+    background: #ef4444 !important;
+}
+
+.campaigns-tab-content {
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-top: none;
+    border-radius: 0 0 16px 16px;
+    padding: 1.75rem;
+    min-height: 400px;
+}
+
+/* ─── DASHBOARD STATS ─── */
+.campaigns-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+}
+
+.cstat-card {
+    border-radius: 16px;
+    padding: 1.25rem;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0,0,0,.1);
+    transition: transform .2s ease, box-shadow .2s ease;
+}
+
+.cstat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0,0,0,.15);
+}
+
+.cstat-card::before {
+    content: '';
+    position: absolute;
+    top: -20px; right: -20px;
+    width: 80px; height: 80px;
+    background: rgba(255,255,255,.1);
+    border-radius: 50%;
+}
+
+.cstat-blue    { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+.cstat-green   { background: linear-gradient(135deg, #10b981, #059669); }
+.cstat-purple  { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
+.cstat-orange  { background: linear-gradient(135deg, #f97316, #ea580c); }
+.cstat-teal    { background: linear-gradient(135deg, #06b6d4, #0891b2); }
+.cstat-indigo  { background: linear-gradient(135deg, #6366f1, #4f46e5); }
+
+.cstat-icon { font-size: 1.5rem; }
+.cstat-value { font-size: 2rem; font-weight: 800; }
+.cstat-label { font-size: .75rem; opacity: .85; font-weight: 500; }
+
+/* Mini stats dentro de cards */
+.cstat-mini {
+    padding: .75rem;
+    background: var(--gray-50);
+    border-radius: 10px;
+    text-align: center;
+}
+.cstat-mini > div:first-child { font-size: 1.25rem; font-weight: 700; color: var(--gray-800); }
+.cstat-mini > div:last-child  { font-size: .7rem; color: var(--gray-500); margin-top: .2rem; }
+
+/* Active send progress banner */
+.campaigns-active-send {
+    background: linear-gradient(135deg, #eff6ff, #dbeafe);
+    border: 1px solid #bfdbfe;
+    border-radius: 14px;
+    padding: 1.25rem;
+}
+
+/* Quick action buttons */
+.campaigns-quick-btn {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: 14px;
+    cursor: pointer;
+    transition: all .2s ease;
+    text-align: left;
+}
+
+.campaigns-quick-btn:hover {
+    transform: translateX(4px);
+    border-color: var(--primary-300);
+    box-shadow: 0 4px 15px rgba(59,130,246,.1);
+}
+
+/* ─── CAMPAIGN CARDS ─── */
+.campaign-card-premium {
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: 16px;
+    padding: 1.5rem;
+    cursor: pointer;
+    transition: all .25s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.campaign-card-premium:hover {
+    border-color: var(--primary-300);
+    box-shadow: 0 8px 30px rgba(0,0,0,.08);
+    transform: translateY(-2px);
+}
+
+.campaign-type-badge {
+    width: 48px; height: 48px;
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.5rem;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(0,0,0,.15);
+}
+
+/* ─── TEMPLATES GRID ─── */
+.templates-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.25rem;
+}
+
+.template-card {
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: 16px;
+    padding: 1.25rem;
+    cursor: pointer;
+    transition: all .25s ease;
+}
+
+.template-card:hover {
+    border-color: var(--primary-400);
+    box-shadow: 0 8px 25px rgba(59,130,246,.1);
+    transform: translateY(-3px);
+}
+
+/* ─── WHATSAPP PREVIEW ─── */
+.whatsapp-preview-container {
+    background: #e5ddd5;
+    border-radius: 16px;
+    padding: 1rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect width='100' height='100' fill='%23e5ddd5'/%3E%3C/svg%3E");
+}
+
+.whatsapp-screen {
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0,0,0,.15);
+    background: #e5ddd5;
+}
+
+.whatsapp-header {
+    background: #075e54;
+    padding: .75rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+}
+
+.whatsapp-avatar {
+    width: 35px; height: 35px;
+    border-radius: 50%;
+    background: #128c7e;
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-size: .75rem; font-weight: 700;
+    flex-shrink: 0;
+}
+
+.whatsapp-name { color: white; font-size: .85rem; font-weight: 600; }
+.whatsapp-status { color: #b2dfdb; font-size: .7rem; }
+
+.whatsapp-body {
+    padding: 1rem;
+    min-height: 80px;
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.whatsapp-bubble {
+    background: white;
+    border-radius: 0 12px 12px 12px;
+    padding: .75rem 1rem;
+    font-size: .85rem;
+    line-height: 1.5;
+    color: #303030;
+    max-width: calc(100% - 30px);
+    display: inline-block;
+    position: relative;
+    box-shadow: 0 1px 2px rgba(0,0,0,.1);
+    word-break: break-word;
+}
+
+.whatsapp-time {
+    font-size: .65rem;
+    color: #8696a0;
+    text-align: right;
+    margin-top: .35rem;
+}
+
+/* ─── CAMPAIGN TYPE SELECTOR (modal criação) ─── */
+.campaign-types-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: .75rem;
+}
+
+.campaign-type-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .4rem;
+    padding: .75rem;
+    border: 2px solid var(--gray-200);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all .2s;
+    text-align: center;
+}
+
+.campaign-type-option:hover,
+.campaign-type-option.selected {
+    border-color: var(--primary-400);
+    background: #EFF6FF;
+    transform: scale(1.03);
+}
+
+.campaign-type-option.selected {
+    border-color: var(--primary-600);
+    background: #DBEAFE;
+    box-shadow: 0 0 0 3px rgba(59,130,246,.2);
+}
+
+/* ─── IMPORT SOURCE CARDS ─── */
+.import-source-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    background: var(--gray-50);
+    border: 1px solid var(--gray-200);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all .2s;
+}
+
+.import-source-card:hover {
+    background: #EFF6FF;
+    border-color: var(--primary-300);
+    transform: translateX(4px);
+}
+
+.import-source-card > div:nth-child(2) { flex: 1; }
+
+/* ─── EMPTY STATES ─── */
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--gray-400);
+}
+
+.empty-state-icon { font-size: 4rem; margin-bottom: 1rem; }
+.empty-state h3 { font-size: 1.1rem; color: var(--gray-600); margin: 0 0 .5rem; }
+.empty-state p  { font-size: .875rem; margin: 0; }
+
+/* ─── Z-API STATUS BADGE ─── */
+.badge-gray    { background: var(--gray-100); color: var(--gray-600); padding: .2rem .6rem; border-radius: 20px; font-size: .75rem; font-weight: 600; }
+.badge-warning { background: #fef3c7; color: #92400e; padding: .2rem .6rem; border-radius: 20px; font-size: .75rem; font-weight: 600; }
+
+/* ─── RESPONSIVO ─── */
+@media (max-width: 768px) {
+    .campaigns-tabs { flex-wrap: wrap; border-radius: 12px; }
+    .campaigns-tab { flex: auto; min-width: 50%; font-size: .75rem; padding: .75rem .5rem; }
+    .campaigns-tab-content { padding: 1rem; }
+    .campaigns-stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .templates-grid { grid-template-columns: 1fr; }
+    .campaign-types-grid { grid-template-columns: repeat(2, 1fr); }
+}

@@ -13,6 +13,7 @@
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="campaigns.css">
     <!-- xlsx-js-style for Excel Import/Export with Styling -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style/dist/xlsx.bundle.js"></script>
     <!-- Chart.js for Reports -->
@@ -126,24 +127,15 @@
         <main class="main-content">
             <!-- Campaigns Module -->
             <section id="campaigns-module" class="module">
-                <div class="module-header">
-                    <div>
-                        <h2>Gestão de Campanhas</h2>
-                        <p>Crie e gerencie disparos em massa para diferentes públicos</p>
-                    </div>
-                    <div style="display: flex; gap: var(--spacing-sm);">
-                        <button class="btn btn-secondary" id="importContactsBtn" title="Importar contatos de CSV">
-                            📥 Importar Contatos
-                        </button>
-                        <button class="btn btn-secondary" id="manageTemplatesBtn" title="Gerenciar templates">
-                            📝 Templates
-                        </button>
-                        <button class="btn btn-primary" id="newCampaignBtn">
-                            <span>➕</span> Nova Campanha
-                        </button>
+                <div id="campaignsContent">
+                    <!-- O conteúdo premium será renderizado aqui pelo campaigns.js -->
+                    <div style="display: flex; align-items: center; justify-content: center; height: 300px; color: var(--gray-400);">
+                        <div style="text-align: center;">
+                            <div style="font-size: 2rem; margin-bottom: 1rem;">📢</div>
+                            <p>Carregando Central de Disparos...</p>
+                        </div>
                     </div>
                 </div>
-                <div id="campaignsContent"></div>
             </section>
             <!-- Dashboard Module -->
             <section id="dashboard-module" class="module active">
@@ -515,6 +507,8 @@
     <script src="modules/estoque.js"></script>
     <script src="modules/settings.js"></script>
     <script src="modules/campaigns.js"></script>
+    <script src="modules/campaigns-part2.js"></script>
+    <script src="modules/campaigns-part3.js"></script>
     <script src="app.js"></script>
 </body>
 

@@ -1,7 +1,7 @@
-// Campaigns Module - CRM Odonto Company
-// ===========================================
+// Campaigns Module — CRM Odonto Company (Premium)
+// ================================================
+// Central de Disparos via Z-API para Clínica Ortodôntica
 
-// Global state for campaigns module
 const CampaignsState = {
     campaigns: [],
     templates: [],
@@ -9,866 +9,387 @@ const CampaignsState = {
     contacts: [],
     blacklist: [],
     selectedCampaign: null,
+    currentTab: 'dashboard', // dashboard | campaigns | templates | contacts | blacklist
     filterStatus: 'all',
     filterType: 'all',
     searchTerm: '',
-    currentView: 'dashboard' // dashboard, list, create, edit, details
+    activeSend: null // { campaignId, total, sent, failed }
 };
 
-// Campaign Types
 const CAMPAIGN_TYPES = {
-    marketing: { label: 'Marketing', icon: '📢', color: '#3b82f6' },
-    red_folder: { label: 'Pasta Vermelha', icon: '🚩', color: '#ef4444' },
-    collection: { label: 'Cobrança', icon: '💰', color: '#f59e0b' },
-    birthday: { label: 'Aniversário', icon: '🎂', color: '#ec4899' },
-    reminder: { label: 'Lembrete', icon: '⏰', color: '#10b981' },
-    promotion: { label: 'Promoção', icon: '🔥', color: '#ef4444' }
+    cobranca:            { label: 'Cobrança',               icon: '💰', color: '#f59e0b', gradient: 'linear-gradient(135deg,#f59e0b,#d97706)' },
+    marketing:           { label: 'Marketing',              icon: '📢', color: '#3b82f6', gradient: 'linear-gradient(135deg,#3b82f6,#2563eb)' },
+    reativacao_paciente: { label: 'Reativação Paciente',    icon: '🔄', color: '#8b5cf6', gradient: 'linear-gradient(135deg,#8b5cf6,#7c3aed)' },
+    recuperacao_lead:    { label: 'Recuperação de Lead',    icon: '🎯', color: '#ef4444', gradient: 'linear-gradient(135deg,#ef4444,#dc2626)' },
+    aniversario:         { label: 'Aniversário',            icon: '🎂', color: '#ec4899', gradient: 'linear-gradient(135deg,#ec4899,#db2777)' },
+    lembrete_consulta:   { label: 'Lembrete de Consulta',  icon: '⏰', color: '#10b981', gradient: 'linear-gradient(135deg,#10b981,#059669)' },
+    pos_consulta:        { label: 'Pós-Consulta',           icon: '⭐', color: '#06b6d4', gradient: 'linear-gradient(135deg,#06b6d4,#0891b2)' },
+    orcamento_pendente:  { label: 'Orçamento Pendente',     icon: '📋', color: '#f97316', gradient: 'linear-gradient(135deg,#f97316,#ea580c)' }
 };
 
-// Initialize Campaigns Module
+const ODC_DEFAULT_TEMPLATES = [
+    // COBRANÇAS
+    {
+        name: 'Cobrança Suave',
+        type: 'cobranca',
+        category: 'Cobranças',
+        content: 'Olá {{nome}}! 😊 Tudo bem?\n\nPassando para avisar que identificamos uma parcela em aberto no seu tratamento aqui na {{unidade}}.\n\nValor: R$ {{valor}}\nVencimento: {{data_vencimento}}\n\nQualquer dúvida ou para regularizar, é só responder esta mensagem! 💙',
+        variables: ['nome', 'unidade', 'valor', 'data_vencimento']
+    },
+    {
+        name: 'Cobrança Urgente',
+        type: 'cobranca',
+        category: 'Cobranças',
+        content: 'Olá {{nome}}, bom dia!\n\n⚠️ Sua parcela de R$ {{valor}} vence HOJE!\n\nPara evitar multa, regularize até as 18h.\n\nAceitamos: Pix, cartão ou dinheiro\nChave Pix: {{chave_pix}}\n\nEm caso de dúvidas: {{nome_atendente}}',
+        variables: ['nome', 'valor', 'chave_pix', 'nome_atendente']
+    },
+    {
+        name: 'Proposta de Acordo',
+        type: 'cobranca',
+        category: 'Cobranças',
+        content: 'Olá {{nome}}! 💙\n\nSabemos que imprevistos acontecem. Por isso, queremos te ajudar a regularizar sua situação na {{unidade}} sem complicação.\n\nTemos uma proposta especial para você:\n✅ Parcelamento sem juros\n✅ Desconto de {{desconto}}% à vista\n\nEntre em contato: responda esta mensagem ou ligue para {{telefone_clinica}}',
+        variables: ['nome', 'unidade', 'desconto', 'telefone_clinica']
+    },
+    // MARKETING
+    {
+        name: 'Avaliação Gratuita',
+        type: 'marketing',
+        category: 'Marketing',
+        content: '🦷 Olá {{nome}}!\n\nA {{unidade}} tem uma surpresa para você!\n\n🎁 AVALIAÇÃO ORTODÔNTICA GRATUITA!\n\nCorriga seu sorriso com aparelho a partir de R$ {{valor_aparelho}}/mês!\n\n✅ Sem dor\n✅ Resultados em poucos meses\n✅ Parcelamos no cartão\n\nGaranta sua vaga: {{link_agendamento}}\nOu responda esta mensagem! 😊',
+        variables: ['nome', 'unidade', 'valor_aparelho', 'link_agendamento']
+    },
+    {
+        name: 'Promoção Clareamento',
+        type: 'marketing',
+        category: 'Marketing',
+        content: '✨ {{nome}}, oferta especial para você!\n\nClareamento a laser na {{unidade}} com {{desconto}}% de desconto!\n\nDe R$ {{valor_original}} por apenas R$ {{valor_promocional}}!\n\n⏰ Promoção válida até {{data_validade}}\n\n👉 Agende agora e garanta seu horário!\nResponda ou ligue: {{telefone_clinica}}',
+        variables: ['nome', 'unidade', 'desconto', 'valor_original', 'valor_promocional', 'data_validade', 'telefone_clinica']
+    },
+    {
+        name: 'Programa de Indicação',
+        type: 'marketing',
+        category: 'Marketing',
+        content: '🌟 Olá {{nome}}!\n\nVocê sabia que pode ganhar desconto indicando amigos para a {{unidade}}?\n\n🎁 PROGRAMA INDICA & GANHA:\n👥 Indique um amigo → Você ganha R$ {{valor_bonus}} de desconto\n\nÉ simples: o amigo menciona seu nome ao agendar!\n\nObrigado por confiar em nós! 💙',
+        variables: ['nome', 'unidade', 'valor_bonus']
+    },
+    // REATIVAÇÃO DE PACIENTES
+    {
+        name: 'Sentimos Sua Falta',
+        type: 'reativacao_paciente',
+        category: 'Reativação de Pacientes',
+        content: 'Oi {{nome}}! 😊\n\nFaz um tempo que não te vemos aqui na {{unidade}} e sentimos sua falta!\n\nComo está seu sorriso? Está na hora da sua manutenção? 🦷\n\nAgende sua consulta de retorno e garanta que seu tratamento está indo bem!\n\n👉 Responda esta mensagem ou clique: {{link_agendamento}}',
+        variables: ['nome', 'unidade', 'link_agendamento']
+    },
+    {
+        name: 'Tratamento Incompleto',
+        type: 'reativacao_paciente',
+        category: 'Reativação de Pacientes',
+        content: 'Olá {{nome}}, tudo bem?\n\nIdentificamos que seu tratamento ortodôntico na {{unidade}} está em aberto.\n\n⚠️ Interromper o tratamento pode causar:\n• Recidiva (dentes voltam à posição)\n• Perda do investimento já realizado\n• Necessidade de recomeçar\n\nVamos retomar? Temos horários disponíveis esta semana!\n\nResponda esta mensagem 💙',
+        variables: ['nome', 'unidade']
+    },
+    {
+        name: 'Manutenção do Aparelho',
+        type: 'reativacao_paciente',
+        category: 'Reativação de Pacientes',
+        content: '🦷 Oi {{nome}}!\n\nChegou a hora da sua manutenção do aparelho!\n\nA manutenção regular é essencial para:\n✅ Acelerar o tratamento\n✅ Evitar dores\n✅ Manter os resultados\n\nSua última visita foi há {{meses_ausente}} meses. Vamos agendar?\n\nResponda esta mensagem ou ligue: {{telefone_clinica}} 📱',
+        variables: ['nome', 'meses_ausente', 'telefone_clinica']
+    },
+    // RECUPERAÇÃO DE LEADS
+    {
+        name: 'Lead Frio — Retomada',
+        type: 'recuperacao_lead',
+        category: 'Recuperação de Leads',
+        content: 'Oi {{nome}}! 😊\n\nVocê entrou em contato com a {{unidade}} há um tempo atrás e gostaríamos de saber se ainda tem interesse no tratamento!\n\n🦷 Ainda temos:\n✅ Avaliação gratuita\n✅ Parcelamento facilitado\n✅ Equipe especializada\n\nQuer agendar? Responda este número! 💙',
+        variables: ['nome', 'unidade']
+    },
+    {
+        name: 'Pasta Vermelha — Segundo Contato',
+        type: 'recuperacao_lead',
+        category: 'Recuperação de Leads',
+        content: 'Olá {{nome}}!\n\nVocê veio até a {{unidade}}, recebeu a avaliação, mas ainda não deu o próximo passo.\n\nSabemos que a decisão é importante, e queremos te ajudar! 💙\n\n🎁 Temos condições especiais para você fechar hoje:\n• Parcelamento em até 36x\n• Entrada facilitada\n• Desconto especial de {{desconto}}%\n\nEsta oferta é válida só por 48h!\nResponda agora: {{nome_atendente}} 🦷',
+        variables: ['nome', 'unidade', 'desconto', 'nome_atendente']
+    },
+    {
+        name: 'Orçamento Expirado',
+        type: 'orcamento_pendente',
+        category: 'Orçamento Pendente',
+        content: '{{nome}}, olá!\n\nO orçamento que passamos para você na {{unidade}} está prestes a expirar.\n\n📋 Seu orçamento:\nTratamento: {{tratamento}}\nValor: R$ {{valor}}\nValidade: {{data_validade}}\n\nQuer renovar ou tem alguma dúvida? Responda esta mensagem!\n\nNão deixe seu sorriso esperar! 🦷✨',
+        variables: ['nome', 'unidade', 'tratamento', 'valor', 'data_validade']
+    },
+    // ESPECIAIS
+    {
+        name: 'Feliz Aniversário',
+        type: 'aniversario',
+        category: 'Especiais',
+        content: '🎉 Feliz Aniversário, {{nome}}!\n\nToda a equipe da {{unidade}} deseja um dia incrível para você! 🎂\n\n🎁 De presente, temos um mimo especial:\n✨ Desconto de {{desconto}}% em qualquer procedimento\n\nVálido por 30 dias após seu aniversário!\n\nParabéns! Que venham muitos mais! 🥳',
+        variables: ['nome', 'unidade', 'desconto']
+    },
+    {
+        name: 'Lembrete de Consulta D-1',
+        type: 'lembrete_consulta',
+        category: 'Especiais',
+        content: '📅 Olá {{nome}}!\n\nSeu agendamento na {{unidade}} é AMANHÃ!\n\n🕐 Horário: {{horario}}\n👨‍⚕️ Profissional: {{dentista}}\n📍 Endereço: {{endereco}}\n\nConfirme sua presença respondendo SIM! ✅\n\nEm caso de imprevisto, avise com antecedência! 🙏',
+        variables: ['nome', 'unidade', 'horario', 'dentista', 'endereco']
+    },
+    {
+        name: 'Pesquisa Pós-Consulta',
+        type: 'pos_consulta',
+        category: 'Especiais',
+        content: '⭐ Olá {{nome}}!\n\nObrigado pela sua visita à {{unidade}} hoje!\n\nSua opinião é muito importante para nós.\n\nComo foi sua experiência?\n1️⃣ Ótima\n2️⃣ Boa\n3️⃣ Regular\n4️⃣ Ruim\n\nResponda com o número! Sua avaliação nos ajuda a melhorar sempre! 💙',
+        variables: ['nome', 'unidade']
+    }
+];
+
+// ===================
+// INIT
+// ===================
 function initCampaignsModule() {
-    console.log('📢 Initializing Campaigns Module...');
+    console.log('📢 Campaigns Module iniciado');
     loadCampaignsData();
-    renderCampaignsDashboard();
-    setupCampaignsEventListeners();
+    renderCampaignsModule();
 }
 
-// Load Data from Storage
 function loadCampaignsData() {
     try {
-        // Load campaigns
-        const campaignsData = localStorage.getItem('campaigns');
-        if (campaignsData) {
-            CampaignsState.campaigns = JSON.parse(campaignsData);
-        }
+        const c = localStorage.getItem('campaigns');
+        if (c) CampaignsState.campaigns = JSON.parse(c);
 
-        // Load templates
-        const templatesData = localStorage.getItem('campaignTemplates');
-        if (templatesData) {
-            CampaignsState.templates = JSON.parse(templatesData);
+        const t = localStorage.getItem('campaignTemplates');
+        if (t) {
+            CampaignsState.templates = JSON.parse(t);
         } else {
-            // Load default templates if none exist
-            loadDefaultTemplates();
+            CampaignsState.templates = ODC_DEFAULT_TEMPLATES.map(tpl => ({
+                ...tpl,
+                id: generateId(),
+                is_active: true,
+                created_at: new Date().toISOString()
+            }));
+            localStorage.setItem('campaignTemplates', JSON.stringify(CampaignsState.templates));
         }
 
-        // Load contact lists
-        const contactListsData = localStorage.getItem('contactLists');
-        if (contactListsData) {
-            CampaignsState.contactLists = JSON.parse(contactListsData);
-        }
+        const cl = localStorage.getItem('contactLists');
+        if (cl) CampaignsState.contactLists = JSON.parse(cl);
 
-        // Load contacts
-        const contactsData = localStorage.getItem('contacts');
-        if (contactsData) {
-            CampaignsState.contacts = JSON.parse(contactsData);
-        }
+        const ct = localStorage.getItem('contacts');
+        if (ct) CampaignsState.contacts = JSON.parse(ct);
 
-        // Load blacklist
-        const blacklistData = localStorage.getItem('blacklist');
-        if (blacklistData) {
-            CampaignsState.blacklist = JSON.parse(blacklistData);
-        }
-
-        console.log('📢 Campaigns data loaded:', {
-            campaigns: CampaignsState.campaigns.length,
-            templates: CampaignsState.templates.length,
-            contactLists: CampaignsState.contactLists.length,
-            contacts: CampaignsState.contacts.length,
-            blacklist: CampaignsState.blacklist.length
-        });
-
-    } catch (error) {
-        console.error('❌ Error loading campaigns data:', error);
-        showNotification('Erro ao carregar dados de campanhas', 'error');
+        const bl = localStorage.getItem('blacklist');
+        if (bl) CampaignsState.blacklist = JSON.parse(bl);
+    } catch (e) {
+        console.error('Erro ao carregar campanhas:', e);
     }
 }
 
-// Save Data to Storage
 function saveCampaignsData() {
-    try {
-        localStorage.setItem('campaigns', JSON.stringify(CampaignsState.campaigns));
-        localStorage.setItem('campaignTemplates', JSON.stringify(CampaignsState.templates));
-        localStorage.setItem('contactLists', JSON.stringify(CampaignsState.contactLists));
-        localStorage.setItem('contacts', JSON.stringify(CampaignsState.contacts));
-        localStorage.setItem('blacklist', JSON.stringify(CampaignsState.blacklist));
-    } catch (error) {
-        console.error('❌ Error saving campaigns data:', error);
-        showNotification('Erro ao salvar dados de campanhas', 'error');
-    }
+    localStorage.setItem('campaigns', JSON.stringify(CampaignsState.campaigns));
+    localStorage.setItem('campaignTemplates', JSON.stringify(CampaignsState.templates));
+    localStorage.setItem('contactLists', JSON.stringify(CampaignsState.contactLists));
+    localStorage.setItem('contacts', JSON.stringify(CampaignsState.contacts));
+    localStorage.setItem('blacklist', JSON.stringify(CampaignsState.blacklist));
 }
 
-// Load Default Templates
-function loadDefaultTemplates() {
-    const defaultTemplates = [
-        {
-            id: generateId(),
-            name: 'Template de Marketing',
-            content: 'Olá {{nome}}! Temos uma promoção especial para você na {{unidade}}! Agende sua avaliação e ganhe 20% de desconto. Data da consulta: {{data_consulta}}',
-            variables: ['nome', 'unidade', 'data_consulta'],
-            type: 'marketing',
-            is_active: true,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-        },
-        {
-            id: generateId(),
-            name: 'Template de Pasta Vermelha',
-            content: 'Olá {{nome}}, sentimos falta de você aqui na {{unidade}}! Sabia que podemos transformar seu sorriso? Agende uma avaliação e receba um plano personalizado. Horário da consulta: {{horario}}',
-            variables: ['nome', 'unidade', 'horario'],
-            type: 'red_folder',
-            is_active: true,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-        },
-        {
-            id: generateId(),
-            name: 'Template de Cobrança',
-            content: 'Olá {{nome}}, temos uma pendência em aberto referente ao tratamento na {{unidade}}. Valor: R$ {{valor}}. Entre em contato para regularizar. Data de vencimento: {{data_vencimento}}',
-            variables: ['nome', 'unidade', 'valor', 'data_vencimento'],
-            type: 'collection',
-            is_active: true,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-        },
-        {
-            id: generateId(),
-            name: 'Template de Aniversário',
-            content: 'Feliz aniversário {{nome}}! 🎉 Para comemorar, temos um presente especial para você na {{unidade}}: limpeza grátis! Agende sua visita. Data da consulta: {{data_consulta}}',
-            variables: ['nome', 'unidade', 'data_consulta'],
-            type: 'birthday',
-            is_active: true,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-        },
-        {
-            id: generateId(),
-            name: 'Template de Lembrete',
-            content: 'Olá {{nome}}, seu agendamento está marcado para amanhã na {{unidade}} às {{horario}}. Confirme sua presença respondendo SIM. Qualquer dúvida, estamos à disposição!',
-            variables: ['nome', 'unidade', 'horario'],
-            type: 'reminder',
-            is_active: true,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-        },
-        {
-            id: generateId(),
-            name: 'Template de Promoção',
-            content: '🔥 PROMOÇÃO RELÂMPAGO! Olá {{nome}}, na {{unidade}} temos condições especiais hoje! Clareamento por R$ {{valor}} ou implante por R$ {{valor_implante}}. Agende já! Data da consulta: {{data_consulta}}',
-            variables: ['nome', 'unidade', 'valor', 'valor_implante', 'data_consulta'],
-            type: 'promotion',
-            is_active: true,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-        }
-    ];
-
-    CampaignsState.templates = defaultTemplates;
-    saveCampaignsData();
-}
-
-// Setup Event Listeners
-function setupCampaignsEventListeners() {
-    // Import contacts button
-    const importBtn = document.getElementById('importContactsBtn');
-    if (importBtn) {
-        importBtn.addEventListener('click', showImportContactsModal);
-    }
-
-    // Manage templates button
-    const templatesBtn = document.getElementById('manageTemplatesBtn');
-    if (templatesBtn) {
-        templatesBtn.addEventListener('click', showTemplateManager);
-    }
-
-    // New campaign button
-    const newCampaignBtn = document.getElementById('newCampaignBtn');
-    if (newCampaignBtn) {
-        newCampaignBtn.addEventListener('click', showCreateCampaignForm);
-    }
-
-    // Setup search and filter events after content is rendered
-    setTimeout(() => {
-        const container = document.getElementById('campaignsContent');
-        if (!container) return;
-
-        // Search input
-        const searchInput = document.getElementById('campaignsSearch');
-        if (searchInput) {
-            searchInput.addEventListener('input', (e) => {
-                CampaignsState.searchTerm = e.target.value;
-                renderCampaignsList();
-            });
-        }
-
-        // Filter buttons
-        const filterButtons = container.querySelectorAll('.campaign-filter-btn');
-        filterButtons.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                CampaignsState.filterStatus = e.target.dataset.status;
-                CampaignsState.filterType = e.target.dataset.type || 'all';
-                renderCampaignsList();
-            });
-        });
-    }, 100);
-}
-
-// Render Campaigns Dashboard
-function renderCampaignsDashboard() {
+// ===================
+// RENDER PRINCIPAL
+// ===================
+function renderCampaignsModule() {
     const container = document.getElementById('campaignsContent');
+    if (!container) return;
 
-    const stats = calculateCampaignStats();
+    const zapiOk = !!(AppState?.settings?.zapiInstance && AppState?.settings?.zapiToken);
 
     container.innerHTML = `
-        <div class="campaigns-dashboard">
-            <!-- Quick Stats -->
-            <div class="dashboard-grid" style="margin-bottom: 2rem;">
-                <div class="stat-card">
-                    <div class="stat-icon">📢</div>
-                    <div class="stat-content">
-                        <h3>Total de Campanhas</h3>
-                        <div class="stat-number">${stats.total}</div>
-                        <div class="stat-label">Campanhas criadas</div>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">📊</div>
-                    <div class="stat-content">
-                        <h3>Em Andamento</h3>
-                        <div class="stat-number">${stats.running}</div>
-                        <div class="stat-label">Campanhas ativas</div>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">✅</div>
-                    <div class="stat-content">
-                        <h3>Concluídas</h3>
-                        <div class="stat-number">${stats.completed}</div>
-                        <div class="stat-label">Campanhas finalizadas</div>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">📈</div>
-                    <div class="stat-content">
-                        <h3>Taxa de Entrega</h3>
-                        <div class="stat-number">${stats.deliveryRate}%</div>
-                        <div class="stat-label">Média de entrega</div>
-                    </div>
-                </div>
+        <div class="campaigns-module">
+            ${!zapiOk ? `
+            <div class="campaigns-zapi-warning">
+                ⚠️ <strong>Z-API não configurada.</strong> Vá em <a onclick="switchModule('settings')" style="cursor:pointer;color:var(--primary-600);text-decoration:underline;">Configurações → Integrações</a> e preencha os dados da Z-API para habilitar os disparos.
+            </div>` : ''}
+
+            <!-- Tabs -->
+            <div class="campaigns-tabs">
+                <button class="campaigns-tab ${CampaignsState.currentTab === 'dashboard' ? 'active' : ''}" onclick="switchCampaignTab('dashboard')">
+                    <span>📊</span> Dashboard
+                </button>
+                <button class="campaigns-tab ${CampaignsState.currentTab === 'campaigns' ? 'active' : ''}" onclick="switchCampaignTab('campaigns')">
+                    <span>📢</span> Campanhas
+                    ${CampaignsState.campaigns.filter(c => c.status === 'running').length > 0 ? `<span class="tab-badge">${CampaignsState.campaigns.filter(c => c.status === 'running').length}</span>` : ''}
+                </button>
+                <button class="campaigns-tab ${CampaignsState.currentTab === 'templates' ? 'active' : ''}" onclick="switchCampaignTab('templates')">
+                    <span>📝</span> Templates
+                </button>
+                <button class="campaigns-tab ${CampaignsState.currentTab === 'contacts' ? 'active' : ''}" onclick="switchCampaignTab('contacts')">
+                    <span>👥</span> Contatos
+                    ${CampaignsState.contactLists.length > 0 ? `<span class="tab-badge">${CampaignsState.contactLists.length}</span>` : ''}
+                </button>
+                <button class="campaigns-tab ${CampaignsState.currentTab === 'blacklist' ? 'active' : ''}" onclick="switchCampaignTab('blacklist')">
+                    <span>🚫</span> Blacklist
+                    ${CampaignsState.blacklist.length > 0 ? `<span class="tab-badge tab-badge-red">${CampaignsState.blacklist.length}</span>` : ''}
+                </button>
             </div>
 
-            <!-- Actions & Filters -->
-            <div style="display: flex; gap: 1rem; margin-bottom: 2rem; align-items: center; flex-wrap: wrap;">
-                <div class="search-box" style="flex: 1; max-width: 300px;">
-                    <input type="text" id="campaignsSearch" placeholder="🔍 Buscar campanha..." 
-                           class="form-input" value="${CampaignsState.searchTerm}">
-                </div>
-                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                    <button class="btn ${CampaignsState.filterStatus === 'all' ? 'btn-primary' : 'btn-secondary'} btn-small" 
-                            onclick="filterCampaigns('all', 'all')">Todas</button>
-                    <button class="btn ${CampaignsState.filterStatus === 'running' ? 'btn-primary' : 'btn-secondary'} btn-small" 
-                            onclick="filterCampaigns('running', 'all')">Em Andamento</button>
-                    <button class="btn ${CampaignsState.filterStatus === 'completed' ? 'btn-primary' : 'btn-secondary'} btn-small" 
-                            onclick="filterCampaigns('completed', 'all')">Concluídas</button>
-                    <button class="btn ${CampaignsState.filterStatus === 'scheduled' ? 'btn-primary' : 'btn-secondary'} btn-small" 
-                            onclick="filterCampaigns('scheduled', 'all')">Agendadas</button>
-                </div>
-            </div>
-
-            <!-- Campaigns List -->
-            <div class="campaigns-list">
-                ${renderCampaignsListHTML()}
+            <!-- Tab Content -->
+            <div class="campaigns-tab-content" id="campaignTabContent">
+                ${renderCampaignTabContent()}
             </div>
         </div>
     `;
-
-    setupCampaignsEventListeners();
 }
 
-// Render Campaigns List HTML
-function renderCampaignsListHTML() {
-    let filteredCampaigns = [...CampaignsState.campaigns];
-
-    // Apply filters
-    if (CampaignsState.filterStatus !== 'all') {
-        filteredCampaigns = filteredCampaigns.filter(c => c.status === CampaignsState.filterStatus);
+function switchCampaignTab(tab) {
+    CampaignsState.currentTab = tab;
+    const tabContent = document.getElementById('campaignTabContent');
+    if (tabContent) {
+        tabContent.innerHTML = renderCampaignTabContent();
     }
-
-    if (CampaignsState.filterType !== 'all') {
-        filteredCampaigns = filteredCampaigns.filter(c => c.type === CampaignsState.filterType);
-    }
-
-    // Apply search
-    if (CampaignsState.searchTerm) {
-        const term = CampaignsState.searchTerm.toLowerCase();
-        filteredCampaigns = filteredCampaigns.filter(c =>
-            c.name.toLowerCase().includes(term) ||
-            c.type.toLowerCase().includes(term)
-        );
-    }
-
-    // Sort by creation date (newest first)
-    filteredCampaigns.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-
-    if (filteredCampaigns.length === 0) {
-        return `
-            <div class="empty-state">
-                <div class="empty-state-icon">📢</div>
-                <h3>Nenhuma campanha encontrada</h3>
-                <p>${CampaignsState.searchTerm ? 'Tente ajustar os filtros ou a busca.' : 'Crie sua primeira campanha!'}</p>
-                <button class="btn btn-primary" onclick="showCreateCampaignForm()" style="margin-top: 1rem;">
-                    ➕ Criar Primeira Campanha
-                </button>
-            </div>
-        `;
-    }
-
-    return filteredCampaigns.map(campaign => {
-        const typeInfo = CAMPAIGN_TYPES[campaign.type] || CAMPAIGN_TYPES.marketing;
-        const stats = getCampaignStats(campaign.id);
-        const progress = campaign.total_sent > 0 ? Math.round((campaign.total_delivered / campaign.total_sent) * 100) : 0;
-
-        return `
-            <div class="campaign-card" onclick="showCampaignDetails('${campaign.id}')">
-                <div class="campaign-header">
-                    <div style="display: flex; align-items: center; gap: 1rem;">
-                        <div style="font-size: 2rem; color: ${typeInfo.color};">${typeInfo.icon}</div>
-                        <div>
-                            <h4 style="margin: 0; font-size: 1.125rem; color: var(--gray-900);">${escapeHTML(campaign.name)}</h4>
-                            <p style="margin: 0.25rem 0 0 0; font-size: 0.875rem; color: var(--gray-600);">
-                                ${typeInfo.label} • ${formatDate(campaign.created_at)}
-                                ${campaign.scheduled_at ? ` • Agendada: ${formatDate(campaign.scheduled_at)}` : ''}
-                            </p>
-                        </div>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 1rem;">
-                        <span class="badge ${getStatusBadgeClass(campaign.status)}">${getStatusLabel(campaign.status)}</span>
-                        <span style="font-size: 1.5rem;">›</span>
-                    </div>
-                </div>
-                
-                <div class="campaign-stats" style="margin-top: 1rem; display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; text-align: center;">
-                    <div style="padding: 0.75rem; background: var(--gray-50); border-radius: 8px;">
-                        <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary-600);">${stats.total_contacts || 0}</div>
-                        <div style="font-size: 0.75rem; color: var(--gray-500);">Contatos</div>
-                    </div>
-                    <div style="padding: 0.75rem; background: var(--gray-50); border-radius: 8px;">
-                        <div style="font-size: 1.25rem; font-weight: 700; color: var(--success-600);">${campaign.total_sent}</div>
-                        <div style="font-size: 0.75rem; color: var(--gray-500);">Enviados</div>
-                    </div>
-                    <div style="padding: 0.75rem; background: var(--gray-50); border-radius: 8px;">
-                        <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary-600);">${campaign.total_delivered}</div>
-                        <div style="font-size: 0.75rem; color: var(--gray-500);">Entregues</div>
-                    </div>
-                    <div style="padding: 0.75rem; background: var(--gray-50); border-radius: 8px;">
-                        <div style="font-size: 1.25rem; font-weight: 700; color: var(--error-600);">${campaign.total_failed}</div>
-                        <div style="font-size: 0.75rem; color: var(--gray-500);">Falhas</div>
-                    </div>
-                </div>
-
-                ${campaign.total_sent > 0 ? `
-                    <div style="margin-top: 1rem;">
-                        <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--gray-500); margin-bottom: 4px;">
-                            <span>Taxa de Entrega</span>
-                            <span>${progress}%</span>
-                        </div>
-                        <div style="height: 8px; background: var(--gray-100); border-radius: 10px; overflow: hidden;">
-                            <div style="height: 100%; background: var(--primary-500); width: ${progress}%; transition: width 0.3s ease;"></div>
-                        </div>
-                    </div>
-                ` : ''}
-            </div>
-        `;
-    }).join('');
+    // Update tab active states
+    document.querySelectorAll('.campaigns-tab').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.getAttribute('onclick') && btn.getAttribute('onclick').includes(`'${tab}'`)) {
+            btn.classList.add('active');
+        }
+    });
 }
 
-// Render Campaigns List (for list view)
-function renderCampaignsList() {
-    const listContainer = document.querySelector('#campaignsContent .campaigns-list');
-    if (!listContainer) {
-        renderCampaignsDashboard();
-        return;
+function renderCampaignTabContent() {
+    switch (CampaignsState.currentTab) {
+        case 'dashboard': return renderDashboardTab();
+        case 'campaigns': return renderCampaignListTab();
+        case 'templates': return renderTemplatesTab();
+        case 'contacts': return renderContactsTab();
+        case 'blacklist': return renderBlacklistTab();
+        default: return renderDashboardTab();
     }
-    listContainer.innerHTML = renderCampaignsListHTML();
 }
 
-// Filter Campaigns
-function filterCampaigns(status, type = 'all') {
-    CampaignsState.filterStatus = status;
-    CampaignsState.filterType = type;
-    renderCampaignsList();
-}
-
-// Calculate Campaign Stats
-function calculateCampaignStats() {
+// ===================
+// DASHBOARD TAB
+// ===================
+function renderDashboardTab() {
     const total = CampaignsState.campaigns.length;
     const running = CampaignsState.campaigns.filter(c => c.status === 'running').length;
     const completed = CampaignsState.campaigns.filter(c => c.status === 'completed').length;
+    const scheduled = CampaignsState.campaigns.filter(c => c.status === 'scheduled').length;
 
-    // Calculate average delivery rate
-    let totalSent = 0;
-    let totalDelivered = 0;
+    let totalSent = 0, totalDelivered = 0, totalFailed = 0;
     CampaignsState.campaigns.forEach(c => {
         totalSent += c.total_sent || 0;
         totalDelivered += c.total_delivered || 0;
+        totalFailed += c.total_failed || 0;
     });
-
     const deliveryRate = totalSent > 0 ? Math.round((totalDelivered / totalSent) * 100) : 0;
 
-    return {
-        total,
-        running,
-        completed,
-        deliveryRate
-    };
-}
+    const typeCounts = {};
+    CampaignsState.campaigns.forEach(c => {
+        typeCounts[c.type] = (typeCounts[c.type] || 0) + 1;
+    });
 
-// Get Campaign Stats
-function getCampaignStats(campaignId) {
-    const campaign = CampaignsState.campaigns.find(c => c.id === campaignId);
-    if (!campaign) return { total_contacts: 0 };
+    const recentCampaigns = [...CampaignsState.campaigns]
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .slice(0, 5);
 
-    const contactList = CampaignsState.contactLists.find(cl => cl.id === campaign.contact_list_id);
-    return {
-        total_contacts: contactList ? contactList.valid_contacts : 0
-    };
-}
-
-// Get Status Label and Class
-function getStatusLabel(status) {
-    const labels = {
-        draft: 'Rascunho',
-        scheduled: 'Agendada',
-        running: 'Em Andamento',
-        completed: 'Concluída',
-        cancelled: 'Cancelada',
-        paused: 'Pausada'
-    };
-    return labels[status] || status;
-}
-
-function getStatusBadgeClass(status) {
-    const classes = {
-        draft: 'badge-gray',
-        scheduled: 'badge-warning',
-        running: 'badge-primary',
-        completed: 'badge-success',
-        cancelled: 'badge-error',
-        paused: 'badge-warning'
-    };
-    return classes[status] || 'badge-gray';
-}
-
-// Show Create Campaign Form
-function showCreateCampaignForm() {
-    const templatesHTML = CampaignsState.templates.map(template => `
-        <div class="template-option" onclick="selectTemplate('${template.id}')">
-            <div style="display: flex; align-items: center; gap: 1rem;">
-                <input type="radio" name="template" value="${template.id}" id="template-${template.id}">
-                <label for="template-${template.id}" style="cursor: pointer; flex: 1;">
-                    <div style="font-weight: 600; color: var(--gray-900);">${escapeHTML(template.name)}</div>
-                    <div style="font-size: 0.875rem; color: var(--gray-600); margin-top: 4px;">${escapeHTML(template.content.substring(0, 100))}...</div>
-                    <div style="font-size: 0.75rem; color: var(--primary-600); margin-top: 4px;">Variáveis: ${template.variables.join(', ')}</div>
-                </label>
-            </div>
-        </div>
-    `).join('');
-
-    const contactListsHTML = CampaignsState.contactLists.map(list => `
-        <div class="contact-list-option" onclick="selectContactList('${list.id}')">
-            <div style="display: flex; align-items: center; gap: 1rem;">
-                <input type="radio" name="contactList" value="${list.id}" id="list-${list.id}">
-                <label for="list-${list.id}" style="cursor: pointer; flex: 1;">
-                    <div style="font-weight: 600; color: var(--gray-900);">${escapeHTML(list.name)}</div>
-                    <div style="font-size: 0.875rem; color: var(--gray-600); margin-top: 4px;">
-                        ${list.valid_contacts} contatos válidos • ${list.total_contacts} total
-                    </div>
-                </label>
-            </div>
-        </div>
-    `).join('');
-
-    const campaignTypesHTML = Object.entries(CAMPAIGN_TYPES).map(([key, type]) => `
-        <div class="campaign-type-option" onclick="selectCampaignType('${key}')">
-            <div style="display: flex; align-items: center; gap: 1rem;">
-                <input type="radio" name="campaignType" value="${key}" id="type-${key}">
-                <label for="type-${key}" style="cursor: pointer; flex: 1;">
-                    <div style="display: flex; align-items: center; gap: 0.5rem;">
-                        <span style="font-size: 1.5rem;">${type.icon}</span>
-                        <span style="font-weight: 600; color: var(--gray-900);">${type.label}</span>
-                    </div>
-                </label>
-            </div>
-        </div>
-    `).join('');
-
-    const formHTML = `
-        <div class="campaign-form">
-            <h3 style="margin-bottom: 1.5rem; border-bottom: 2px solid var(--primary-100); padding-bottom: 0.5rem;">Criar Nova Campanha</h3>
-            
-            <!-- Step 1: Basic Info -->
-            <div class="form-step">
-                <h4 style="margin-bottom: 1rem;">1. Informações Básicas</h4>
-                <div class="form-group">
-                    <label class="form-label">Nome da Campanha *</label>
-                    <input type="text" id="campaignName" class="form-input" placeholder="Ex: Campanha de Aniversário de Maio">
+    return `
+        <div style="display:grid; gap:1.5rem;">
+            <!-- Stats cards -->
+            <div class="campaigns-stats-grid">
+                <div class="cstat-card cstat-blue">
+                    <div class="cstat-icon">📢</div>
+                    <div class="cstat-value">${total}</div>
+                    <div class="cstat-label">Total de Campanhas</div>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Tipo de Campanha *</label>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.5rem;">
-                        ${campaignTypesHTML}
-                    </div>
+                <div class="cstat-card cstat-green">
+                    <div class="cstat-icon">▶️</div>
+                    <div class="cstat-value">${running}</div>
+                    <div class="cstat-label">Em Andamento</div>
+                </div>
+                <div class="cstat-card cstat-purple">
+                    <div class="cstat-icon">✅</div>
+                    <div class="cstat-value">${completed}</div>
+                    <div class="cstat-label">Concluídas</div>
+                </div>
+                <div class="cstat-card cstat-orange">
+                    <div class="cstat-icon">📅</div>
+                    <div class="cstat-value">${scheduled}</div>
+                    <div class="cstat-label">Agendadas</div>
+                </div>
+                <div class="cstat-card cstat-teal">
+                    <div class="cstat-icon">📤</div>
+                    <div class="cstat-value">${totalSent.toLocaleString()}</div>
+                    <div class="cstat-label">Total Enviados</div>
+                </div>
+                <div class="cstat-card cstat-indigo">
+                    <div class="cstat-icon">📈</div>
+                    <div class="cstat-value">${deliveryRate}%</div>
+                    <div class="cstat-label">Taxa de Entrega</div>
                 </div>
             </div>
 
-            <!-- Step 2: Template -->
-            <div class="form-step">
-                <h4 style="margin-bottom: 1rem;">2. Escolher Template</h4>
-                <div class="form-group">
-                    <label class="form-label">Template de Mensagem *</label>
-                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                        ${templatesHTML}
+            <!-- Active sending progress -->
+            ${CampaignsState.activeSend ? `
+            <div class="campaigns-active-send">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                    <h4 style="margin:0; color:var(--primary-700);">🚀 Campanha em Execução</h4>
+                    <button class="btn btn-error btn-small" onclick="stopActiveSending()">⏹️ Parar</button>
+                </div>
+                <div style="font-size:.875rem; color:var(--gray-600); margin-bottom:.5rem;">
+                    ${CampaignsState.activeSend.sent} / ${CampaignsState.activeSend.total} mensagens enviadas
+                    ${CampaignsState.activeSend.failed > 0 ? ` • <span style="color:#ef4444">${CampaignsState.activeSend.failed} falhas</span>` : ''}
+                </div>
+                <div style="height:10px; background:var(--gray-100); border-radius:10px; overflow:hidden;">
+                    <div style="height:100%; background:linear-gradient(90deg,#3b82f6,#8b5cf6); width:${Math.round((CampaignsState.activeSend.sent/CampaignsState.activeSend.total)*100)}%; transition:width .5s ease;"></div>
+                </div>
+            </div>
+            ` : ''}
+
+            <!-- Type breakdown + recent -->
+            <div style="display:grid; grid-template-columns:1fr 2fr; gap:1.5rem;">
+                <div class="card" style="padding:1.25rem;">
+                    <h4 style="margin-bottom:1rem; font-size:.9rem; color:var(--gray-700);">Por Tipo</h4>
+                    <div style="display:flex; flex-direction:column; gap:.5rem;">
+                        ${Object.entries(CAMPAIGN_TYPES).map(([key, t]) => {
+                            const count = typeCounts[key] || 0;
+                            if (count === 0) return '';
+                            return `<div style="display:flex; justify-content:space-between; align-items:center; padding:.5rem .75rem; background:var(--gray-50); border-radius:8px;">
+                                <span style="font-size:.875rem;">${t.icon} ${t.label}</span>
+                                <span class="badge badge-primary">${count}</span>
+                            </div>`;
+                        }).join('')}
+                        ${Object.values(typeCounts).every(v => v === 0) ? '<p style="color:var(--gray-400); font-size:.875rem; text-align:center; padding:1rem;">Sem campanhas ainda</p>' : ''}
                     </div>
-                    <button class="btn btn-secondary btn-small" style="margin-top: 1rem;" onclick="showCreateTemplateForm()">
-                        ➕ Criar Novo Template
-                    </button>
+                </div>
+                <div class="card" style="padding:1.25rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                        <h4 style="margin:0; font-size:.9rem; color:var(--gray-700);">Campanhas Recentes</h4>
+                        <button class="btn btn-primary btn-small" onclick="switchCampaignTab('campaigns')">Ver todas →</button>
+                    </div>
+                    ${recentCampaigns.length > 0 ? recentCampaigns.map(c => {
+                        const t = CAMPAIGN_TYPES[c.type] || CAMPAIGN_TYPES.marketing;
+                        return `<div style="display:flex; justify-content:space-between; align-items:center; padding:.75rem; border-bottom:1px solid var(--gray-100);">
+                            <div style="display:flex; align-items:center; gap:.75rem;">
+                                <span style="font-size:1.5rem;">${t.icon}</span>
+                                <div>
+                                    <div style="font-weight:600; font-size:.875rem; color:var(--gray-900);">${escapeHTML(c.name)}</div>
+                                    <div style="font-size:.75rem; color:var(--gray-500);">${t.label} • ${formatDate(c.created_at)}</div>
+                                </div>
+                            </div>
+                            <span class="badge ${getStatusBadgeClass(c.status)}">${getStatusLabel(c.status)}</span>
+                        </div>`;
+                    }).join('') : '<p style="color:var(--gray-400); text-align:center; padding:2rem;">Crie sua primeira campanha!</p>'}
                 </div>
             </div>
 
-            <!-- Step 3: Contacts -->
-            <div class="form-step">
-                <h4 style="margin-bottom: 1rem;">3. Lista de Contatos</h4>
-                <div class="form-group">
-                    <label class="form-label">Lista de Contatos *</label>
-                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                        ${contactListsHTML}
-                    </div>
-                    <button class="btn btn-secondary btn-small" style="margin-top: 1rem;" onclick="showImportContactsModal()">
-                        📥 Importar Contatos
-                    </button>
-                </div>
-            </div>
-
-            <!-- Step 4: Scheduling & Settings -->
-            <div class="form-step">
-                <h4 style="margin-bottom: 1rem;">4. Agendamento e Configurações</h4>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label">Data e Hora de Início</label>
-                        <input type="datetime-local" id="campaignSchedule" class="form-input">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Limite Diário</label>
-                        <input type="number" id="campaignDailyLimit" class="form-input" value="300" min="1" max="1000">
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label">Intervalo Mínimo (segundos)</label>
-                        <input type="number" id="campaignIntervalMin" class="form-input" value="5" min="1" max="60">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Intervalo Máximo (segundos)</label>
-                        <input type="number" id="campaignIntervalMax" class="form-input" value="15" min="1" max="120">
-                    </div>
-                </div>
-            </div>
-
-            <!-- Actions -->
-            <div style="display: flex; gap: 1rem; margin-top: 2rem;">
-                <button class="btn btn-primary" onclick="saveCampaign()">💾 Salvar Campanha</button>
-                <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
-            </div>
-        </div>
-    `;
-
-    openModal('Nova Campanha', formHTML, []);
-}
-
-// Select Template
-function selectTemplate(templateId) {
-    document.querySelectorAll('.template-option').forEach(el => el.classList.remove('selected'));
-    const selected = document.querySelector(`.template-option:has(#template-${templateId})`);
-    if (selected) selected.classList.add('selected');
-    document.getElementById(`template-${templateId}`).checked = true;
-}
-
-// Select Contact List
-function selectContactList(listId) {
-    document.querySelectorAll('.contact-list-option').forEach(el => el.classList.remove('selected'));
-    const selected = document.querySelector(`.contact-list-option:has(#list-${listId})`);
-    if (selected) selected.classList.add('selected');
-    document.getElementById(`list-${listId}`).checked = true;
-}
-
-// Select Campaign Type
-function selectCampaignType(type) {
-    document.querySelectorAll('.campaign-type-option').forEach(el => el.classList.remove('selected'));
-    const selected = document.querySelector(`.campaign-type-option:has(#type-${type})`);
-    if (selected) selected.classList.add('selected');
-    document.getElementById(`type-${type}`).checked = true;
-}
-
-// Save Campaign
-function saveCampaign() {
-    const name = document.getElementById('campaignName').value.trim();
-    const type = document.querySelector('input[name="campaignType"]:checked')?.value;
-    const templateId = document.querySelector('input[name="template"]:checked')?.value;
-    const contactListId = document.querySelector('input[name="contactList"]:checked')?.value;
-    const scheduledAt = document.getElementById('campaignSchedule').value;
-    const dailyLimit = parseInt(document.getElementById('campaignDailyLimit').value) || 300;
-    const intervalMin = parseInt(document.getElementById('campaignIntervalMin').value) || 5;
-    const intervalMax = parseInt(document.getElementById('campaignIntervalMax').value) || 15;
-
-    if (!name || !type || !templateId || !contactListId) {
-        showNotification('Preencha todos os campos obrigatórios', 'error');
-        return;
-    }
-
-    const campaign = {
-        id: generateId(),
-        name,
-        type,
-        status: scheduledAt ? 'scheduled' : 'draft',
-        template_id: templateId,
-        contact_list_id: contactListId,
-        scheduled_at: scheduledAt || null,
-        timezone: 'America/Sao_Paulo',
-        daily_limit: dailyLimit,
-        current_day_count: 0,
-        interval_min: intervalMin,
-        interval_max: intervalMax,
-        total_sent: 0,
-        total_delivered: 0,
-        total_read: 0,
-        total_failed: 0,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        started_at: null,
-        completed_at: null
-    };
-
-    CampaignsState.campaigns.push(campaign);
-    saveCampaignsData();
-    closeModal();
-    renderCampaignsDashboard();
-    showNotification('Campanha criada com sucesso!', 'success');
-}
-
-// Show Campaign Details
-function showCampaignDetails(campaignId) {
-    const campaign = CampaignsState.campaigns.find(c => c.id === campaignId);
-    if (!campaign) return;
-
-    const template = CampaignsState.templates.find(t => t.id === campaign.template_id);
-    const contactList = CampaignsState.contactLists.find(cl => cl.id === campaign.contact_list_id);
-    const typeInfo = CAMPAIGN_TYPES[campaign.type] || CAMPAIGN_TYPES.marketing;
-
-    const stats = getCampaignStats(campaignId);
-    const deliveryRate = campaign.total_sent > 0 ? Math.round((campaign.total_delivered / campaign.total_sent) * 100) : 0;
-    const readRate = campaign.total_delivered > 0 ? Math.round((campaign.total_read / campaign.total_delivered) * 100) : 0;
-    const failureRate = campaign.total_sent > 0 ? Math.round((campaign.total_failed / campaign.total_sent) * 100) : 0;
-
-    const formHTML = `
-        <div class="campaign-details">
-            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
-                <div style="font-size: 3rem; color: ${typeInfo.color};">${typeInfo.icon}</div>
-                <div>
-                    <h3 style="margin: 0; font-size: 1.5rem; color: var(--gray-900);">${escapeHTML(campaign.name)}</h3>
-                    <p style="margin: 0.5rem 0 0 0; font-size: 0.875rem; color: var(--gray-600);">
-                        ${typeInfo.label} • ${getStatusLabel(campaign.status)}
-                        ${campaign.scheduled_at ? ` • Agendada: ${formatDateTime(campaign.scheduled_at)}` : ''}
-                    </p>
-                </div>
-            </div>
-
-            <!-- Stats Overview -->
-            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem;">
-                <div style="padding: 1rem; background: var(--gray-50); border-radius: 12px; text-align: center;">
-                    <div style="font-size: 2rem; font-weight: 700; color: var(--primary-600);">${stats.total_contacts}</div>
-                    <div style="font-size: 0.875rem; color: var(--gray-600);">Contatos</div>
-                </div>
-                <div style="padding: 1rem; background: var(--gray-50); border-radius: 12px; text-align: center;">
-                    <div style="font-size: 2rem; font-weight: 700; color: var(--success-600);">${campaign.total_sent}</div>
-                    <div style="font-size: 0.875rem; color: var(--gray-600);">Enviados</div>
-                </div>
-                <div style="padding: 1rem; background: var(--gray-50); border-radius: 12px; text-align: center;">
-                    <div style="font-size: 2rem; font-weight: 700; color: var(--primary-600);">${campaign.total_delivered}</div>
-                    <div style="font-size: 0.875rem; color: var(--gray-600);">Entregues</div>
-                </div>
-                <div style="padding: 1rem; background: var(--gray-50); border-radius: 12px; text-align: center;">
-                    <div style="font-size: 2rem; font-weight: 700; color: var(--error-600);">${campaign.total_failed}</div>
-                    <div style="font-size: 0.875rem; color: var(--gray-600);">Falhas</div>
-                </div>
-            </div>
-
-            <!-- Rates -->
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 2rem;">
-                <div style="padding: 1rem; background: white; border: 1px solid var(--gray-200); border-radius: 12px;">
-                    <div style="font-size: 0.75rem; color: var(--gray-500); margin-bottom: 0.5rem;">Taxa de Entrega</div>
-                    <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary-600);">${deliveryRate}%</div>
-                    <div style="height: 6px; background: var(--gray-100); border-radius: 10px; overflow: hidden; margin-top: 0.5rem;">
-                        <div style="height: 100%; background: var(--primary-500); width: ${deliveryRate}%; transition: width 0.3s ease;"></div>
-                    </div>
-                </div>
-                <div style="padding: 1rem; background: white; border: 1px solid var(--gray-200); border-radius: 12px;">
-                    <div style="font-size: 0.75rem; color: var(--gray-500); margin-bottom: 0.5rem;">Taxa de Leitura</div>
-                    <div style="font-size: 1.5rem; font-weight: 700; color: var(--success-600);">${readRate}%</div>
-                    <div style="height: 6px; background: var(--gray-100); border-radius: 10px; overflow: hidden; margin-top: 0.5rem;">
-                        <div style="height: 100%; background: var(--success-500); width: ${readRate}%; transition: width 0.3s ease;"></div>
-                    </div>
-                </div>
-                <div style="padding: 1rem; background: white; border: 1px solid var(--gray-200); border-radius: 12px;">
-                    <div style="font-size: 0.75rem; color: var(--gray-500); margin-bottom: 0.5rem;">Taxa de Falha</div>
-                    <div style="font-size: 1.5rem; font-weight: 700; color: var(--error-600);">${failureRate}%</div>
-                    <div style="height: 6px; background: var(--gray-100); border-radius: 10px; overflow: hidden; margin-top: 0.5rem;">
-                        <div style="height: 100%; background: var(--error-500); width: ${failureRate}%; transition: width 0.3s ease;"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Template Preview -->
-            <div style="margin-bottom: 2rem;">
-                <h4 style="margin-bottom: 1rem; border-bottom: 2px solid var(--primary-100); padding-bottom: 0.5rem;">Template da Mensagem</h4>
-                <div style="background: var(--gray-50); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--gray-200);">
-                    <div style="font-size: 0.875rem; color: var(--gray-600); margin-bottom: 0.5rem;">Conteúdo:</div>
-                    <div style="font-size: 1rem; line-height: 1.6; white-space: pre-wrap;">${escapeHTML(template.content)}</div>
-                    <div style="margin-top: 1rem; font-size: 0.75rem; color: var(--gray-500);">
-                        Variáveis disponíveis: ${template.variables.map(v => `{{${v}}}`).join(', ')}
-                    </div>
-                </div>
-            </div>
-
-            <!-- Configuration -->
-            <div style="margin-bottom: 2rem;">
-                <h4 style="margin-bottom: 1rem; border-bottom: 2px solid var(--primary-100); padding-bottom: 0.5rem;">Configurações</h4>
-                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
-                    <div style="padding: 1rem; background: white; border: 1px solid var(--gray-200); border-radius: 12px;">
-                        <div style="font-size: 0.75rem; color: var(--gray-500); margin-bottom: 0.5rem;">Limite Diário</div>
-                        <div style="font-size: 1.25rem; font-weight: 700; color: var(--gray-900);">${campaign.daily_limit}</div>
-                    </div>
-                    <div style="padding: 1rem; background: white; border: 1px solid var(--gray-200); border-radius: 12px;">
-                        <div style="font-size: 0.75rem; color: var(--gray-500); margin-bottom: 0.5rem;">Intervalo</div>
-                        <div style="font-size: 1.25rem; font-weight: 700; color: var(--gray-900);">${campaign.interval_min}-${campaign.interval_max}s</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Actions -->
-            <div style="display: flex; gap: 1rem; justify-content: space-between;">
-                <div style="display: flex; gap: 1rem;">
-                    ${campaign.status === 'draft' ? `
-                        <button class="btn btn-primary" onclick="startCampaign('${campaign.id}')">▶️ Iniciar Campanha</button>
-                    ` : ''}
-                    ${campaign.status === 'running' ? `
-                        <button class="btn btn-secondary" onclick="pauseCampaign('${campaign.id}')">⏸️ Pausar</button>
-                        <button class="btn btn-error" onclick="cancelCampaign('${campaign.id}')">❌ Cancelar</button>
-                    ` : ''}
-                    ${campaign.status === 'paused' ? `
-                        <button class="btn btn-primary" onclick="resumeCampaign('${campaign.id}')">▶️ Retomar</button>
-                        <button class="btn btn-error" onclick="cancelCampaign('${campaign.id}')">❌ Cancelar</button>
-                    ` : ''}
-                </div>
-                <div style="display: flex; gap: 1rem;">
-                    <button class="btn btn-secondary" onclick="editCampaign('${campaign.id}')">✏️ Editar</button>
-                    <button class="btn btn-error" onclick="deleteCampaign('${campaign.id}')">🗑️ Excluir</button>
+            <!-- Quick actions -->
+            <div class="card" style="padding:1.25rem;">
+                <h4 style="margin-bottom:1rem; font-size:.9rem; color:var(--gray-700);">⚡ Acesso Rápido</h4>
+                <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:1rem;">
+                    ${Object.entries(CAMPAIGN_TYPES).slice(0, 4).map(([key, t]) => `
+                    <button class="campaigns-quick-btn" onclick="showCreateCampaignForm('${key}')" style="border-left:4px solid ${t.color};">
+                        <span style="font-size:1.75rem;">${t.icon}</span>
+                        <div>
+                            <div style="font-weight:700; font-size:.875rem;">${t.label}</div>
+                            <div style="font-size:.75rem; color:var(--gray-500);">${CampaignsState.templates.filter(tp => tp.type === key).length} templates</div>
+                        </div>
+                    </button>`).join('')}
                 </div>
             </div>
         </div>
     `;
-
-    openModal(`${escapeHTML(campaign.name)}`, formHTML, [
-        { label: 'Fechar', class: 'btn-secondary', onclick: 'closeModal()' }
-    ]);
 }
-
-// Campaign Actions
-function startCampaign(campaignId) {
-    const campaign = CampaignsState.campaigns.find(c => c.id === campaignId);
-    if (!campaign) return;
-
-    campaign.status = 'running';
-    campaign.started_at = new Date().toISOString();
-    campaign.updated_at = new Date().toISOString();
-    saveCampaignsData();
-    closeModal();
-    renderCampaignsDashboard();
-    showNotification('Campanha iniciada com sucesso!', 'success');
-}
-
-function pauseCampaign(campaignId) {
-    const campaign = CampaignsState.campaigns.find(c => c.id === campaignId);
-    if (!campaign) return;
-
-    campaign.status = 'paused';
-    campaign.updated_at = new Date().toISOString();
-    saveCampaignsData();
-    closeModal();
-    renderCampaignsDashboard();
-    showNotification('Campanha pausada', 'info');
-}
-
-function resumeCampaign(campaignId) {
-    const campaign = CampaignsState.campaigns.find(c => c.id === campaignId);
-    if (!campaign) return;
-
-    campaign.status = 'running';
-    campaign.updated_at = new Date().toISOString();
-    saveCampaignsData();
-    closeModal();
-    renderCampaignsDashboard();
-    showNotification('Campanha retomada', 'success');
-}
-
-function cancelCampaign(campaignId) {
-    if (!confirm('Tem certeza que deseja cancelar esta campanha?')) return;
-
-    const campaign = CampaignsState.campaigns.find(c => c.id === campaignId);
-    if (!campaign) return;
-
-    campaign.status = 'cancelled';
-    campaign.updated_at = new Date().toISOString();
-    saveCampaignsData();
-    closeModal();
-    renderCampaignsDashboard();
-    showNotification('Campanha cancelada', 'info');
-}
-
-function deleteCampaign(campaignId) {
-    if (!confirm('Tem certeza que deseja excluir esta campanha?')) return;
-
-    const index = CampaignsState.campaigns.findIndex(c => c.id === campaignId);
-    if (index > -1) {
-        CampaignsState.campaigns.splice(index, 1);
-        saveCampaignsData();
-        closeModal();
-        renderCampaignsDashboard();
-        showNotification('Campanha excluída', 'success');
-    }
-}
-
-function editCampaign(campaignId) {
-    // Implementation for editing campaign
-    showNotification('Edição de campanha em desenvolvimento', 'info');
-}
-
-// Export functions
-window.initCampaignsModule = initCampaignsModule;
-window.renderCampaignsDashboard = renderCampaignsDashboard;
-window.renderCampaignsList = renderCampaignsList;
-window.filterCampaigns = filterCampaigns;
-window.showCreateCampaignForm = showCreateCampaignForm;
-window.selectTemplate = selectTemplate;
-window.selectContactList = selectContactList;
-window.selectCampaignType = selectCampaignType;
-window.saveCampaign = saveCampaign;
-window.showCampaignDetails = showCampaignDetails;
-window.startCampaign = startCampaign;
-window.pauseCampaign = pauseCampaign;
-window.resumeCampaign = resumeCampaign;
-window.cancelCampaign = cancelCampaign;
-window.deleteCampaign = deleteCampaign;
-window.editCampaign = editCampaign;
-window.getStatusLabel = getStatusLabel;
-window.getStatusBadgeClass = getStatusBadgeClass;
-window.getCampaignStats = getCampaignStats;
-window.calculateCampaignStats = calculateCampaignStats;
