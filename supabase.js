@@ -133,19 +133,19 @@ const DB_COLUMNS = {
         'id', 'user_id', 'patient_name', 'service_name', 'lab_name', 'cost', 'status', 'due_date', 'created_at', 'updated_at'
     ],
     campaign_templates: [
-        'id', 'user_id', 'name', 'content', 'variables', 'type', 'is_active', 'created_at', 'updated_at'
+        'id', 'legacy_id', 'user_id', 'name', 'content', 'variables', 'type', 'is_active', 'created_at', 'updated_at'
     ],
     contact_lists: [
-        'id', 'user_id', 'name', 'description', 'total_contacts', 'valid_contacts', 'created_at', 'updated_at'
+        'id', 'legacy_id', 'user_id', 'name', 'description', 'total_contacts', 'valid_contacts', 'created_at', 'updated_at'
     ],
     contacts: [
-        'id', 'user_id', 'contact_list_id', 'name', 'phone', 'email', 'status', 'variables', 'is_blacklisted', 'created_at', 'updated_at'
+        'id', 'legacy_id', 'user_id', 'contact_list_id', 'name', 'phone', 'email', 'status', 'variables', 'is_blacklisted', 'created_at', 'updated_at'
     ],
     campaigns: [
-        'id', 'user_id', 'name', 'type', 'status', 'template_id', 'contact_list_id', 'scheduled_at', 'timezone', 'daily_limit', 'current_day_count', 'interval_min', 'interval_max', 'total_sent', 'total_delivered', 'total_read', 'total_failed', 'created_at', 'updated_at', 'started_at', 'completed_at'
+        'id', 'legacy_id', 'user_id', 'name', 'type', 'status', 'template_id', 'contact_list_id', 'scheduled_at', 'timezone', 'daily_limit', 'current_day_count', 'interval_min', 'interval_max', 'total_sent', 'total_delivered', 'total_read', 'total_failed', 'created_at', 'updated_at', 'started_at', 'completed_at'
     ],
     campaign_history: [
-        'id', 'user_id', 'campaign_id', 'contact_id', 'status', 'sent_at', 'delivered_at', 'read_at', 'failed_at', 'error_message', 'message_id', 'created_at', 'updated_at'
+        'id', 'legacy_id', 'user_id', 'campaign_id', 'contact_id', 'status', 'sent_at', 'delivered_at', 'read_at', 'failed_at', 'error_message', 'message_id', 'created_at', 'updated_at'
     ],
     blacklist: [
         'id', 'user_id', 'phone', 'name', 'reason', 'added_at', 'added_by'
@@ -407,6 +407,21 @@ function mapToDb(table, obj) {
             if (!value || !uuidRegex.test(String(value))) {
                 value = null;
             }
+        }
+
+        // 🔥 CAMPAIGN TYPE MAPPING: JS (PT) to DB (EN/Enum)
+        if (dbKey === 'type' && ['campaign_templates', 'campaigns'].includes(table)) {
+            const typeMap = {
+                'cobranca': 'collection',
+                'marketing': 'marketing',
+                'reativacao_paciente': 'red_folder',
+                'recuperacao_lead': 'promotion',
+                'aniversario': 'birthday',
+                'lembrete_consulta': 'reminder',
+                'pos_consulta': 'reminder',
+                'orcamento_pendente': 'promotion'
+            };
+            value = typeMap[value] || value;
         }
 
         // 🔥 STRICT FILTER: Only add if column exists in Supabase

@@ -1131,11 +1131,62 @@ function fixAllIdsToUUIDs() {
         }
     });
 
+    // 4. Campaign Templates
+    if (window.CampaignsState && CampaignsState.templates) {
+        CampaignsState.templates.forEach(tpl => {
+            if (!isValidUUID(tpl.id)) {
+                const oldId = tpl.id;
+                const newId = generateId();
+                idMap.set(oldId, newId);
+                tpl.id = newId;
+                changed = true;
+            }
+        });
+    }
+
+    // 5. Contact Lists
+    if (window.CampaignsState && CampaignsState.contactLists) {
+        CampaignsState.contactLists.forEach(list => {
+            if (!isValidUUID(list.id)) {
+                const oldId = list.id;
+                const newId = generateId();
+                idMap.set(oldId, newId);
+                list.id = newId;
+                changed = true;
+            }
+        });
+    }
+
+    // 6. Campaign References
+    if (window.CampaignsState && CampaignsState.campaigns) {
+        CampaignsState.campaigns.forEach(camp => {
+            if (!isValidUUID(camp.id)) {
+                camp.id = generateId();
+                changed = true;
+            }
+            if (camp.templateId && idMap.has(camp.templateId)) {
+                camp.templateId = idMap.get(camp.templateId);
+                changed = true;
+            }
+            if (camp.contactListId && idMap.has(camp.contactListId)) {
+                camp.contactListId = idMap.get(camp.contactListId);
+                changed = true;
+            }
+        });
+    }
+
     if (changed) {
         console.log('✨ Data legacy IDs converted to UUIDs for cloud sync');
         saveToStorage(STORAGE_KEYS.LEADS, AppState.leads);
         saveToStorage(STORAGE_KEYS.PATIENTS, AppState.patients);
         saveToStorage(STORAGE_KEYS.APPOINTMENTS, AppState.appointments);
+        
+        // Save campaigns data too
+        if (window.CampaignsState) {
+            localStorage.setItem('campaignTemplates', JSON.stringify(CampaignsState.templates));
+            localStorage.setItem('campaignContactLists', JSON.stringify(CampaignsState.contactLists));
+            localStorage.setItem('campaigns', JSON.stringify(CampaignsState.campaigns));
+        }
     }
 }
 
