@@ -369,26 +369,174 @@ function viewContactList(listId) {
     const list=CampaignsState.contactLists.find(l=>l.id===listId);
     if(!list) return;
     const contacts=CampaignsState.contacts.filter(c=>c.contact_list_id===listId);
+    
     openModal(`👥 ${escapeHTML(list.name)}`, `
-        <div style="max-height:400px; overflow-y:auto;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+            <div>
+                <p style="margin:0; font-size:.875rem; color:var(--gray-500);">${contacts.length} contatos encontrados</p>
+            </div>
+            <button class="btn btn-primary btn-small" onclick="showContactForm('${listId}')" style="display:flex; align-items:center; gap:5px;">
+                <span>➕ Adicionar Contato</span>
+            </button>
+        </div>
+        
+        <div style="max-height:400px; overflow-y:auto; border:1px solid var(--gray-100); border-radius:8px;">
             <table style="width:100%; border-collapse:collapse; font-size:.875rem;">
                 <thead><tr style="background:var(--gray-50);">
-                    <th style="padding:.5rem 1rem; text-align:left;">Nome</th>
-                    <th style="padding:.5rem 1rem; text-align:left;">Telefone</th>
-                    <th style="padding:.5rem 1rem; text-align:left;">Status</th>
+                    <th style="padding:.75rem 1rem; text-align:left;">Nome</th>
+                    <th style="padding:.75rem 1rem; text-align:left;">Telefone</th>
+                    <th style="padding:.75rem 1rem; text-align:left;">Status</th>
+                    <th style="padding:.75rem 1rem; text-align:center;">Ações</th>
                 </tr></thead>
-                <tbody>${contacts.map(c=>`<tr style="border-top:1px solid var(--gray-100);">
-                    <td style="padding:.5rem 1rem;">${escapeHTML(c.name)}</td>
-                    <td style="padding:.5rem 1rem;">${escapeHTML(c.phone)}</td>
-                    <td style="padding:.5rem 1rem;"><span class="badge ${c.is_blacklisted?'badge-error':'badge-success'}">${c.is_blacklisted?'Bloqueado':'Válido'}</span></td>
-                </tr>`).join('')}</tbody>
+                <tbody>${contacts.length === 0 ? `
+                    <tr><td colspan="4" style="text-align:center;color:var(--gray-400);padding:3rem;">Nenhum contato nesta lista</td></tr>
+                ` : contacts.map(c=>`
+                    <tr style="border-top:1px solid var(--gray-100); transition:background .2s;" class="table-row-hover">
+                        <td style="padding:.75rem 1rem;">${escapeHTML(c.name)}</td>
+                        <td style="padding:.75rem 1rem;">${escapeHTML(c.phone)}</td>
+                        <td style="padding:.75rem 1rem;">
+                            <span class="badge ${c.is_blacklisted?'badge-error':'badge-success'}">
+                                ${c.is_blacklisted?'Bloqueado':'Válido'}
+                            </span>
+                        </td>
+                        <td style="padding:.75rem 1rem; text-align:center; display:flex; justify-content:center; gap:.5rem;">
+                            <button class="btn btn-secondary btn-small" onclick="showContactForm('${listId}', '${c.id}')" title="Editar">✏️</button>
+                            <button class="btn btn-secondary btn-small" onclick="deleteContactFromList('${c.id}', '${listId}')" title="Excluir" style="color:var(--error-500);">🗑️</button>
+                        </td>
+                    </tr>`).join('')}</tbody>
             </table>
-            ${contacts.length===0?'<p style="text-align:center;color:var(--gray-400);padding:2rem;">Lista vazia</p>':''}
         </div>
-        <div style="display:flex; justify-content:flex-end; margin-top:1rem;">
+        <div style="display:flex; justify-content:flex-end; margin-top:1.5rem;">
             <button class="btn btn-secondary" onclick="closeModal()">Fechar</button>
         </div>
     `, []);
+}
+
+function showContactForm(listId, contactId = null) {
+    const contact = contactId ? CampaignsState.contacts.find(c => c.id === contactId) : null;
+    const title = contact ? '✏️ Editar Contato' : '➕ Novo Contato';
+    
+    // Extraindo variáveis para facilitar edição
+    const vars = contact?.variables || { unidade: 'Odonto Company São José' };
+    
+    openModal(title, `
+        <div style="display:grid; gap:1.25rem;">
+            <div class="form-group">
+                <label class="form-label">Nome Completo *</label>
+                <input type="text" id="mContactName" class="form-input" placeholder="Ex: Maria Silva" value="${contact ? escapeHTML(contact.name) : ''}">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">WhatsApp / Telefone *</label>
+                <input type="text" id="mContactPhone" class="form-input" placeholder="Ex: 11999999999" value="${contact ? escapeHTML(contact.phone) : ''}">
+            </div>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+                <div class="form-group">
+                    <label class="form-label">Valor de Cobrança (Opcional)</label>
+                    <input type="text" id="mContactValue" class="form-input" placeholder="Ex: R$ 150,00" value="${vars.valor || ''}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Data de Vencimento (Opcional)</label>
+                    <input type="text" id="mContactDueDate" class="form-input" placeholder="Ex: 15/05/2026" value="${vars.data_vencimento || ''}">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">E-mail (Opcional)</label>
+                <input type="email" id="mContactEmail" class="form-input" placeholder="Ex: maria@gmail.com" value="${contact ? escapeHTML(contact.email) : ''}">
+            </div>
+
+            <div style="display:flex; gap:1rem; justify-content:flex-end; margin-top:.5rem;">
+                <button class="btn btn-secondary" onclick="viewContactList('${listId}')">Voltar</button>
+                <button class="btn btn-primary" onclick="saveManualContact('${listId}', ${contactId ? `'${contactId}'` : 'null'})">Salvar Contato</button>
+            </div>
+        </div>
+    `, []);
+}
+
+function saveManualContact(listId, contactId) {
+    const name = document.getElementById('mContactName').value.trim();
+    const phone = document.getElementById('mContactPhone').value.trim().replace(/\D/g, '');
+    const email = document.getElementById('mContactEmail').value.trim();
+    const value = document.getElementById('mContactValue').value.trim();
+    const dueDate = document.getElementById('mContactDueDate').value.trim();
+
+    if (!name || !phone) {
+        showNotification('Nome e Telefone são obrigatórios', 'error');
+        return;
+    }
+
+    if (phone.length < 10) {
+        showNotification('Telefone inválido', 'error');
+        return;
+    }
+
+    const vars = { 
+        unidade: 'Odonto Company São José',
+        valor: value,
+        data_vencimento: dueDate
+    };
+
+    if (contactId) {
+        // Atualizar existente
+        const idx = CampaignsState.contacts.findIndex(c => c.id === contactId);
+        if (idx !== -1) {
+            CampaignsState.contacts[idx] = {
+                ...CampaignsState.contacts[idx],
+                name,
+                phone,
+                email,
+                variables: { ...CampaignsState.contacts[idx].variables, ...vars }
+            };
+        }
+    } else {
+        // Criar novo
+        const isBlacklisted = CampaignsState.blacklist.some(b => b.phone === phone);
+        CampaignsState.contacts.push({
+            id: generateId(),
+            contact_list_id: listId,
+            name,
+            phone,
+            email,
+            status: 'valid',
+            is_blacklisted: isBlacklisted,
+            variables: vars,
+            created_at: new Date().toISOString()
+        });
+    }
+
+    // Atualizar contadores da lista
+    const listIdx = CampaignsState.contactLists.findIndex(l => l.id === listId);
+    if (listIdx !== -1) {
+        const listContacts = CampaignsState.contacts.filter(c => c.contact_list_id === listId);
+        CampaignsState.contactLists[listIdx].total_contacts = listContacts.length;
+        CampaignsState.contactLists[listIdx].valid_contacts = listContacts.filter(c => !c.is_blacklisted).length;
+        CampaignsState.contactLists[listIdx].updated_at = new Date().toISOString();
+    }
+
+    saveCampaignsData();
+    viewContactList(listId);
+    showNotification('Contato salvo com sucesso!', 'success');
+}
+
+function deleteContactFromList(contactId, listId) {
+    if (!confirm('Deseja realmente remover este contato da lista?')) return;
+
+    CampaignsState.contacts = CampaignsState.contacts.filter(c => c.id !== contactId);
+
+    // Atualizar contadores
+    const listIdx = CampaignsState.contactLists.findIndex(l => l.id === listId);
+    if (listIdx !== -1) {
+        const listContacts = CampaignsState.contacts.filter(c => c.contact_list_id === listId);
+        CampaignsState.contactLists[listIdx].total_contacts = listContacts.length;
+        CampaignsState.contactLists[listIdx].valid_contacts = listContacts.filter(c => !c.is_blacklisted).length;
+        CampaignsState.contactLists[listIdx].updated_at = new Date().toISOString();
+    }
+
+    saveCampaignsData();
+    viewContactList(listId);
+    showNotification('Contato removido', 'success');
 }
 
 function deleteContactList(listId) {
@@ -654,6 +802,9 @@ window.showImportContactsModal = showImportContactsModal;
 window.handleCSVFileSelect = handleCSVFileSelect;
 window.validateMapping = validateMapping;
 window.processCSVImport = processCSVImport;
+window.showContactForm = showContactForm;
+window.saveManualContact = saveManualContact;
+window.deleteContactFromList = deleteContactFromList;
 window.renderBlacklistTab = renderBlacklistTab;
 window.showAddToBlacklist = showAddToBlacklist;
 window.addToBlacklist = addToBlacklist;
