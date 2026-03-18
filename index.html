@@ -51,12 +51,21 @@
                     <span class="sync-status-dot"></span>
                     <span class="sync-status-text">Conectado</span>
                 </div>
-                <div class="user-menu" style="display: flex; align-items: center; gap: 1rem;">
-                    <div class="user-avatar" id="userAvatar" title="Perfil">👤</div>
-                    <button id="darkModeToggle" class="btn btn-secondary btn-small" title="Alternar Modo Escuro"
-                        style="background: var(--gray-200); color: var(--gray-700); font-size: 1.2rem; padding: 0.4rem 0.6rem;">🌓</button>
-                    <button id="logoutBtn" class="btn btn-secondary btn-small"
-                        style="background: var(--error-500); color: white;">Sair</button>
+                <div class="user-menu" id="userMenu">
+                    <!-- Accessibility & Theme -->
+                    <div class="header-controls">
+                        <button id="fontSizeDown" class="ctrl-btn" title="Diminuir Fonte">A-</button>
+                        <button id="fontSizeUp" class="ctrl-btn" title="Aumentar Fonte">A+</button>
+                        <button id="highContrastToggle" class="ctrl-btn" title="Alto Contraste">🌓</button>
+                        <button id="darkModeToggle" class="ctrl-btn" title="Modo Escuro">🌙</button>
+                    </div>
+
+                    <div class="user-avatar" id="userAvatar">👤</div>
+
+                    <button id="logoutBtn" class="logout-btn" title="Sair">
+                        <span>Sair</span>
+                        <span style="margin-left:5px;">🚪</span>
+                    </button>
                 </div>
             </div>
         </div>

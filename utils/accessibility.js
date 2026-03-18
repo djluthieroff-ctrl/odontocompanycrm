@@ -201,31 +201,6 @@ function adjustFontSize(direction) {
 function initAccessibility() {
     new AccessibilityManager();
 
-    // Add accessibility controls to header if they don't exist
-    const header = document.querySelector('.header-actions');
-    if (header && !document.getElementById('accessibility-controls')) {
-        const controls = document.createElement('div');
-        controls.id = 'accessibility-controls';
-        controls.style.cssText = `
-            display: flex;
-            gap: 0.5rem;
-            align-items: center;
-            margin-left: 1rem;
-        `;
-        controls.innerHTML = `
-            <button class="btn btn-small" onclick="toggleHighContrast()" aria-label="Alternar modo alto contraste" title="Alto Contraste">
-                🌓
-            </button>
-            <button class="btn btn-small" onclick="adjustFontSize('decrease')" aria-label="Diminuir tamanho da fonte" title="Fonte Menor">
-                A-
-            </button>
-            <button class="btn btn-small" onclick="adjustFontSize('increase')" aria-label="Aumentar tamanho da fonte" title="Fonte Maior">
-                A+
-            </button>
-        `;
-        header.appendChild(controls);
-    }
-
     // Load saved preferences
     const savedContrast = localStorage.getItem('highContrast') === 'true';
     const savedFontSize = localStorage.getItem('fontSize');
@@ -237,6 +212,16 @@ function initAccessibility() {
     if (savedFontSize) {
         document.documentElement.style.fontSize = `${savedFontSize}px`;
     }
+
+    // Attach listeners to buttons if they exist in the HTML
+    const hb = document.getElementById('highContrastToggle');
+    if (hb) hb.onclick = () => toggleHighContrast();
+
+    const fsu = document.getElementById('fontSizeUp');
+    if (fsu) fsu.onclick = () => adjustFontSize('increase');
+
+    const fsd = document.getElementById('fontSizeDown');
+    if (fsd) fsd.onclick = () => adjustFontSize('decrease');
 }
 
 // Export to global scope

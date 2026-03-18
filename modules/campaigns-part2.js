@@ -322,17 +322,16 @@ function executeImportFromSystem(source) {
     const today = new Date();
     const months = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
     if (source==='patients') {
-        listName='Pacientes — '+new Date().toLocaleDateString('pt-BR');
-        contacts=(AppState?.patients||[]).filter(p=>p.phone).map(p=>({id:generateId(),name:p.name||'Paciente',phone:p.phone,email:p.email||'',status:'valid',is_blacklisted:false,variables:{unidade:'Odonto Company'},created_at:new Date().toISOString()}));
+        contacts=(AppState?.patients||[]).filter(p=>p.phone).map(p=>({id:generateId(),name:p.name||'Paciente',phone:p.phone,email:p.email||'',status:'valid',is_blacklisted:false,variables:{unidade:'Odonto Company São José'},created_at:new Date().toISOString()}));
     } else if (source==='leads') {
         listName='Leads — '+new Date().toLocaleDateString('pt-BR');
-        contacts=(AppState?.leads||[]).filter(l=>l.phone).map(l=>({id:generateId(),name:l.name||'Lead',phone:l.phone,email:l.email||'',status:'valid',is_blacklisted:false,variables:{unidade:'Odonto Company'},created_at:new Date().toISOString()}));
+        contacts=(AppState?.leads||[]).filter(l=>l.phone).map(l=>({id:generateId(),name:l.name||'Lead',phone:l.phone,email:l.email||'',status:'valid',is_blacklisted:false,variables:{unidade:'Odonto Company São José'},created_at:new Date().toISOString()}));
     } else if (source==='red_folder') {
         listName='Pasta Vermelha — '+new Date().toLocaleDateString('pt-BR');
-        contacts=(AppState?.patients||[]).filter(p=>p.status==='red_folder'&&p.phone).map(p=>({id:generateId(),name:p.name||'Paciente',phone:p.phone,email:p.email||'',status:'valid',is_blacklisted:false,variables:{unidade:'Odonto Company'},created_at:new Date().toISOString()}));
+        contacts=(AppState?.patients||[]).filter(p=>p.status==='red_folder'&&p.phone).map(p=>({id:generateId(),name:p.name||'Paciente',phone:p.phone,email:p.email||'',status:'valid',is_blacklisted:false,variables:{unidade:'Odonto Company São José'},created_at:new Date().toISOString()}));
     } else if (source==='birthdays') {
         listName=`Aniversariantes de ${months[today.getMonth()]} ${today.getFullYear()}`;
-        contacts=(AppState?.patients||[]).filter(p=>{if(!p.phone||!p.birthdate)return false;try{return new Date(p.birthdate).getMonth()===today.getMonth();}catch(e){return false;}}).map(p=>({id:generateId(),name:p.name||'Paciente',phone:p.phone,email:p.email||'',status:'valid',is_blacklisted:false,variables:{unidade:'Odonto Company'},created_at:new Date().toISOString()}));
+        contacts=(AppState?.patients||[]).filter(p=>{if(!p.phone||!p.birthdate)return false;try{return new Date(p.birthdate).getMonth()===today.getMonth();}catch(e){return false;}}).map(p=>({id:generateId(),name:p.name||'Paciente',phone:p.phone,email:p.email||'',status:'valid',is_blacklisted:false,variables:{unidade:'Odonto Company São José'},created_at:new Date().toISOString()}));
     }
     contacts=contacts.filter(c=>!CampaignsState.blacklist.find(b=>b.phone===c.phone));
     if (contacts.length===0){showNotification('Nenhum contato com telefone encontrado.','warning');return;}
@@ -401,44 +400,183 @@ function deleteContactList(listId) {
 }
 
 function showImportContactsModal() {
-    openModal('📥 Importar CSV', `
-        <p style="font-size:.875rem; color:var(--gray-600); margin-bottom:1rem;">Colunas requeridas: <strong>nome, telefone</strong>. Opcional: email</p>
-        <div class="form-group"><label class="form-label">Nome da Lista *</label><input type="text" id="csvListName" class="form-input" placeholder="Ex: Importação Março 2026"></div>
-        <div class="form-group" style="margin-top:1rem;"><label class="form-label">Arquivo CSV *</label><input type="file" id="csvFileInput" accept=".csv,.txt" class="form-input"></div>
-        <div style="display:flex; gap:1rem; justify-content:flex-end; margin-top:1.5rem;">
-            <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
-            <button class="btn btn-primary" onclick="processCSVImport()">📥 Importar</button>
+    openModal('📥 Importar CSV / Excel', `
+        <div style="display:grid; gap:1.25rem;">
+            <p style="font-size:.875rem; color:var(--gray-600);">Selecione um arquivo CSV para importar e mapear os campos personalizados (Nome, Valor, etc).</p>
+            
+            <div class="form-group">
+                <label class="form-label">Nome da Lista *</label>
+                <input type="text" id="csvListName" class="form-input" placeholder="Ex: Devedores Março 2026">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Arquivo CSV *</label>
+                <div class="file-upload-wrapper" style="border:2px dashed var(--gray-200); padding:2rem; border-radius:12px; text-align:center; cursor:pointer;" onclick="document.getElementById('csvFileInput').click()">
+                    <span style="font-size:2rem; display:block; margin-bottom:.5rem;">📄</span>
+                    <span id="fileNameDisplay" style="color:var(--gray-500); font-size:.875rem;">Clique para selecionar ou arraste o arquivo</span>
+                    <input type="file" id="csvFileInput" accept=".csv,.txt" style="display:none;" onchange="handleCSVFileSelect(this)">
+                </div>
+            </div>
+
+            <div id="mappingArea" style="display:none; border-top:1px solid var(--gray-100); padding-top:1.25rem;">
+                <h4 style="font-size:.85rem; color:var(--gray-700); margin-bottom:1rem;">Mapeamento de Colunas</h4>
+                <div id="mappingGrid" style="display:grid; gap:.75rem;">
+                    <!-- Mapeamento será injetado aqui -->
+                </div>
+            </div>
+
+            <div style="display:flex; gap:1rem; justify-content:flex-end; margin-top:.5rem;">
+                <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+                <button id="importSubmitBtn" class="btn btn-primary" onclick="processCSVImport()" disabled>📥 Iniciar Importação</button>
+            </div>
         </div>
     `, []);
 }
 
-function processCSVImport() {
-    const listName=document.getElementById('csvListName').value.trim();
-    const file=document.getElementById('csvFileInput').files[0];
-    if(!listName||!file){showNotification('Nome e arquivo são obrigatórios','error');return;}
-    const reader=new FileReader();
-    reader.onload=function(e){
-        const lines=e.target.result.split('\n').filter(l=>l.trim());
-        if(lines.length<2){showNotification('CSV vazio','error');return;}
-        const headers=lines[0].split(',').map(h=>h.trim().toLowerCase().replace(/['"]/g,''));
-        const ni=headers.indexOf('nome'), pi=headers.indexOf('telefone'), ei=headers.indexOf('email');
-        if(ni===-1||pi===-1){showNotification('CSV deve ter colunas "nome" e "telefone"','error');return;}
-        const listId=generateId();
-        const contacts=[];
-        for(let i=1;i<lines.length;i++){
-            const cols=lines[i].split(',').map(c=>c.trim().replace(/['"]/g,''));
-            const phone=cols[pi], name=cols[ni];
-            if(!phone||!name) continue;
-            if(CampaignsState.blacklist.find(b=>b.phone===phone)) continue;
-            contacts.push({id:generateId(),contact_list_id:listId,name,phone,email:ei>=0?cols[ei]:'',status:'valid',is_blacklisted:false,variables:{unidade:'Odonto Company'},created_at:new Date().toISOString()});
+let _currentCSVHeaders = [];
+let _currentCSVLines = [];
+
+function handleCSVFileSelect(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    document.getElementById('fileNameDisplay').textContent = file.name;
+    document.getElementById('fileNameDisplay').style.color = 'var(--primary-600)';
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const content = e.target.result;
+        const lines = content.split(/\r?\n/).filter(l => l.trim());
+        if (lines.length < 2) {
+            showNotification('O arquivo deve conter ao menos o cabeçalho e uma linha de dados', 'error');
+            return;
         }
-        if(contacts.length===0){showNotification('Nenhum contato válido no CSV','warning');return;}
-        CampaignsState.contactLists.push({id:listId,name:listName,description:'Importado via CSV',total_contacts:contacts.length,valid_contacts:contacts.length,created_at:new Date().toISOString(),updated_at:new Date().toISOString()});
-        CampaignsState.contacts.push(...contacts);
-        saveCampaignsData(); closeModal(); switchCampaignTab('contacts');
-        showNotification(`✅ ${contacts.length} contatos importados!`,'success');
+
+        // Tenta detectar o separador (vírgula ou ponto e vírgula)
+        const firstLine = lines[0];
+        const separator = firstLine.includes(';') ? ';' : ',';
+        
+        _currentCSVHeaders = firstLine.split(separator).map(h => h.trim().replace(/['"]/g, ''));
+        _currentCSVLines = lines.slice(1).map(l => l.split(separator).map(c => c.trim().replace(/['"]/g, '')));
+
+        renderMappingUI();
     };
-    reader.readAsText(file,'UTF-8');
+    reader.readAsText(file, 'UTF-8');
+}
+
+function renderMappingUI() {
+    const grid = document.getElementById('mappingGrid');
+    const systemFields = [
+        { id: 'nome', label: 'Nome do Paciente', required: true, icons: '👤' },
+        { id: 'telefone', label: 'WhatsApp / Celular', required: true, icons: '📱' },
+        { id: 'valor', label: 'Valor (ex: R$ 150)', icons: '💰' },
+        { id: 'data_vencimento', label: 'Data de Vencimento', icons: '📅' },
+        { id: 'email', label: 'E-mail', icons: '📧' },
+        { id: 'desconto', label: 'Desconto %', icons: '📉' }
+    ];
+
+    grid.innerHTML = systemFields.map(field => `
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; align-items:center;">
+            <div style="font-size:.875rem; color:var(--gray-600);">
+                ${field.icons} ${field.label} ${field.required ? '<span style="color:#ef4444">*</span>' : ''}
+            </div>
+            <select id="map_${field.id}" class="form-input" style="padding:.4rem;" onchange="validateMapping()">
+                <option value="">-- Não mapear --</option>
+                ${_currentCSVHeaders.map((h, i) => `
+                    <option value="${i}" ${guessHeader(h, field.id) ? 'selected' : ''}>Coluna: ${h}</option>
+                `).join('')}
+            </select>
+        </div>
+    `).join('');
+
+    document.getElementById('mappingArea').style.display = 'block';
+    validateMapping();
+}
+
+function guessHeader(header, fieldId) {
+    const h = header.toLowerCase();
+    const map = {
+        nome: ['nome', 'name', 'paciente', 'cliente'],
+        telefone: ['tel', 'fone', 'cel', 'whatsapp', 'phone', 'contato'],
+        valor: ['valor', 'vlr', 'preço', 'debito', 'custo'],
+        data_vencimento: ['vencimento', 'data', 'venc', 'due'],
+        email: ['email', 'e-mail', 'mail'],
+        desconto: ['desc', 'off', 'desconto']
+    };
+    return map[fieldId]?.some(keyword => h.includes(keyword));
+}
+
+function validateMapping() {
+    const nameIdx = document.getElementById('map_nome').value;
+    const phoneIdx = document.getElementById('map_telefone').value;
+    const btn = document.getElementById('importSubmitBtn');
+    btn.disabled = !(nameIdx !== '' && phoneIdx !== '');
+}
+
+function processCSVImport() {
+    const listName = document.getElementById('csvListName').value.trim();
+    if (!listName) { showNotification('Dê um nome para a sua lista', 'warning'); return; }
+
+    const mappings = {
+        nome: document.getElementById('map_nome').value,
+        telefone: document.getElementById('map_telefone').value,
+        valor: document.getElementById('map_valor').value,
+        data_vencimento: document.getElementById('map_data_vencimento').value,
+        email: document.getElementById('map_email').value,
+        desconto: document.getElementById('map_desconto').value
+    };
+
+    const listId = generateId();
+    const contacts = [];
+    let importedCount = 0;
+
+    _currentCSVLines.forEach(cols => {
+        const phone = cols[mappings.telefone]?.replace(/\D/g, '');
+        const name = cols[mappings.nome];
+        
+        if (!phone || !name) return;
+        if (CampaignsState.blacklist.find(b => b.phone === phone)) return;
+
+        const vars = { unidade: 'Odonto Company São José' };
+        if (mappings.valor !== '') vars.valor = cols[mappings.valor];
+        if (mappings.data_vencimento !== '') vars.data_vencimento = cols[mappings.data_vencimento];
+        if (mappings.desconto !== '') vars.desconto = cols[mappings.desconto];
+        if (mappings.email !== '') vars.email = cols[mappings.email];
+
+        contacts.push({
+            id: generateId(),
+            contact_list_id: listId,
+            name: name,
+            phone: phone,
+            email: mappings.email !== '' ? cols[mappings.email] : '',
+            status: 'valid',
+            is_blacklisted: false,
+            variables: vars,
+            created_at: new Date().toISOString()
+        });
+        importedCount++;
+    });
+
+    if (contacts.length === 0) {
+        showNotification('Nenhum contato válido encontrado com os mapeamentos atuais', 'error');
+        return;
+    }
+
+    CampaignsState.contactLists.push({
+        id: listId,
+        name: listName,
+        description: `Importado via CSV (${importedCount} contatos)`,
+        total_contacts: contacts.length,
+        valid_contacts: contacts.length,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+    });
+    
+    CampaignsState.contacts.push(...contacts);
+    saveCampaignsData();
+    closeModal();
+    switchCampaignTab('contacts');
+    showNotification(`✅ ${contacts.length} contatos importados com sucesso em "${listName}"!`, 'success');
 }
 
 // ===================
@@ -513,6 +651,8 @@ window.saveContactList = saveContactList;
 window.viewContactList = viewContactList;
 window.deleteContactList = deleteContactList;
 window.showImportContactsModal = showImportContactsModal;
+window.handleCSVFileSelect = handleCSVFileSelect;
+window.validateMapping = validateMapping;
 window.processCSVImport = processCSVImport;
 window.renderBlacklistTab = renderBlacklistTab;
 window.showAddToBlacklist = showAddToBlacklist;

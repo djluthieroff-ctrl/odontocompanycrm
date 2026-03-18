@@ -128,17 +128,47 @@ function initializeDarkMode() {
     if (isDark) {
         document.body.classList.add('dark-mode');
         if (darkModeBtn) darkModeBtn.textContent = '☀️';
+    } else {
+        if (darkModeBtn) darkModeBtn.textContent = '🌙';
     }
 
     if (darkModeBtn) {
         darkModeBtn.onclick = () => {
             const isNowDark = document.body.classList.toggle('dark-mode');
             localStorage.setItem('darkMode', isNowDark);
-            darkModeBtn.textContent = isNowDark ? '☀️' : '🌓';
+            darkModeBtn.textContent = isNowDark ? '☀️' : '🌙';
 
             // Re-render charts if they depend on colors
             if (typeof updateDashboard === 'function') updateDashboard();
         };
+    }
+
+    // Setup User Avatar Tooltip with Email
+    setupUserAvatarTooltip();
+}
+
+async function setupUserAvatarTooltip() {
+    const avatar = document.getElementById('userAvatar');
+    if (!avatar) return;
+
+    try {
+        const user = await supabaseGetUser();
+        if (user && user.email) {
+            tippy(avatar, {
+                content: `
+                    <div style="text-align: center; padding: 5px;">
+                        <div style="font-weight: 700; color: var(--primary-500); margin-bottom: 2px;">Usuário Logado</div>
+                        <div style="font-size: 0.85rem; color: var(--gray-600);">${user.email}</div>
+                    </div>
+                `,
+                allowHTML: true,
+                placement: 'bottom',
+                theme: AppState.darkMode ? 'material' : 'light-border',
+                animation: 'shift-away',
+            });
+        }
+    } catch (e) {
+        console.warn('Erro ao carregar info do usuário para tooltip:', e);
     }
 }
 

@@ -1742,3 +1742,70 @@ button {
         transform: translateY(0);
     }
 }
+
+/* Enhanced User Menu & Controls */
+.user-menu {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding-right: 1.5rem;
+    border-right: 1px solid var(--gray-200);
+}
+
+.ctrl-btn {
+    background: var(--gray-100);
+    border: none;
+    width: 2.2rem;
+    height: 2.2rem;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--gray-600);
+    transition: all var(--transition-fast);
+}
+
+.ctrl-btn:hover {
+    background: var(--primary-100);
+    color: var(--primary-700);
+    transform: translateY(-2px);
+}
+
+.logout-btn {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    background: var(--gray-50);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-md);
+    color: var(--gray-600);
+    font-weight: 600;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.logout-btn:hover {
+    background: #fef2f2;
+    border-color: #fee2e2;
+    color: var(--error-500);
+}
+
+.user-avatar:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 15px rgba(34, 197, 94, 0.3);
+}
+
+body.dark-mode .header-controls { border-color: var(--gray-300); }
+body.dark-mode .ctrl-btn { background: var(--gray-200); color: var(--gray-600); }
+body.dark-mode .logout-btn { background: var(--gray-200); border-color: var(--gray-300); color: var(--gray-600); }
+
