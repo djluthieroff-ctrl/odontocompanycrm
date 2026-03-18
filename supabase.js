@@ -342,6 +342,13 @@ const FIELD_MAP = {
     }
 };
 
+// ─── Conflict Resolution Strategy ──────────────────────────────────────
+const CONFLICT_MAP = {
+    contacts: 'contact_list_id,phone,user_id',
+    blacklist: 'phone,user_id',
+    settings: 'user_id'
+};
+
 function mapToDb(table, obj) {
     const map = FIELD_MAP[table]?.toDb || {};
     const allowedColumns = DB_COLUMNS[table] || [];
@@ -541,12 +548,15 @@ async function saveToSupabase(table, data) {
             const dataArray = Array.isArray(data) ? data : [data];
             const dbRows = dataArray.map(item => mapToDb(table, item));
 
-            // Garantir IDs únicos e remover duplicatas
+            // Garantir IDs únicos e remover duplicatas locais antes de enviar
             const uniqueRows = [];
-            const ids = new Set();
+            const conflictTarget = CONFLICT_MAP[table] || 'id';
+            const keys = new Set();
             dbRows.forEach(row => {
-                if (row.id && !ids.has(row.id)) {
-                    ids.add(row.id);
+                // Chave de unicidade baseada no alvo de conflito
+                const uniqueKey = conflictTarget.split(',').map(k => row[k.trim()]).join('|');
+                if (uniqueKey && !keys.has(uniqueKey)) {
+                    keys.add(uniqueKey);
                     uniqueRows.push(row);
                 }
             });
@@ -558,7 +568,7 @@ async function saveToSupabase(table, data) {
                     const batch = uniqueRows.slice(i, i + BATCH_SIZE);
                     const { error } = await supabaseClient
                         .from(table)
-                        .upsert(batch, { onConflict: 'id' });
+                        .upsert(batch, { onConflict: conflictTarget });
 
                     if (error) {
                         console.error(`❌ Erro no lote ${i / BATCH_SIZE + 1} da tabela ${table}:`, error);

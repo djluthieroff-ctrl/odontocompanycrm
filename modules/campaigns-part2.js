@@ -338,8 +338,17 @@ function executeImportFromSystem(source) {
     const listId=generateId();
     const newList={id:listId,name:listName,description:`Importado — ${source}`,total_contacts:contacts.length,valid_contacts:contacts.length,created_at:new Date().toISOString(),updated_at:new Date().toISOString()};
     contacts.forEach(c=>c.contact_list_id=listId);
+    
+    // 🔥 PREVENÇÃO DE DUPLICIDADE NA IMPORTAÇÃO
+    const existingPhones = new Set(CampaignsState.contacts.filter(c => c.contact_list_id === listId).map(c => c.phone));
+    const newUniqueContacts = contacts.filter(c => {
+        if (existingPhones.has(c.phone)) return false;
+        existingPhones.add(c.phone);
+        return true;
+    });
+
     CampaignsState.contactLists.push(newList);
-    CampaignsState.contacts.push(...contacts);
+    CampaignsState.contacts.push(...newUniqueContacts);
     saveCampaignsData(); closeModal(); switchCampaignTab('contacts');
     showNotification(`✅ ${contacts.length} contatos importados como "${listName}"!`,'success');
 }
@@ -477,6 +486,15 @@ function saveManualContact(listId, contactId) {
         valor: value,
         data_vencimento: dueDate
     };
+
+    // 🔥 PREVENÇÃO DE DUPLICIDADE: Se não for edição e o telefone já existir nesta lista, faz merge
+    if (!contactId) {
+        const existing = CampaignsState.contacts.find(c => c.contact_list_id === listId && c.phone === phone);
+        if (existing) {
+            console.log(`ℹ️ Contato ${phone} já existe na lista ${listId}. Atualizando existente (${existing.id}).`);
+            return saveManualContact(listId, existing.id);
+        }
+    }
 
     if (contactId) {
         // Atualizar existente
@@ -710,17 +728,25 @@ function processCSVImport() {
         return;
     }
 
+    // 🔥 PREVENÇÃO DE DUPLICIDADE NO CSV (DENTRO DO MESMO LOTE)
+    const uniqueSheetPhones = new Set();
+    const finalUniqueContacts = contacts.filter(c => {
+        if (uniqueSheetPhones.has(c.phone)) return false;
+        uniqueSheetPhones.add(c.phone);
+        return true;
+    });
+
     CampaignsState.contactLists.push({
         id: listId,
         name: listName,
-        description: `Importado via CSV (${importedCount} contatos)`,
-        total_contacts: contacts.length,
-        valid_contacts: contacts.length,
+        description: `Importado via CSV (${finalUniqueContacts.length} contatos únicos)`,
+        total_contacts: finalUniqueContacts.length,
+        valid_contacts: finalUniqueContacts.length,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
     });
     
-    CampaignsState.contacts.push(...contacts);
+    CampaignsState.contacts.push(...finalUniqueContacts);
     saveCampaignsData();
     closeModal();
     switchCampaignTab('contacts');
