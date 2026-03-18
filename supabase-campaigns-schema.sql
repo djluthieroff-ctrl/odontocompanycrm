@@ -46,6 +46,7 @@ CREATE TYPE message_status AS ENUM (
 -- Campaign Templates Table
 CREATE TABLE campaign_templates (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES auth.users(id),
     name VARCHAR(255) NOT NULL,
     content TEXT NOT NULL,
     variables JSONB DEFAULT '[]'::jsonb,
@@ -58,6 +59,7 @@ CREATE TABLE campaign_templates (
 -- Contact Lists Table
 CREATE TABLE contact_lists (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES auth.users(id),
     name VARCHAR(255) NOT NULL,
     description TEXT,
     total_contacts INTEGER DEFAULT 0,
@@ -69,6 +71,7 @@ CREATE TABLE contact_lists (
 -- Contacts Table
 CREATE TABLE contacts (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES auth.users(id),
     contact_list_id UUID REFERENCES contact_lists(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     phone VARCHAR(20) NOT NULL,
@@ -78,12 +81,13 @@ CREATE TABLE contacts (
     is_blacklisted BOOLEAN DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(contact_list_id, phone)
+    UNIQUE(contact_list_id, phone, user_id)
 );
 
 -- Campaigns Table
 CREATE TABLE campaigns (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES auth.users(id),
     name VARCHAR(255) NOT NULL,
     type campaign_type NOT NULL,
     status campaign_status DEFAULT 'draft',
@@ -108,6 +112,7 @@ CREATE TABLE campaigns (
 -- Campaign History Table
 CREATE TABLE campaign_history (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES auth.users(id),
     campaign_id UUID REFERENCES campaigns(id) ON DELETE CASCADE,
     contact_id UUID REFERENCES contacts(id) ON DELETE CASCADE,
     status message_status DEFAULT 'pending',
@@ -125,6 +130,7 @@ CREATE TABLE campaign_history (
 -- Blacklist Table
 CREATE TABLE blacklist (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES auth.users(id),
     phone VARCHAR(20) NOT NULL UNIQUE,
     name VARCHAR(255),
     reason VARCHAR(255),
