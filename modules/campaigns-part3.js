@@ -5,9 +5,9 @@
 // CRIAR CAMPANHA
 // ===================
 function showCreateCampaignForm(preSelectedType = '') {
-    const typeOptions = Object.entries(CAMPAIGN_TYPES).map(([k,t]) =>
-        `<div class="campaign-type-option ${preSelectedType===k?'selected':''}" onclick="selectCampaignType('${k}')">
-            <input type="radio" name="campaignType" id="type-${k}" value="${k}" ${preSelectedType===k?'checked':''} style="display:none;">
+    const typeOptions = Object.entries(CAMPAIGN_TYPES).map(([k, t]) =>
+        `<div class="campaign-type-option ${preSelectedType === k ? 'selected' : ''}" onclick="selectCampaignType('${k}')">
+            <input type="radio" name="campaignType" id="type-${k}" value="${k}" ${preSelectedType === k ? 'checked' : ''} style="display:none;">
             <div style="font-size:1.5rem;">${t.icon}</div>
             <div style="font-size:.8rem; font-weight:600; color:var(--gray-800);">${t.label}</div>
         </div>`
@@ -19,6 +19,26 @@ function showCreateCampaignForm(preSelectedType = '') {
 
     openModal('📢 Nova Campanha', `
         <div style="display:grid; gap:1.5rem;">
+            <!-- Aviso de boas práticas -->
+            <div style="background:#fffbeb; border:1px solid #f59e0b; border-radius:12px; padding:1rem; border-left:4px solid #f59e0b;">
+                <div style="display:flex; align-items:center; gap:.75rem; margin-bottom:.5rem;">
+                    <span style="font-size:1.2rem;">⚠️</span>
+                    <strong style="color:#78350f; font-size:.9rem;">Atenção: Boas Práticas WhatsApp</strong>
+                </div>
+                <p style="margin:0; font-size:.85rem; color:#92400e; line-height:1.5;">
+                    Antes de criar sua campanha, lembre-se:<br>
+                    • Evite disparos em massa seguidos de inatividade<br>
+                    • Personalize mensagens e segmente sua lista<br>
+                    • Respeite o limite diário recomendado<br>
+                    • Sempre obtenha consentimento dos contatos
+                </p>
+                <div style="margin-top:.5rem;">
+                    <button class="btn btn-small btn-secondary" onclick="showCampaignsBestPracticesModal()" style="font-size:.75rem; padding:.25rem .5rem;">
+                        📚 Ver Guia Completo
+                    </button>
+                </div>
+            </div>
+
             <!-- Nome -->
             <div class="form-group">
                 <label class="form-label">Nome da Campanha *</label>
@@ -37,9 +57,9 @@ function showCreateCampaignForm(preSelectedType = '') {
                 <select id="campaignTemplate" class="form-input" onchange="onTemplateSelected(this.value)">
                     <option value="">Selecione um template...</option>
                     ${CampaignsState.templates.map(t => {
-                        const tp = CAMPAIGN_TYPES[t.type] || CAMPAIGN_TYPES.marketing;
-                        return `<option value="${t.id}">${tp.icon} ${escapeHTML(t.name)}</option>`;
-                    }).join('')}
+        const tp = CAMPAIGN_TYPES[t.type] || CAMPAIGN_TYPES.marketing;
+        return `<option value="${t.id}">${tp.icon} ${escapeHTML(t.name)}</option>`;
+    }).join('')}
                 </select>
             </div>
 
@@ -158,9 +178,9 @@ function showCampaignDetails(campaignId) {
     const t = CAMPAIGN_TYPES[campaign.type] || CAMPAIGN_TYPES.marketing;
     const template = CampaignsState.templates.find(tp => tp.id === campaign.template_id);
     const contactList = CampaignsState.contactLists.find(cl => cl.id === campaign.contact_list_id);
-    const deliveryRate = campaign.total_sent > 0 ? Math.round((campaign.total_delivered/campaign.total_sent)*100) : 0;
-    const readRate = campaign.total_delivered > 0 ? Math.round((campaign.total_read/campaign.total_delivered)*100) : 0;
-    const failRate = campaign.total_sent > 0 ? Math.round((campaign.total_failed/campaign.total_sent)*100) : 0;
+    const deliveryRate = campaign.total_sent > 0 ? Math.round((campaign.total_delivered / campaign.total_sent) * 100) : 0;
+    const readRate = campaign.total_delivered > 0 ? Math.round((campaign.total_read / campaign.total_delivered) * 100) : 0;
+    const failRate = campaign.total_sent > 0 ? Math.round((campaign.total_failed / campaign.total_sent) * 100) : 0;
 
     openModal(`${t.icon} ${escapeHTML(campaign.name)}`, `
         <div style="display:grid; gap:1.5rem;">
@@ -175,7 +195,7 @@ function showCampaignDetails(campaignId) {
 
             <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; text-align:center;">
                 <div style="padding:1rem; background:var(--gray-50); border-radius:12px;">
-                    <div style="font-size:1.5rem; font-weight:700; color:var(--primary-600);">${contactList?.valid_contacts||0}</div>
+                    <div style="font-size:1.5rem; font-weight:700; color:var(--primary-600);">${contactList?.valid_contacts || 0}</div>
                     <div style="font-size:.75rem; color:var(--gray-500);">Contatos</div>
                 </div>
                 <div style="padding:1rem; background:var(--gray-50); border-radius:12px;">
@@ -193,7 +213,7 @@ function showCampaignDetails(campaignId) {
             </div>
 
             <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:1rem;">
-                ${[['Taxa de Entrega', deliveryRate, 'var(--primary-500)'],['Taxa de Leitura', readRate, 'var(--success-500)'],['Taxa de Falha', failRate, '#ef4444']].map(([label, val, color]) => `
+                ${[['Taxa de Entrega', deliveryRate, 'var(--primary-500)'], ['Taxa de Leitura', readRate, 'var(--success-500)'], ['Taxa de Falha', failRate, '#ef4444']].map(([label, val, color]) => `
                 <div style="padding:1rem; background:white; border:1px solid var(--gray-200); border-radius:12px;">
                     <div style="font-size:.75rem; color:var(--gray-500); margin-bottom:.5rem;">${label}</div>
                     <div style="font-size:1.5rem; font-weight:700; color:${color};">${val}%</div>
@@ -211,10 +231,10 @@ function showCampaignDetails(campaignId) {
 
             <div style="display:flex; gap:1rem; justify-content:space-between; flex-wrap:wrap;">
                 <div style="display:flex; gap:.75rem;">
-                    ${campaign.status==='draft' ? `<button class="btn btn-primary" onclick="startCampaign('${campaign.id}'); closeModal()">▶️ Iniciar Campanha</button>` : ''}
-                    ${campaign.status==='running' ? `<button class="btn btn-secondary" onclick="pauseCampaign('${campaign.id}'); closeModal()">⏸️ Pausar</button>` : ''}
-                    ${campaign.status==='paused' ? `<button class="btn btn-primary" onclick="resumeCampaign('${campaign.id}'); closeModal()">▶️ Retomar</button>` : ''}
-                    ${['running','paused'].includes(campaign.status) ? `<button class="btn btn-error" onclick="cancelCampaign('${campaign.id}'); closeModal()">❌ Cancelar</button>` : ''}
+                    ${campaign.status === 'draft' ? `<button class="btn btn-primary" onclick="startCampaign('${campaign.id}'); closeModal()">▶️ Iniciar Campanha</button>` : ''}
+                    ${campaign.status === 'running' ? `<button class="btn btn-secondary" onclick="pauseCampaign('${campaign.id}'); closeModal()">⏸️ Pausar</button>` : ''}
+                    ${campaign.status === 'paused' ? `<button class="btn btn-primary" onclick="resumeCampaign('${campaign.id}'); closeModal()">▶️ Retomar</button>` : ''}
+                    ${['running', 'paused'].includes(campaign.status) ? `<button class="btn btn-error" onclick="cancelCampaign('${campaign.id}'); closeModal()">❌ Cancelar</button>` : ''}
                 </div>
                 <div style="display:flex; gap:.75rem;">
                     <button class="btn btn-error" onclick="deleteCampaign('${campaign.id}'); closeModal()">🗑️ Excluir</button>
@@ -423,12 +443,12 @@ function deleteCampaign(campaignId) {
 // STATUS HELPERS
 // ===================
 function getStatusLabel(status) {
-    const map = { draft:'Rascunho', scheduled:'Agendada', running:'Em Andamento', completed:'Concluída', cancelled:'Cancelada', paused:'Pausada' };
+    const map = { draft: 'Rascunho', scheduled: 'Agendada', running: 'Em Andamento', completed: 'Concluída', cancelled: 'Cancelada', paused: 'Pausada' };
     return map[status] || status;
 }
 
 function getStatusBadgeClass(status) {
-    const map = { draft:'badge-gray', scheduled:'badge-warning', running:'badge-primary', completed:'badge-success', cancelled:'badge-error', paused:'badge-warning' };
+    const map = { draft: 'badge-gray', scheduled: 'badge-warning', running: 'badge-primary', completed: 'badge-success', cancelled: 'badge-error', paused: 'badge-warning' };
     return map[status] || 'badge-gray';
 }
 

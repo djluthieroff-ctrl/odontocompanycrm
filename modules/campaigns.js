@@ -17,14 +17,14 @@ const CampaignsState = {
 };
 
 const CAMPAIGN_TYPES = {
-    cobranca:            { label: 'Cobrança',               icon: '💰', color: '#f59e0b', gradient: 'linear-gradient(135deg,#f59e0b,#d97706)' },
-    marketing:           { label: 'Marketing',              icon: '📢', color: '#3b82f6', gradient: 'linear-gradient(135deg,#3b82f6,#2563eb)' },
-    reativacao_paciente: { label: 'Reativação Paciente',    icon: '🔄', color: '#8b5cf6', gradient: 'linear-gradient(135deg,#8b5cf6,#7c3aed)' },
-    recuperacao_lead:    { label: 'Recuperação de Lead',    icon: '🎯', color: '#ef4444', gradient: 'linear-gradient(135deg,#ef4444,#dc2626)' },
-    aniversario:         { label: 'Aniversário',            icon: '🎂', color: '#ec4899', gradient: 'linear-gradient(135deg,#ec4899,#db2777)' },
-    lembrete_consulta:   { label: 'Lembrete de Consulta',  icon: '⏰', color: '#10b981', gradient: 'linear-gradient(135deg,#10b981,#059669)' },
-    pos_consulta:        { label: 'Pós-Consulta',           icon: '⭐', color: '#06b6d4', gradient: 'linear-gradient(135deg,#06b6d4,#0891b2)' },
-    orcamento_pendente:  { label: 'Orçamento Pendente',     icon: '📋', color: '#f97316', gradient: 'linear-gradient(135deg,#f97316,#ea580c)' }
+    cobranca: { label: 'Cobrança', icon: '💰', color: '#f59e0b', gradient: 'linear-gradient(135deg,#f59e0b,#d97706)' },
+    marketing: { label: 'Marketing', icon: '📢', color: '#3b82f6', gradient: 'linear-gradient(135deg,#3b82f6,#2563eb)' },
+    reativacao_paciente: { label: 'Reativação Paciente', icon: '🔄', color: '#8b5cf6', gradient: 'linear-gradient(135deg,#8b5cf6,#7c3aed)' },
+    recuperacao_lead: { label: 'Recuperação de Lead', icon: '🎯', color: '#ef4444', gradient: 'linear-gradient(135deg,#ef4444,#dc2626)' },
+    aniversario: { label: 'Aniversário', icon: '🎂', color: '#ec4899', gradient: 'linear-gradient(135deg,#ec4899,#db2777)' },
+    lembrete_consulta: { label: 'Lembrete de Consulta', icon: '⏰', color: '#10b981', gradient: 'linear-gradient(135deg,#10b981,#059669)' },
+    pos_consulta: { label: 'Pós-Consulta', icon: '⭐', color: '#06b6d4', gradient: 'linear-gradient(135deg,#06b6d4,#0891b2)' },
+    orcamento_pendente: { label: 'Orçamento Pendente', icon: '📋', color: '#f97316', gradient: 'linear-gradient(135deg,#f97316,#ea580c)' }
 };
 
 const ODC_DEFAULT_TEMPLATES = [
@@ -153,7 +153,7 @@ function loadCampaignsData() {
     try {
         // Data is now primarily loaded via loadDataFromSupabase() in supabase.js
         // and populated into CampaignsState directly.
-        
+
         // If no templates were loaded from Supabase, initialize with defaults
         if (CampaignsState.templates.length === 0) {
             console.log('📝 Initializing default templates...');
@@ -163,9 +163,9 @@ function loadCampaignsData() {
                 is_active: true,
                 created_at: new Date().toISOString()
             }));
-            
+
             CampaignsState.templates = defaultTemplates;
-            
+
             // Save defaults to Supabase if connected
             if (window.isCloudConnected && window.isCloudConnected()) {
                 saveToSupabase('campaign_templates', defaultTemplates);
@@ -179,7 +179,7 @@ function loadCampaignsData() {
             const c = localStorage.getItem('campaigns');
             if (c) CampaignsState.campaigns = JSON.parse(c);
         }
-        
+
         if (CampaignsState.contactLists.length === 0) {
             const cl = localStorage.getItem('campaignContactLists');
             if (cl) CampaignsState.contactLists = JSON.parse(cl);
@@ -263,6 +263,175 @@ function renderCampaignsModule() {
     `;
 }
 
+// ===================
+// AVISOS DE BOAS PRÁTICAS WHATSAPP
+// ===================
+function renderCampaignsWarnings() {
+    return `
+        <div class="campaigns-warnings-container">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <h4 style="margin:0; font-size:.9rem; color:var(--gray-700); display:flex; align-items:center; gap:.5rem;">
+                    📚 Boas Práticas WhatsApp
+                </h4>
+                <button class="btn btn-secondary btn-small" onclick="showCampaignsBestPracticesModal()">
+                    📖 Ver Completo
+                </button>
+            </div>
+            
+            <div class="campaigns-warnings-grid">
+                <!-- Aviso 1: Ativação do chip -->
+                <div class="warning-card warning-success">
+                    <div class="warning-icon">✅</div>
+                    <div class="warning-content">
+                        <div class="warning-title">Ativação correta do chip</div>
+                        <div class="warning-text">Sempre faça o "aquecimento" do chip por 2 semanas antes de disparar campanhas.</div>
+                    </div>
+                </div>
+
+                <!-- Aviso 2: Frequência equilibrada -->
+                <div class="warning-card warning-warning">
+                    <div class="warning-icon">📆</div>
+                    <div class="warning-content">
+                        <div class="warning-title">Frequência equilibrada</div>
+                        <div class="warning-text">Evite disparos em massa seguidos de inatividade. Mantenha volume consistente.</div>
+                    </div>
+                </div>
+
+                <!-- Aviso 3: Humanização -->
+                <div class="warning-card warning-info">
+                    <div class="warning-icon">🧠</div>
+                    <div class="warning-content">
+                        <div class="warning-title">Humanize suas mensagens</div>
+                        <div class="warning-text">Personalize textos e faça perguntas abertas para estimular respostas.</div>
+                    </div>
+                </div>
+
+                <!-- Aviso 4: Evitar bloqueios -->
+                <div class="warning-card warning-danger">
+                    <div class="warning-icon">📛</div>
+                    <div class="warning-content">
+                        <div class="warning-title">Evite práticas de bloqueio</div>
+                        <div class="warning-text">Não faça disparos excessivos, mensagens genéricas ou encaminhamento em massa.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function showCampaignsBestPracticesModal() {
+    const content = `
+        <div class="best-practices-modal">
+            <div style="display:flex; flex-direction:column; gap:1.5rem; max-height:60vh; overflow-y:auto;">
+                
+                <!-- Aviso 1 -->
+                <div class="best-practice-item">
+                    <div style="display:flex; align-items:center; gap:.75rem; margin-bottom:.5rem;">
+                        <span style="font-size:1.5rem;">✅</span>
+                        <h4 style="margin:0; font-size:1rem; color:var(--gray-800);">1. Ativação correta do chip novo</h4>
+                    </div>
+                    <p style="margin:0; color:var(--gray-600); font-size:.9rem; line-height:1.5;">
+                        Sempre que for usar um chip novo, é essencial fazer o "aquecimento" por pelo menos 2 semanas, utilizando manualmente com conversas reais e atendimentos sem disparar campanhas ou listas de transmissão nesse período.
+                    </p>
+                </div>
+
+                <!-- Aviso 2 -->
+                <div class="best-practice-item">
+                    <div style="display:flex; align-items:center; gap:.75rem; margin-bottom:.5rem;">
+                        <span style="font-size:1.5rem;">📆</span>
+                        <h4 style="margin:0; font-size:1rem; color:var(--gray-800);">2. Frequência e volume equilibrado</h4>
+                    </div>
+                    <p style="margin:0; color:var(--gray-600); font-size:.9rem; line-height:1.5;">
+                        Evite enviar um alto volume de mensagens em poucos dias e depois ficar vários dias inativo.<br>
+                        <strong>Exemplo de prática ruim:</strong> 3.000 mensagens em 3 dias e depois 5 a 7 dias sem nenhuma atividade.<br>
+                        <strong>O ideal:</strong> mantenha uma frequência equilibrada de uso, com volumes progressivos e consistentes, como se fosse um atendimento natural e contínuo.
+                    </p>
+                </div>
+
+                <!-- Aviso 3 -->
+                <div class="best-practice-item">
+                    <div style="display:flex; align-items:center; gap:.75rem; margin-bottom:.5rem;">
+                        <span style="font-size:1.5rem;">🧠</span>
+                        <h4 style="margin:0; font-size:1rem; color:var(--gray-800);">3. Humanize suas mensagens</h4>
+                    </div>
+                    <p style="margin:0; color:var(--gray-600); font-size:.9rem; line-height:1.5;">
+                        Personalize os textos como se estivesse falando diretamente com a pessoa.<br>
+                        • Faça perguntas abertas para estimular respostas.<br>
+                        • Evite copiar e colar o mesmo conteúdo para todos.<br>
+                        • Use listas segmentadas (quentes e frias) com abordagens diferentes para cada grupo.
+                    </p>
+                </div>
+
+                <!-- Aviso 4 -->
+                <div class="best-practice-item">
+                    <div style="display:flex; align-items:center; gap:.75rem; margin-bottom:.5rem;">
+                        <span style="font-size:1.5rem;">📛</span>
+                        <h4 style="margin:0; font-size:1rem; color:var(--gray-800);">4. Evite práticas que geram bloqueio</h4>
+                    </div>
+                    <p style="margin:0; color:var(--gray-600); font-size:.9rem; line-height:1.5;">
+                        • Disparos excessivos em pouco tempo.<br>
+                        • Mensagens repetidas ou genéricas.<br>
+                        • Uso de listas de transmissão com frequência sem alteração de texto e personalização.<br>
+                        • Encaminhamento em massa.<br>
+                        • Falta de consentimento dos contatos (envio sem autorização ou opt-in).<br>
+                        • Ignorar pedidos de descadastramento.
+                    </p>
+                </div>
+
+                <!-- Aviso 5 -->
+                <div class="best-practice-item">
+                    <div style="display:flex; align-items:center; gap:.75rem; margin-bottom:.5rem;">
+                        <span style="font-size:1.5rem;">📝</span>
+                        <h4 style="margin:0; font-size:1rem; color:var(--gray-800);">5. Boas práticas recomendadas</h4>
+                    </div>
+                    <p style="margin:0; color:var(--gray-600); font-size:.9rem; line-height:1.5;">
+                        • Pergunte sempre se o cliente quer continuar recebendo mensagens.<br>
+                        • Atualize regularmente sua lista de contatos.<br>
+                        • Utilize os recursos do CRM para segmentar e personalizar suas campanhas.<br>
+                        • Respeite os horários e mantenha o profissionalismo.<br>
+                        • Responda rapidamente quem iniciar uma conversa.
+                    </p>
+                </div>
+
+                <!-- Aviso 6 -->
+                <div class="best-practice-item">
+                    <div style="display:flex; align-items:center; gap:.75rem; margin-bottom:.5rem;">
+                        <span style="font-size:1.5rem;">🌐</span>
+                        <h4 style="margin:0; font-size:1rem; color:var(--gray-800);">6. Cuidados técnicos</h4>
+                    </div>
+                    <p style="margin:0; color:var(--gray-600); font-size:.9rem; line-height:1.5;">
+                        • Evite uso exclusivo do mesmo IP por longos períodos. Reiniciar o modem periodicamente pode ajudar.<br>
+                        • Acompanhe as atualizações das políticas do WhatsApp e adapte suas práticas quando necessário.
+                    </p>
+                </div>
+
+                <!-- Aviso 7 -->
+                <div class="best-practice-item">
+                    <div style="display:flex; align-items:center; gap:.75rem; margin-bottom:.5rem;">
+                        <span style="font-size:1.5rem;">⚠️</span>
+                        <h4 style="margin:0; font-size:1rem; color:var(--gray-800);">7. Lembre-se</h4>
+                    </div>
+                    <p style="margin:0; color:var(--gray-600); font-size:.9rem; line-height:1.5;">
+                        A ferramenta não é a causa do bloqueio. O que causa suspensão ou banimento é o uso indevido, que pode ocorrer com ou sem qualquer sistema automatizado.<br><br>
+                        <strong>Seguindo todas essas orientações, você reduz drasticamente as chances de bloqueio e garante uma comunicação eficiente, ética e duradoura com seus clientes via WhatsApp. 😊</strong>
+                    </p>
+                </div>
+
+            </div>
+            
+            <div style="display:flex; gap:1rem; justify-content:flex-end; margin-top:1.5rem; border-top:1px solid var(--gray-200); padding-top:1rem;">
+                <button class="btn btn-secondary" onclick="closeModal()">Fechar</button>
+            </div>
+        </div>
+    `;
+
+    openModal('📚 Boas Práticas WhatsApp - Guia Completo', content, []);
+}
+
+// Export global functions
+window.renderCampaignsWarnings = renderCampaignsWarnings;
+window.showCampaignsBestPracticesModal = showCampaignsBestPracticesModal;
+
 function switchCampaignTab(tab) {
     CampaignsState.currentTab = tab;
     const tabContent = document.getElementById('campaignTabContent');
@@ -317,6 +486,9 @@ function renderDashboardTab() {
 
     return `
         <div style="display:grid; gap:1.5rem;">
+            <!-- Avisos de Boas Práticas WhatsApp -->
+            ${renderCampaignsWarnings()}
+
             <!-- Stats cards -->
             <div class="campaigns-stats-grid">
                 <div class="cstat-card cstat-blue">
@@ -363,7 +535,7 @@ function renderDashboardTab() {
                     ${CampaignsState.activeSend.failed > 0 ? ` • <span style="color:#ef4444">${CampaignsState.activeSend.failed} falhas</span>` : ''}
                 </div>
                 <div style="height:10px; background:var(--gray-100); border-radius:10px; overflow:hidden;">
-                    <div style="height:100%; background:linear-gradient(90deg,#3b82f6,#8b5cf6); width:${Math.round((CampaignsState.activeSend.sent/CampaignsState.activeSend.total)*100)}%; transition:width .5s ease;"></div>
+                    <div style="height:100%; background:linear-gradient(90deg,#3b82f6,#8b5cf6); width:${Math.round((CampaignsState.activeSend.sent / CampaignsState.activeSend.total) * 100)}%; transition:width .5s ease;"></div>
                 </div>
             </div>
             ` : ''}
@@ -374,13 +546,13 @@ function renderDashboardTab() {
                     <h4 style="margin-bottom:1rem; font-size:.9rem; color:var(--gray-700);">Por Tipo</h4>
                     <div style="display:flex; flex-direction:column; gap:.5rem;">
                         ${Object.entries(CAMPAIGN_TYPES).map(([key, t]) => {
-                            const count = typeCounts[key] || 0;
-                            if (count === 0) return '';
-                            return `<div style="display:flex; justify-content:space-between; align-items:center; padding:.5rem .75rem; background:var(--gray-50); border-radius:8px;">
+        const count = typeCounts[key] || 0;
+        if (count === 0) return '';
+        return `<div style="display:flex; justify-content:space-between; align-items:center; padding:.5rem .75rem; background:var(--gray-50); border-radius:8px;">
                                 <span style="font-size:.875rem;">${t.icon} ${t.label}</span>
                                 <span class="badge badge-primary">${count}</span>
                             </div>`;
-                        }).join('')}
+    }).join('')}
                         ${Object.values(typeCounts).every(v => v === 0) ? '<p style="color:var(--gray-400); font-size:.875rem; text-align:center; padding:1rem;">Sem campanhas ainda</p>' : ''}
                     </div>
                 </div>
@@ -390,8 +562,8 @@ function renderDashboardTab() {
                         <button class="btn btn-primary btn-small" onclick="switchCampaignTab('campaigns')">Ver todas →</button>
                     </div>
                     ${recentCampaigns.length > 0 ? recentCampaigns.map(c => {
-                        const t = CAMPAIGN_TYPES[c.type] || CAMPAIGN_TYPES.marketing;
-                        return `<div style="display:flex; justify-content:space-between; align-items:center; padding:.75rem; border-bottom:1px solid var(--gray-100);">
+        const t = CAMPAIGN_TYPES[c.type] || CAMPAIGN_TYPES.marketing;
+        return `<div style="display:flex; justify-content:space-between; align-items:center; padding:.75rem; border-bottom:1px solid var(--gray-100);">
                             <div style="display:flex; align-items:center; gap:.75rem;">
                                 <span style="font-size:1.5rem;">${t.icon}</span>
                                 <div>
@@ -401,7 +573,7 @@ function renderDashboardTab() {
                             </div>
                             <span class="badge ${getStatusBadgeClass(c.status)}">${getStatusLabel(c.status)}</span>
                         </div>`;
-                    }).join('') : '<p style="color:var(--gray-400); text-align:center; padding:2rem;">Crie sua primeira campanha!</p>'}
+    }).join('') : '<p style="color:var(--gray-400); text-align:center; padding:2rem;">Crie sua primeira campanha!</p>'}
                 </div>
             </div>
 
