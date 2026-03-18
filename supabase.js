@@ -131,6 +131,24 @@ const DB_COLUMNS = {
     ],
     prosthetic_services: [
         'id', 'user_id', 'patient_name', 'service_name', 'lab_name', 'cost', 'status', 'due_date', 'created_at', 'updated_at'
+    ],
+    campaign_templates: [
+        'id', 'user_id', 'name', 'content', 'variables', 'type', 'is_active', 'created_at', 'updated_at'
+    ],
+    contact_lists: [
+        'id', 'user_id', 'name', 'description', 'total_contacts', 'valid_contacts', 'created_at', 'updated_at'
+    ],
+    contacts: [
+        'id', 'user_id', 'contact_list_id', 'name', 'phone', 'email', 'status', 'variables', 'is_blacklisted', 'created_at', 'updated_at'
+    ],
+    campaigns: [
+        'id', 'user_id', 'name', 'type', 'status', 'template_id', 'contact_list_id', 'scheduled_at', 'timezone', 'daily_limit', 'current_day_count', 'interval_min', 'interval_max', 'total_sent', 'total_delivered', 'total_read', 'total_failed', 'created_at', 'updated_at', 'started_at', 'completed_at'
+    ],
+    campaign_history: [
+        'id', 'user_id', 'campaign_id', 'contact_id', 'status', 'sent_at', 'delivered_at', 'read_at', 'failed_at', 'error_message', 'message_id', 'created_at', 'updated_at'
+    ],
+    blacklist: [
+        'id', 'user_id', 'phone', 'name', 'reason', 'added_at', 'added_by'
     ]
 };
 
@@ -317,6 +335,50 @@ const FIELD_MAP = {
             created_at: 'createdAt',
             updated_at: 'updatedAt'
         }
+    },
+    campaign_templates: {
+        toDb: { isActive: 'is_active', createdAt: 'created_at', updatedAt: 'updated_at' },
+        toApp: { is_active: 'isActive', created_at: 'createdAt', updated_at: 'updatedAt' }
+    },
+    contact_lists: {
+        toDb: { totalContacts: 'total_contacts', validContacts: 'valid_contacts', createdAt: 'created_at', updatedAt: 'updated_at' },
+        toApp: { total_contacts: 'totalContacts', valid_contacts: 'validContacts', created_at: 'createdAt', updated_at: 'updatedAt' }
+    },
+    contacts: {
+        toDb: { contactListId: 'contact_list_id', isBlacklisted: 'is_blacklisted', createdAt: 'created_at', updatedAt: 'updated_at' },
+        toApp: { contact_list_id: 'contactListId', is_blacklisted: 'isBlacklisted', created_at: 'createdAt', updated_at: 'updatedAt' }
+    },
+    campaigns: {
+        toDb: { 
+            templateId: 'template_id', contactListId: 'contact_list_id', scheduledAt: 'scheduled_at', 
+            dailyLimit: 'daily_limit', currentDayCount: 'current_day_count', intervalMin: 'interval_min', 
+            intervalMax: 'interval_max', totalSent: 'total_sent', totalDelivered: 'total_delivered',
+            totalRead: 'total_read', totalFailed: 'total_failed', createdAt: 'created_at', 
+            updatedAt: 'updated_at', startedAt: 'started_at', completedAt: 'completed_at'
+        },
+        toApp: {
+            template_id: 'templateId', contact_list_id: 'contactListId', scheduled_at: 'scheduledAt',
+            daily_limit: 'dailyLimit', current_day_count: 'currentDayCount', interval_min: 'intervalMin',
+            interval_max: 'intervalMax', total_sent: 'totalSent', total_delivered: 'totalDelivered',
+            total_read: 'totalRead', total_failed: 'totalFailed', created_at: 'createdAt',
+            updated_at: 'updatedAt', started_at: 'startedAt', completed_at: 'completedAt'
+        }
+    },
+    campaign_history: {
+        toDb: {
+            campaignId: 'campaign_id', contactId: 'contact_id', sentAt: 'sent_at', deliveredAt: 'delivered_at',
+            readAt: 'read_at', failedAt: 'failed_at', errorMessage: 'error_message', messageId: 'message_id',
+            createdAt: 'created_at', updatedAt: 'updated_at'
+        },
+        toApp: {
+            campaign_id: 'campaignId', contact_id: 'contactId', sent_at: 'sentAt', delivered_at: 'deliveredAt',
+            read_at: 'readAt', failed_at: 'failedAt', error_message: 'errorMessage', message_id: 'messageId',
+            created_at: 'createdAt', updated_at: 'updatedAt'
+        }
+    },
+    blacklist: {
+        toDb: { addedAt: 'added_at', addedBy: 'added_by' },
+        toApp: { added_at: 'addedAt', added_by: 'addedBy' }
     }
 };
 
@@ -334,14 +396,12 @@ function mapToDb(table, obj) {
 
         const dbKey = map[key] || key;
 
-        // 🔥 CRITICAL FIX: Convert empty strings to null (exceto campos obrigatórios)
-        // name e patient_name não podem ser nulos; os demais são nullable
+        // 🔥 CRITICAL FIX: Convert empty strings to null (except mandatory fields)
         if (value === "" && !['name', 'patient_name', 'status', 'source', 'channel'].includes(dbKey)) {
             value = null;
         }
 
-        // 🔥 VALIDAÇÃO DE FK: patient_id e converted_from devem ser UUIDs válidos
-        // Se não forem, envia null para evitar violação de foreign key
+        // 🔥 FK VALIDATION: patient_id and converted_from must be valid UUIDs
         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
         if (['patient_id', 'converted_from'].includes(dbKey)) {
             if (!value || !uuidRegex.test(String(value))) {
@@ -355,8 +415,7 @@ function mapToDb(table, obj) {
         }
     }
 
-    // 🔥 ENSURE NOT NULL COLUMNS: Garantir string vazia para campos realmente NOT NULL
-    // Nota: phone em leads agora é nullable — não incluir aqui
+    // 🔥 ENSURE NOT NULL COLUMNS
     const criticalFields = ['name', 'patient_name', 'status', 'source', 'channel'];
     criticalFields.forEach(field => {
         if (allowedColumns.includes(field)) {
@@ -413,7 +472,7 @@ async function loadDataFromSupabase() {
             }
         }
 
-        const [leadsRes, patientsRes, appointmentsRes, settingsRes, oldPatientsRes, paymentsRes, maintenanceRes, debtorsRes, inventoryRes, prostheticRes] = await Promise.all([
+        const [leadsRes, patientsRes, appointmentsRes, settingsRes, oldPatientsRes, paymentsRes, maintenanceRes, debtorsRes, inventoryRes, prostheticRes, templatesRes, contactListsRes, contactsRes, campaignsRes, blacklistRes] = await Promise.all([
             fetchTable('leads'),
             fetchTable('patients'),
             fetchTable('appointments'),
@@ -423,7 +482,12 @@ async function loadDataFromSupabase() {
             fetchTable('device_maintenances'),
             fetchTable('debtor_notifications'),
             fetchTable('inventory_items'),
-            fetchTable('prosthetic_services')
+            fetchTable('prosthetic_services'),
+            fetchTable('campaign_templates'),
+            fetchTable('contact_lists'),
+            fetchTable('contacts'),
+            fetchTable('campaigns'),
+            fetchTable('blacklist')
         ]);
 
         if (leadsRes.data) AppState.leads = leadsRes.data.map(row => mapToApp('leads', row));
@@ -436,11 +500,16 @@ async function loadDataFromSupabase() {
         if (debtorsRes.data) AppState.finances.debtorQueue = debtorsRes.data.map(row => mapToApp('debtor_notifications', row));
         if (inventoryRes.data) AppState.inventoryItems = inventoryRes.data.map(row => mapToApp('inventory_items', row));
         if (prostheticRes.data) AppState.prostheticServices = prostheticRes.data.map(row => mapToApp('prosthetic_services', row));
+        
+        // Populate CampaignsState
+        if (templatesRes.data && templatesRes.data.length > 0) {
+            CampaignsState.templates = templatesRes.data.map(row => mapToApp('campaign_templates', row));
+        }
+        if (contactListsRes.data) CampaignsState.contactLists = contactListsRes.data.map(row => mapToApp('contact_lists', row));
+        if (contactsRes.data) CampaignsState.contacts = contactsRes.data.map(row => mapToApp('contacts', row));
+        if (campaignsRes.data) CampaignsState.campaigns = campaignsRes.data.map(row => mapToApp('campaigns', row));
+        if (blacklistRes.data) CampaignsState.blacklist = blacklistRes.data.map(row => mapToApp('blacklist', row));
 
-        // Validate
-        if (!Array.isArray(AppState.leads)) AppState.leads = [];
-        if (!Array.isArray(AppState.patients)) AppState.patients = [];
-        if (!Array.isArray(AppState.appointments)) AppState.appointments = [];
         if (!Array.isArray(AppState.oldPatients)) AppState.oldPatients = [];
 
         console.log('✅ Data loaded from Supabase:', {
@@ -460,6 +529,13 @@ async function loadDataFromSupabase() {
         localStorage.setItem('odontocrm_finance_debtors', JSON.stringify(AppState.finances.debtorQueue));
         localStorage.setItem('odontocrm_inventory_items', JSON.stringify(AppState.inventoryItems));
         localStorage.setItem('odontocrm_prosthetic_services', JSON.stringify(AppState.prostheticServices));
+
+        // Sync campaign data to localStorage as cache
+        localStorage.setItem('campaignTemplates', JSON.stringify(CampaignsState.templates));
+        localStorage.setItem('campaignContactLists', JSON.stringify(CampaignsState.contactLists));
+        localStorage.setItem('campaignContacts', JSON.stringify(CampaignsState.contacts));
+        localStorage.setItem('campaigns', JSON.stringify(CampaignsState.campaigns));
+        localStorage.setItem('campaignBlacklist', JSON.stringify(CampaignsState.blacklist));
 
         return true;
     } catch (error) {
@@ -793,6 +869,68 @@ async function migrateLocalStorageToSupabase() {
                 console.log(`✅ Migrated ${data.length} old patients`);
                 successCount += data.length;
             }
+        }
+
+        // Migrate Campaign Data
+        const localTemplates = JSON.parse(localStorage.getItem('campaignTemplates') || '[]');
+        const localContactLists = JSON.parse(localStorage.getItem('campaignContactLists') || '[]');
+        const localContacts = JSON.parse(localStorage.getItem('campaignContacts') || '[]');
+        const localCampaigns = JSON.parse(localStorage.getItem('campaigns') || '[]');
+        const localBlacklist = JSON.parse(localStorage.getItem('campaignBlacklist') || '[]');
+
+        if (localTemplates.length > 0) {
+            const dbTemplates = localTemplates.map(t => {
+                const mapped = mapToDb('campaign_templates', t || {});
+                delete mapped.id; 
+                return mapped;
+            });
+            const { error } = await supabaseClient.from('campaign_templates').insert(dbTemplates);
+            if (!error) successCount += localTemplates.length;
+            else console.error('❌ Migration error (templates):', error);
+        }
+
+        if (localContactLists.length > 0) {
+            const dbLists = localContactLists.map(l => {
+                const mapped = mapToDb('contact_lists', l || {});
+                delete mapped.id; 
+                return mapped;
+            });
+            const { error } = await supabaseClient.from('contact_lists').insert(dbLists);
+            if (!error) successCount += localContactLists.length;
+            else console.error('❌ Migration error (contact_lists):', error);
+        }
+
+        if (localContacts.length > 0) {
+            const dbContacts = localContacts.map(c => {
+                const mapped = mapToDb('contacts', c || {});
+                delete mapped.id; 
+                return mapped;
+            });
+            const { error } = await supabaseClient.from('contacts').insert(dbContacts);
+            if (!error) successCount += localContacts.length;
+            else console.error('❌ Migration error (contacts):', error);
+        }
+
+        if (localCampaigns.length > 0) {
+            const dbCampaigns = localCampaigns.map(c => {
+                const mapped = mapToDb('campaigns', c || {});
+                delete mapped.id; 
+                return mapped;
+            });
+            const { error } = await supabaseClient.from('campaigns').insert(dbCampaigns);
+            if (!error) successCount += localCampaigns.length;
+            else console.error('❌ Migration error (campaigns):', error);
+        }
+
+        if (localBlacklist.length > 0) {
+            const dbBlacklist = localBlacklist.map(b => {
+                const mapped = mapToDb('blacklist', b || {});
+                delete mapped.id; 
+                return mapped;
+            });
+            const { error } = await supabaseClient.from('blacklist').insert(dbBlacklist);
+            if (!error) successCount += localBlacklist.length;
+            else console.error('❌ Migration error (blacklist):', error);
         }
 
         hideLoading();

@@ -541,6 +541,7 @@ function updateLeadStatus(leadId, newStatus) {
 
         saveToStorage(STORAGE_KEYS.LEADS, AppState.leads);
         refreshLeadCard(leadId); // Granular update
+        logActivity(`Lead ${lead.name} atualizado para ${newStatus}`, 'lead');
         showNotification(`Status atualizado para: ${newStatus}`, 'success');
     }
 }
@@ -686,6 +687,7 @@ function saveLead() {
     saveToStorage(STORAGE_KEYS.LEADS, AppState.leads);
     closeModal();
     renderLeadsList();
+    logActivity(`Novo lead cadastrado: ${name}`, 'lead');
     showNotification('Lead criado com sucesso!', 'success');
 }
 
@@ -725,6 +727,7 @@ function convertLeadToPatient(leadId, silent = false) {
     saveToStorage(STORAGE_KEYS.LEADS, AppState.leads);
 
     renderLeadsList();
+    logActivity(`Lead convertido em paciente: ${lead.name}`, 'lead');
     showNotification('Paciente cadastrado com sucesso!', 'success');
 }
 
@@ -781,8 +784,10 @@ function deleteLead(leadId) {
         saveToStorage(STORAGE_KEYS.APPOINTMENTS, AppState.appointments);
 
         showNotification('Lead e dados vinculados deletados!', 'success');
+        logActivity(`Lead deletado (com dados vinculados): ${lead.name}`, 'generic');
     } else {
         showNotification('Lead deletado', 'success');
+        logActivity(`Lead deletado: ${lead.name}`, 'generic');
     }
 
     renderLeadsList();
@@ -1082,6 +1087,7 @@ async function markAttendance(leadId, attended) {
     saveToStorage(STORAGE_KEYS.LEADS, AppState.leads);
     saveToStorage(STORAGE_KEYS.APPOINTMENTS, AppState.appointments);
     refreshLeadCard(leadId);
+    logActivity(`Comparecimento: ${lead.name} (${attended ? 'Presente' : 'Faltou'})`, 'appointment');
     showNotification(attended ? 'Comparecimento registrado!' : 'Lead marcado como não compareceu', 'success');
 }
 
@@ -1122,6 +1128,7 @@ async function markSale(leadId, sold) {
     if (typeof updateDashboard === 'function') updateDashboard();
 
     showNotification(sold ? `Parabéns pela venda de R$ ${lead.saleValue.toFixed(2)}! 🎯` : 'Lead marcado como perdido', sold ? 'success' : 'info');
+    logActivity(sold ? `Venda realizada: ${lead.name} (R$ ${lead.saleValue.toFixed(2)})` : `Venda perdida: ${lead.name}`, sold ? 'sale' : 'generic');
 }
 
 // Helpers for Manual Retroactive Date Updates

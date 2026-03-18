@@ -194,6 +194,34 @@ function formatDateTime(dateString) {
     }
 }
 
+// ─── Sync Status Indicator ──────────────────────────────────────────────
+function updateSyncStatus(status) {
+    const indicator = document.getElementById('syncIndicator');
+    const dot = indicator?.querySelector('.sync-status-dot');
+    const text = indicator?.querySelector('.sync-status-text');
+
+    if (!indicator || !dot || !text) return;
+
+    // Remove all status classes
+    indicator.classList.remove('sync-offline', 'sync-saving');
+
+    switch (status) {
+        case 'online':
+            text.textContent = 'Conectado';
+            break;
+        case 'saving':
+            indicator.classList.add('sync-saving');
+            text.textContent = 'Sincronizando...';
+            break;
+        case 'offline':
+        case 'error':
+            indicator.classList.add('sync-offline');
+            text.textContent = 'Modo Local';
+            break;
+    }
+}
+window.updateSyncStatus = updateSyncStatus;
+
 // Export additional utilities
 window.validateInput = validateInput;
 window.formatCurrency = formatCurrency;

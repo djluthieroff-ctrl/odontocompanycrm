@@ -21,7 +21,8 @@ const AppState = {
         debtorQueue: []
     },
     inventoryItems: [],
-    prostheticServices: []
+    prostheticServices: [],
+    activities: []
 };
 
 // LocalStorage Keys
@@ -35,7 +36,8 @@ const STORAGE_KEYS = {
     FINANCE_MAINTENANCE: 'odontocrm_finance_maintenance',
     FINANCE_DEBTORS: 'odontocrm_finance_debtors',
     INVENTORY_ITEMS: 'odontocrm_inventory_items',
-    PROSTHETIC_SERVICES: 'odontocrm_prosthetic_services'
+    PROSTHETIC_SERVICES: 'odontocrm_prosthetic_services',
+    ACTIVITIES: 'odontocrm_activities'
 };
 
 // Initialize App
@@ -240,8 +242,10 @@ function loadDataFromStorage() {
 
         const inventoryData = localStorage.getItem(STORAGE_KEYS.INVENTORY_ITEMS);
         const prostheticData = localStorage.getItem(STORAGE_KEYS.PROSTHETIC_SERVICES);
+        const activitiesData = localStorage.getItem(STORAGE_KEYS.ACTIVITIES);
         if (inventoryData) AppState.inventoryItems = JSON.parse(inventoryData);
         if (prostheticData) AppState.prostheticServices = JSON.parse(prostheticData);
+        if (activitiesData) AppState.activities = JSON.parse(activitiesData);
 
         // DEFAULT SETTINGS IF MISSING
         if (!AppState.settings || Object.keys(AppState.settings).length === 0) {
@@ -552,11 +556,58 @@ function updateDashboard() {
     // Populate Funnel Visual
     renderDashboardFunnel(metrics);
 
-    // Populate Today's Timeline (Always shows actual today/upcoming)
-    renderDashboardTimeline();
+// Activity Logging System
+function logActivity(text, type = 'generic') {
+    const activity = {
+        id: generateId(),
+        text,
+        type,
+        timestamp: new Date().toISOString()
+    };
 
-    // Populate Weekly Commission & Goals (Always shows current week)
-    renderDashboardWeeklyPerf();
+    if (!AppState.activities) AppState.activities = [];
+    AppState.activities.unshift(activity);
+
+    // Keep only last 20 activities
+    if (AppState.activities.length > 20) {
+        AppState.activities = AppState.activities.slice(0, 20);
+    }
+
+    saveToStorage(STORAGE_KEYS.ACTIVITIES, AppState.activities);
+    if (AppState.currentModule === 'dashboard') {
+        updateActivityFeedUI();
+    }
+}
+
+function updateActivityFeedUI() {
+    const container = document.getElementById('activityFeedContainer');
+    if (!container) return;
+
+    if (!AppState.activities || AppState.activities.length === 0) {
+        container.innerHTML = '<p style="color: var(--gray-400); text-align: center; padding: 1rem; font-size: 0.85rem;">Nenhuma atividade recente.</p>';
+        return;
+    }
+
+    const icons = {
+        lead: '👤',
+        appointment: '📅',
+        sale: '💰',
+        generic: '⚡'
+    };
+
+    container.innerHTML = AppState.activities.map(act => `
+        <div class="activity-item fadeInUp">
+            <div class="activity-icon">${icons[act.type] || icons.generic}</div>
+            <div class="activity-content">
+                <div class="activity-text">${SecurityUtils.sanitizeHTML(act.text)}</div>
+                <span class="activity-time">${formatDateTime(act.timestamp)}</span>
+            </div>
+        </div>
+    `).join('');
+}
+
+window.logActivity = logActivity;
+window.updateActivityFeedUI = updateActivityFeedUI;
 
     // CRM Metrics Compatibility (Legacy badges if any)
     const leadsBadge = document.getElementById('leadsBadge');
@@ -580,6 +631,9 @@ function updateDashboard() {
     if (AppState.currentModule === 'reports' && typeof updateReportsStats === 'function') {
         updateReportsStats();
     }
+
+    // Update Recent Activities
+    updateActivityFeedUI();
 }
 
 function clearDashboardFilter() {

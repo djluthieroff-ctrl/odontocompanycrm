@@ -392,6 +392,7 @@ function saveAppointment(event) {
 
     closeModal();
     renderAppointmentsView();
+    logActivity(`Novo agendamento: ${patient.name} (${formData.get('procedure')})`, 'appointment');
     showNotification(`Agendamento criado para ${patient.name}`, 'success');
 }
 
@@ -487,6 +488,7 @@ function processAptSale(aptId, isSold) {
             }
         }
         closeModal();
+        logActivity(`Atendimento concluído: ${apt.patientName} (Visita)`, 'appointment');
         showNotification('Atendimento concluído como visita.', 'info');
     }
 
@@ -663,6 +665,7 @@ function confirmReschedule(event, appointmentId) {
         saveToStorage(STORAGE_KEYS.APPOINTMENTS, AppState.appointments);
         closeModal();
         renderAppointmentsView();
+        logActivity(`Consulta remarcada: ${apt.patientName} (${apt.procedure})`, 'appointment');
         showNotification('Consulta remarcada com sucesso!', 'success');
     }
 }
@@ -781,6 +784,7 @@ function deleteAppointment(appointmentId) {
 
     renderAppointmentsView();
     showNotification('Agendamento removido', 'success');
+    logActivity(`Agendamento removido: ${apt.patientName}`, 'generic');
     if (typeof updateDashboard === 'function') updateDashboard();
     if (typeof renderLeadsList === 'function' && AppState.currentModule === 'leads') renderLeadsList();
 }

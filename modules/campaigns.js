@@ -151,41 +151,70 @@ function initCampaignsModule() {
 
 function loadCampaignsData() {
     try {
-        const c = localStorage.getItem('campaigns');
-        if (c) CampaignsState.campaigns = JSON.parse(c);
-
-        const t = localStorage.getItem('campaignTemplates');
-        if (t) {
-            CampaignsState.templates = JSON.parse(t);
-        } else {
-            CampaignsState.templates = ODC_DEFAULT_TEMPLATES.map(tpl => ({
+        // Data is now primarily loaded via loadDataFromSupabase() in supabase.js
+        // and populated into CampaignsState directly.
+        
+        // If no templates were loaded from Supabase, initialize with defaults
+        if (CampaignsState.templates.length === 0) {
+            console.log('📝 Initializing default templates...');
+            const defaultTemplates = ODC_DEFAULT_TEMPLATES.map(tpl => ({
                 ...tpl,
                 id: generateId(),
                 is_active: true,
                 created_at: new Date().toISOString()
             }));
-            localStorage.setItem('campaignTemplates', JSON.stringify(CampaignsState.templates));
+            
+            CampaignsState.templates = defaultTemplates;
+            
+            // Save defaults to Supabase if connected
+            if (window.isCloudConnected && window.isCloudConnected()) {
+                saveToSupabase('campaign_templates', defaultTemplates);
+            } else {
+                localStorage.setItem('campaignTemplates', JSON.stringify(defaultTemplates));
+            }
         }
 
-        const cl = localStorage.getItem('contactLists');
-        if (cl) CampaignsState.contactLists = JSON.parse(cl);
+        // Load other data from localStorage as fallback if needed (though already done in supabase.js)
+        if (CampaignsState.campaigns.length === 0) {
+            const c = localStorage.getItem('campaigns');
+            if (c) CampaignsState.campaigns = JSON.parse(c);
+        }
+        
+        if (CampaignsState.contactLists.length === 0) {
+            const cl = localStorage.getItem('campaignContactLists');
+            if (cl) CampaignsState.contactLists = JSON.parse(cl);
+        }
 
-        const ct = localStorage.getItem('contacts');
-        if (ct) CampaignsState.contacts = JSON.parse(ct);
+        if (CampaignsState.contacts.length === 0) {
+            const ct = localStorage.getItem('campaignContacts');
+            if (ct) CampaignsState.contacts = JSON.parse(ct);
+        }
 
-        const bl = localStorage.getItem('blacklist');
-        if (bl) CampaignsState.blacklist = JSON.parse(bl);
+        if (CampaignsState.blacklist.length === 0) {
+            const bl = localStorage.getItem('campaignBlacklist');
+            if (bl) CampaignsState.blacklist = JSON.parse(bl);
+        }
     } catch (e) {
         console.error('Erro ao carregar campanhas:', e);
     }
 }
 
 function saveCampaignsData() {
+    // Save to localStorage as cache
     localStorage.setItem('campaigns', JSON.stringify(CampaignsState.campaigns));
     localStorage.setItem('campaignTemplates', JSON.stringify(CampaignsState.templates));
-    localStorage.setItem('contactLists', JSON.stringify(CampaignsState.contactLists));
-    localStorage.setItem('contacts', JSON.stringify(CampaignsState.contacts));
-    localStorage.setItem('blacklist', JSON.stringify(CampaignsState.blacklist));
+    localStorage.setItem('campaignContactLists', JSON.stringify(CampaignsState.contactLists));
+    localStorage.setItem('campaignContacts', JSON.stringify(CampaignsState.contacts));
+    localStorage.setItem('campaignBlacklist', JSON.stringify(CampaignsState.blacklist));
+
+    // Save to Supabase if connected
+    if (window.isCloudConnected && window.isCloudConnected()) {
+        saveToSupabase('campaigns', CampaignsState.campaigns);
+        saveToSupabase('campaign_templates', CampaignsState.templates);
+        saveToSupabase('contact_lists', CampaignsState.contactLists);
+        saveToSupabase('contacts', CampaignsState.contacts);
+        saveToSupabase('blacklist', CampaignsState.blacklist);
+    }
 }
 
 // ===================

@@ -24,29 +24,49 @@ function initCampaignScheduler() {
     startScheduler();
 }
 
-// Load Scheduled Campaigns from Storage
+// Load Scheduled Campaigns from CampaignsState (Supabase)
 function loadScheduledCampaigns() {
     try {
-        const saved = localStorage.getItem('scheduledCampaigns');
-        if (saved) {
-            const parsed = JSON.parse(saved);
-            parsed.forEach(campaign => {
-                CampaignSchedulerState.scheduledCampaigns.set(campaign.id, campaign);
+        // Instead of a separate localStorage key, we now use the campaigns from CampaignsState
+        // that have a 'scheduled' or 'running' status.
+        if (CampaignsState.campaigns && CampaignsState.campaigns.length > 0) {
+            CampaignsState.campaigns.forEach(campaign => {
+                if (campaign.status === 'scheduled' || campaign.status === 'running') {
+                    // Only add to Map if it's actually scheduled in the future or was running
+                    const scheduledCampaign = {
+                        id: campaign.id,
+                        name: campaign.name,
+                        scheduledTime: campaign.scheduled_at,
+                        status: campaign.status,
+                        createdAt: campaign.created_at
+                    };
+                    CampaignSchedulerState.scheduledCampaigns.set(campaign.id, scheduledCampaign);
+                    
+                    // Re-set timer if it's scheduled for future
+                    if (campaign.status === 'scheduled' && campaign.scheduled_at) {
+                        const timeUntilStart = new Date(campaign.scheduled_at) - Date.now();
+                        if (timeUntilStart > 0) {
+                            const timer = setTimeout(() => {
+                                startScheduledCampaign(campaign.id);
+                            }, timeUntilStart);
+                            CampaignSchedulerState.timers.set(campaign.id, timer);
+                        } else if (timeUntilStart <= 0) {
+                            // If time passed while app was closed, start now
+                            startScheduledCampaign(campaign.id);
+                        }
+                    }
+                }
             });
+            console.log(`⏰ Loaded ${CampaignSchedulerState.scheduledCampaigns.size} campaigns into scheduler`);
         }
     } catch (error) {
         console.error('❌ Error loading scheduled campaigns:', error);
     }
 }
 
-// Save Scheduled Campaigns to Storage
+// Save Scheduled Campaigns (deprecated - handled by Supabase campaigns table)
 function saveScheduledCampaigns() {
-    try {
-        const campaigns = Array.from(CampaignSchedulerState.scheduledCampaigns.values());
-        localStorage.setItem('scheduledCampaigns', JSON.stringify(campaigns));
-    } catch (error) {
-        console.error('❌ Error saving scheduled campaigns:', error);
-    }
+    // Logic moved to saveCampaignsData() which saves to Supabase
 }
 
 // Start Scheduler
