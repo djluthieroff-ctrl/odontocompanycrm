@@ -152,20 +152,32 @@ function saveCampaign() {
     }
 
     const campaign = {
-        id: generateId(), name, type,
+        id: generateId(),
+        name: name,
+        type: type,
         status: scheduledAt ? 'scheduled' : 'draft',
-        template_id: templateId, contact_list_id: contactListId,
+        template_id: templateId,
+        contact_list_id: contactListId,
         scheduled_at: scheduledAt || null,
-        timezone: 'America/Sao_Paulo', daily_limit: dailyLimit,
-        current_day_count: 0, interval_min: AppState?.settings?.zapiMsgDelay || 8,
+        timezone: 'America/Sao_Paulo',
+        daily_limit: dailyLimit,
+        current_day_count: 0,
+        interval_min: AppState?.settings?.zapiMsgDelay || 8,
         interval_max: (AppState?.settings?.zapiMsgDelay || 8) + 7,
-        total_sent: 0, total_delivered: 0, total_read: 0, total_failed: 0,
-        created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
-        started_at: null, completed_at: null
+        total_sent: 0,
+        total_delivered: 0,
+        total_read: 0,
+        total_failed: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        started_at: null,
+        completed_at: null
     };
 
     CampaignsState.campaigns.push(campaign);
-    saveCampaignsData(); closeModal(); switchCampaignTab('campaigns');
+    saveCampaignsData();
+    closeModal();
+    switchCampaignTab('campaigns');
     showNotification('✅ Campanha criada com sucesso!', 'success');
 }
 
