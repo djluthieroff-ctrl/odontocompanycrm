@@ -336,46 +336,6 @@ const FIELD_MAP = {
             updated_at: 'updatedAt'
         }
     },
-    campaign_templates: {
-        toDb: { isActive: 'is_active', createdAt: 'created_at', updatedAt: 'updated_at' },
-        toApp: { is_active: 'isActive', created_at: 'createdAt', updated_at: 'updatedAt' }
-    },
-    contact_lists: {
-        toDb: { totalContacts: 'total_contacts', validContacts: 'valid_contacts', createdAt: 'created_at', updatedAt: 'updated_at' },
-        toApp: { total_contacts: 'totalContacts', valid_contacts: 'validContacts', created_at: 'createdAt', updated_at: 'updatedAt' }
-    },
-    contacts: {
-        toDb: { contactListId: 'contact_list_id', isBlacklisted: 'is_blacklisted', createdAt: 'created_at', updatedAt: 'updated_at' },
-        toApp: { contact_list_id: 'contactListId', is_blacklisted: 'isBlacklisted', created_at: 'createdAt', updated_at: 'updatedAt' }
-    },
-    campaigns: {
-        toDb: { 
-            templateId: 'template_id', contactListId: 'contact_list_id', scheduledAt: 'scheduled_at', 
-            dailyLimit: 'daily_limit', currentDayCount: 'current_day_count', intervalMin: 'interval_min', 
-            intervalMax: 'interval_max', totalSent: 'total_sent', totalDelivered: 'total_delivered',
-            totalRead: 'total_read', totalFailed: 'total_failed', createdAt: 'created_at', 
-            updatedAt: 'updated_at', startedAt: 'started_at', completedAt: 'completed_at'
-        },
-        toApp: {
-            template_id: 'templateId', contact_list_id: 'contactListId', scheduled_at: 'scheduledAt',
-            daily_limit: 'dailyLimit', current_day_count: 'currentDayCount', interval_min: 'intervalMin',
-            interval_max: 'intervalMax', total_sent: 'totalSent', total_delivered: 'totalDelivered',
-            total_read: 'totalRead', total_failed: 'totalFailed', created_at: 'createdAt',
-            updated_at: 'updatedAt', started_at: 'startedAt', completed_at: 'completedAt'
-        }
-    },
-    campaign_history: {
-        toDb: {
-            campaignId: 'campaign_id', contactId: 'contact_id', sentAt: 'sent_at', deliveredAt: 'delivered_at',
-            readAt: 'read_at', failedAt: 'failed_at', errorMessage: 'error_message', messageId: 'message_id',
-            createdAt: 'created_at', updatedAt: 'updated_at'
-        },
-        toApp: {
-            campaign_id: 'campaignId', contact_id: 'contactId', sent_at: 'sentAt', delivered_at: 'deliveredAt',
-            read_at: 'readAt', failed_at: 'failedAt', error_message: 'errorMessage', message_id: 'messageId',
-            created_at: 'createdAt', updated_at: 'updatedAt'
-        }
-    },
     blacklist: {
         toDb: { addedAt: 'added_at', addedBy: 'added_by' },
         toApp: { added_at: 'addedAt', added_by: 'addedBy' }
