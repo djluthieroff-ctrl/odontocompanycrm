@@ -60,6 +60,8 @@
     --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
     --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
     --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-smooth: 400ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    --transition-gentle: 500ms cubic-bezier(0.165, 0.84, 0.44, 1);
 }
 
 /* Dark Mode Variables - Premium Midnight Edition */
@@ -1722,9 +1724,211 @@ button {
 }
 
 @keyframes pulse {
-    0% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.2); opacity: 0.7; }
-    100% { transform: scale(1); opacity: 1; }
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    50% {
+        transform: scale(1.2);
+        opacity: 0.7;
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* Smooth Page Transitions */
+.module-transition-enter {
+    opacity: 0;
+    transform: translateX(20px);
+    transition: opacity 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.module-transition-enter-active {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.module-transition-exit {
+    opacity: 1;
+    transform: translateX(0);
+    transition: opacity 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.module-transition-exit-active {
+    opacity: 0;
+    transform: translateX(-20px);
+}
+
+/* Enhanced Slide Transitions */
+.slideInFromRight {
+    animation: slideInFromRight 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+@keyframes slideInFromRight {
+    from {
+        transform: translateX(50px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.slideInFromLeft {
+    animation: slideInFromLeft 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+@keyframes slideInFromLeft {
+    from {
+        transform: translateX(-50px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Cross-fade Animation */
+.crossFade {
+    animation: crossFade 0.4s ease-in-out;
+}
+
+@keyframes crossFade {
+    0% {
+        opacity: 0;
+    }
+
+    50% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}
+
+/* Staggered Entrance Animation */
+.staggeredFadeIn {
+    animation: staggeredFadeIn 0.6s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+@keyframes staggeredFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Smooth Scroll Behavior */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Scroll Progress Bar */
+.scroll-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 0%;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary-500), var(--primary-600));
+    z-index: 1000;
+    transition: width 0.1s linear;
+}
+
+/* Smooth Scroll-to-Top Button */
+.scroll-to-top {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, var(--primary-500), var(--primary-600));
+    color: white;
+    border: none;
+    border-radius: 50%;
+    box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+    cursor: pointer;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(20px);
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    z-index: 99;
+}
+
+.scroll-to-top.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.scroll-to-top:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+}
+
+/* Enhanced Navigation Transitions */
+.nav-item {
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    will-change: transform, background-color;
+}
+
+.nav-item.active {
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    will-change: transform, background-color;
+}
+
+/* Hardware Acceleration for Smooth Transitions */
+.module,
+.dash-widget,
+.stat-card,
+.card,
+.lead-card,
+.appointment-card,
+.timeline-item,
+.scroll-progress,
+.scroll-to-top {
+    will-change: transform, opacity;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1000px;
+}
+
+/* Optimize Scrolling Performance */
+.main-content {
+    will-change: scroll-position;
+    transform: translateZ(0);
+}
+
+/* Optimize Modal Animations */
+.modal {
+    will-change: transform, opacity;
+    transform: translateZ(0);
+}
+
+/* Optimize Scroll Progress Bar */
+.scroll-progress {
+    will-change: width;
+    transform: translateZ(0);
+}
+
+/* Optimize Scroll-to-Top Button */
+.scroll-to-top {
+    will-change: transform, opacity;
+    transform: translateZ(0);
 }
 
 /* Micro-animations */
@@ -1737,6 +1941,7 @@ button {
         opacity: 0;
         transform: translateY(10px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -1805,7 +2010,17 @@ button {
     box-shadow: 0 0 15px rgba(34, 197, 94, 0.3);
 }
 
-body.dark-mode .header-controls { border-color: var(--gray-300); }
-body.dark-mode .ctrl-btn { background: var(--gray-200); color: var(--gray-600); }
-body.dark-mode .logout-btn { background: var(--gray-200); border-color: var(--gray-300); color: var(--gray-600); }
+body.dark-mode .header-controls {
+    border-color: var(--gray-300);
+}
 
+body.dark-mode .ctrl-btn {
+    background: var(--gray-200);
+    color: var(--gray-600);
+}
+
+body.dark-mode .logout-btn {
+    background: var(--gray-200);
+    border-color: var(--gray-300);
+    color: var(--gray-600);
+}

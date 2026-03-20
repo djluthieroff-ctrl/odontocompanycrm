@@ -364,7 +364,7 @@ function initializeNavigation() {
 }
 
 function switchModule(moduleName) {
-    // Update active nav item
+    // Update active nav item with smooth transition
     document.querySelectorAll('.nav-item').forEach(item => {
         item.classList.remove('active');
         if (item.dataset.module === moduleName) {
@@ -372,22 +372,50 @@ function switchModule(moduleName) {
         }
     });
 
-    // Update active module content
-    document.querySelectorAll('.module').forEach(module => {
-        module.classList.remove('active');
-    });
+    // Smooth module transition
+    const currentModule = document.querySelector('.module.active');
+    const nextModule = document.getElementById(`${moduleName}-module`);
 
-    const activeModule = document.getElementById(`${moduleName}-module`);
-    if (activeModule) {
-        activeModule.classList.add('active');
-        AppState.currentModule = moduleName;
+    if (currentModule && nextModule) {
+        // Add exit transition to current module
+        currentModule.classList.remove('active');
+        currentModule.style.opacity = '0';
+        currentModule.style.transform = 'translateX(-20px)';
 
-        // Trigger module-specific initialization
-        // BUG 6: Fix para módulos com hífen (red-folder -> initRedFolderModule)
-        const funcName = `init${moduleName.split('-').map(s => capitalize(s)).join('')}Module`;
-        if (typeof window[funcName] === 'function') {
-            window[funcName]();
-        }
+        // Add enter transition to next module
+        nextModule.style.opacity = '0';
+        nextModule.style.transform = 'translateX(20px)';
+        nextModule.style.display = 'block';
+
+        // Trigger animations
+        setTimeout(() => {
+            nextModule.style.opacity = '1';
+            nextModule.style.transform = 'translateX(0)';
+        }, 10);
+
+        // Clean up after transition
+        setTimeout(() => {
+            currentModule.style.display = 'none';
+            nextModule.classList.add('active');
+        }, 400);
+    } else if (nextModule) {
+        // First load or fallback
+        document.querySelectorAll('.module').forEach(module => {
+            module.classList.remove('active');
+            module.style.display = 'none';
+        });
+
+        nextModule.style.display = 'block';
+        nextModule.classList.add('active');
+    }
+
+    AppState.currentModule = moduleName;
+
+    // Trigger module-specific initialization
+    // BUG 6: Fix para módulos com hífen (red-folder -> initRedFolderModule)
+    const funcName = `init${moduleName.split('-').map(s => capitalize(s)).join('')}Module`;
+    if (typeof window[funcName] === 'function') {
+        window[funcName]();
     }
 }
 
@@ -586,46 +614,46 @@ function updateDashboard() {
     // Populate Funnel Visual
     renderDashboardFunnel(metrics);
 
-// Activity Logging System
-function logActivity(text, type = 'generic') {
-    const activity = {
-        id: generateId(),
-        text,
-        type,
-        timestamp: new Date().toISOString()
-    };
+    // Activity Logging System
+    function logActivity(text, type = 'generic') {
+        const activity = {
+            id: generateId(),
+            text,
+            type,
+            timestamp: new Date().toISOString()
+        };
 
-    if (!AppState.activities) AppState.activities = [];
-    AppState.activities.unshift(activity);
+        if (!AppState.activities) AppState.activities = [];
+        AppState.activities.unshift(activity);
 
-    // Keep only last 20 activities
-    if (AppState.activities.length > 20) {
-        AppState.activities = AppState.activities.slice(0, 20);
+        // Keep only last 20 activities
+        if (AppState.activities.length > 20) {
+            AppState.activities = AppState.activities.slice(0, 20);
+        }
+
+        saveToStorage(STORAGE_KEYS.ACTIVITIES, AppState.activities);
+        if (AppState.currentModule === 'dashboard') {
+            updateActivityFeedUI();
+        }
     }
 
-    saveToStorage(STORAGE_KEYS.ACTIVITIES, AppState.activities);
-    if (AppState.currentModule === 'dashboard') {
-        updateActivityFeedUI();
-    }
-}
+    function updateActivityFeedUI() {
+        const container = document.getElementById('activityFeedContainer');
+        if (!container) return;
 
-function updateActivityFeedUI() {
-    const container = document.getElementById('activityFeedContainer');
-    if (!container) return;
+        if (!AppState.activities || AppState.activities.length === 0) {
+            container.innerHTML = '<p style="color: var(--gray-400); text-align: center; padding: 1rem; font-size: 0.85rem;">Nenhuma atividade recente.</p>';
+            return;
+        }
 
-    if (!AppState.activities || AppState.activities.length === 0) {
-        container.innerHTML = '<p style="color: var(--gray-400); text-align: center; padding: 1rem; font-size: 0.85rem;">Nenhuma atividade recente.</p>';
-        return;
-    }
+        const icons = {
+            lead: '👤',
+            appointment: '📅',
+            sale: '💰',
+            generic: '⚡'
+        };
 
-    const icons = {
-        lead: '👤',
-        appointment: '📅',
-        sale: '💰',
-        generic: '⚡'
-    };
-
-    container.innerHTML = AppState.activities.map(act => `
+        container.innerHTML = AppState.activities.map(act => `
         <div class="activity-item fadeInUp">
             <div class="activity-icon">${icons[act.type] || icons.generic}</div>
             <div class="activity-content">
@@ -634,10 +662,10 @@ function updateActivityFeedUI() {
             </div>
         </div>
     `).join('');
-}
+    }
 
-window.logActivity = logActivity;
-window.updateActivityFeedUI = updateActivityFeedUI;
+    window.logActivity = logActivity;
+    window.updateActivityFeedUI = updateActivityFeedUI;
 
     // CRM Metrics Compatibility (Legacy badges if any)
     const leadsBadge = document.getElementById('leadsBadge');
@@ -1210,7 +1238,7 @@ function fixAllIdsToUUIDs() {
         saveToStorage(STORAGE_KEYS.LEADS, AppState.leads);
         saveToStorage(STORAGE_KEYS.PATIENTS, AppState.patients);
         saveToStorage(STORAGE_KEYS.APPOINTMENTS, AppState.appointments);
-        
+
         // Save campaigns data too
         if (window.CampaignsState) {
             localStorage.setItem('campaignTemplates', JSON.stringify(CampaignsState.templates));
