@@ -90,6 +90,7 @@ function initializeAppUI() {
     initializeDarkMode();
     initializeKeyboardShortcuts();
     startTodayWidgetPolling();
+    if (typeof refreshMissedBadge === 'function') refreshMissedBadge();
 
     // Initialize Logout Button
     const logoutBtn = document.getElementById('logoutBtn');
@@ -337,6 +338,10 @@ function saveToStorage(key, data) {
             tableMap[STORAGE_KEYS.PROSTHETIC_SERVICES] = 'prosthetic_services';
             const table = tableMap[key];
             if (table) {
+                // Refresh missed badge before saving if appointments
+                if (key === STORAGE_KEYS.APPOINTMENTS && typeof refreshMissedBadge === 'function') {
+                    refreshMissedBadge();
+                }
                 // Return the promise so it can be awaited if necessary
                 return saveToSupabase(table, data).catch(err => {
                     console.warn('Supabase sync failed, local data preserved:', err);
@@ -347,6 +352,9 @@ function saveToStorage(key, data) {
     } catch (error) {
         console.error('Error saving data:', error);
         showNotification('Erro ao salvar dados', 'error');
+        if (key === STORAGE_KEYS.APPOINTMENTS && typeof refreshMissedBadge === 'function') {
+            refreshMissedBadge();
+        }
         return Promise.reject(error);
     }
     return Promise.resolve();
