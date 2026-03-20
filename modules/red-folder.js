@@ -4,6 +4,7 @@
 
 const RED_FOLDER_RECENT_DAYS = 60;
 let redFolderFilter = 'all'; // 'all' | 'recent' | 'old'
+let redFolderSortOrder = 'oldest'; // 'oldest' | 'recent' | 'alpha'
 
 function initRedFolderModule() {
     renderRedFolder();
@@ -73,8 +74,16 @@ function getRedFolderEntries() {
         }
     });
 
-    // Ordena por mais urgente (mais dias primeiro)
-    entries.sort((a, b) => b.daysSince - a.daysSince);
+    // Ordenação dinâmica
+    if (redFolderSortOrder === 'alpha') {
+        entries.sort((a, b) => a.name.localeCompare(b.name));
+    } else if (redFolderSortOrder === 'recent') {
+        entries.sort((a, b) => a.daysSince - b.daysSince);
+    } else {
+        // 'oldest' (default) - mais dias primeiro
+        entries.sort((a, b) => b.daysSince - a.daysSince);
+    }
+
     return entries;
 }
 
@@ -129,20 +138,36 @@ function renderRedFolder() {
         </div>
 
         <!-- Filtro e Ações -->
-        <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
-            <div style="display:flex;gap:0.5rem;">
-                <button class="btn ${redFolderFilter === 'all' ? 'btn-primary' : 'btn-secondary'} btn-small" onclick="setRedFolderFilter('all')">
-                    📁 Todos (${all.length})
-                </button>
-                <button class="btn ${redFolderFilter === 'recent' ? 'btn-primary' : 'btn-secondary'} btn-small" onclick="setRedFolderFilter('recent')">
-                    📅 Recentes (${recent.length})
-                </button>
-                <button class="btn ${redFolderFilter === 'old' ? 'btn-primary' : 'btn-secondary'} btn-small" onclick="setRedFolderFilter('old')">
-                    🕰️ Antigos (${old.length})
-                </button>
+        <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem; background:white; padding:1.25rem; border-radius:12px; border:1px solid var(--gray-200); box-shadow:var(--shadow-sm);">
+            <div style="display:flex; flex-direction:column; gap:0.5rem;">
+                <label style="font-size:0.75rem; font-weight:700; color:var(--gray-500); text-transform:uppercase; letter-spacing:0.5px;">Filtro de Período</label>
+                <div style="display:flex;gap:0.5rem;">
+                    <button class="btn ${redFolderFilter === 'all' ? 'btn-primary' : 'btn-secondary'} btn-small" onclick="setRedFolderFilter('all')">
+                        📁 Todos (${all.length})
+                    </button>
+                    <button class="btn ${redFolderFilter === 'recent' ? 'btn-primary' : 'btn-secondary'} btn-small" onclick="setRedFolderFilter('recent')">
+                        📅 Recentes (${recent.length})
+                    </button>
+                    <button class="btn ${redFolderFilter === 'old' ? 'btn-primary' : 'btn-secondary'} btn-small" onclick="setRedFolderFilter('old')">
+                        🕰️ Antigos (${old.length})
+                    </button>
+                </div>
             </div>
-            <div style="display:flex; gap:0.5rem; align-items:center;">
-                 <input type="text" id="redFolderSearch" placeholder="Buscar na pasta..." class="form-input" style="width:200px; height:32px; font-size:0.85rem;" oninput="searchRedFolder(this.value)">
+
+            <div style="display:flex; flex-direction:column; gap:0.5rem;">
+                <label style="font-size:0.75rem; font-weight:700; color:var(--gray-500); text-transform:uppercase; letter-spacing:0.5px;">Ordenação</label>
+                <select class="form-input" style="height:32px; font-size:0.85rem; padding:0 8px; width:180px;" onchange="setRedFolderSort(this.value)">
+                    <option value="oldest" ${redFolderSortOrder === 'oldest' ? 'selected' : ''}>⏳ Mais Antigos</option>
+                    <option value="recent" ${redFolderSortOrder === 'recent' ? 'selected' : ''}>✨ Mais Recentes</option>
+                    <option value="alpha" ${redFolderSortOrder === 'alpha' ? 'selected' : ''}>🔤 Ordem Alfabética</option>
+                </select>
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:0.5rem;">
+                <label style="font-size:0.75rem; font-weight:700; color:var(--gray-500); text-transform:uppercase; letter-spacing:0.5px;">Busca Rápida</label>
+                <div style="display:flex; gap:0.5rem; align-items:center;">
+                    <input type="text" id="redFolderSearch" placeholder="Nome ou telefone..." class="form-input" style="width:200px; height:32px; font-size:0.85rem;" value="${redFolderSearchTerm}" oninput="searchRedFolder(this.value)">
+                </div>
             </div>
         </div>
 
@@ -280,6 +305,11 @@ function setRedFolderFilter(filter) {
     renderRedFolder();
 }
 
+function setRedFolderSort(order) {
+    redFolderSortOrder = order;
+    renderRedFolder();
+}
+
 async function markRedFolderAsSold(leadId) {
     const lead = AppState.leads.find(l => l.id === leadId);
     if (!lead) return;
@@ -301,6 +331,7 @@ async function markRedFolderAsSold(leadId) {
 window.initRedFolderModule = initRedFolderModule;
 window.renderRedFolder = renderRedFolder;
 window.setRedFolderFilter = setRedFolderFilter;
+window.setRedFolderSort = setRedFolderSort;
 window.markRedFolderAsSold = markRedFolderAsSold;
 window.searchRedFolder = searchRedFolder;
 window.getRedFolderEntries = getRedFolderEntries;

@@ -996,7 +996,7 @@ function showScheduleAppointmentModal(leadId) {
 }
 
 // Confirm schedule appointment
-function confirmScheduleAppointment(leadId) {
+async function confirmScheduleAppointment(leadId) {
     const date = document.getElementById('appointmentDate').value;
     const time = document.getElementById('appointmentTime').value;
     const procedure = document.getElementById('appointmentProcedure').value || 'Avaliação';
@@ -1034,6 +1034,8 @@ function confirmScheduleAppointment(leadId) {
             convertedFrom: leadId
         };
         AppState.patients.push(patient);
+        // 🔥 Sincroniza o paciente primeiro para evitar erro de FK
+        await saveToStorage(STORAGE_KEYS.PATIENTS, AppState.patients);
     }
 
     const appointment = {
@@ -1055,12 +1057,12 @@ function confirmScheduleAppointment(leadId) {
     lead.scheduledAt = new Date().toISOString();
     lead.visitDate = dateTime; // Sincroniza a data do agendamento com o campo de visita do lead
 
-    saveToStorage(STORAGE_KEYS.LEADS, AppState.leads);
-    saveToStorage(STORAGE_KEYS.PATIENTS, AppState.patients);
-    saveToStorage(STORAGE_KEYS.APPOINTMENTS, AppState.appointments);
+    // Salva o lead e o agendamento (o paciente já foi salvo acima se era novo)
+    await saveToStorage(STORAGE_KEYS.LEADS, AppState.leads);
+    await saveToStorage(STORAGE_KEYS.APPOINTMENTS, AppState.appointments);
 
     closeModal();
-    renderLeadsList();
+    if (typeof renderLeadsList === 'function') renderLeadsList();
     if (typeof renderKanbanBoard === 'function') renderKanbanBoard();
     if (typeof updateWeeklyGoals === 'function') updateWeeklyGoals();
 

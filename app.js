@@ -337,18 +337,19 @@ function saveToStorage(key, data) {
             tableMap[STORAGE_KEYS.PROSTHETIC_SERVICES] = 'prosthetic_services';
             const table = tableMap[key];
             if (table) {
-                // Fire-and-forget async save to Supabase
-                saveToSupabase(table, data).catch(err => {
+                // Return the promise so it can be awaited if necessary
+                return saveToSupabase(table, data).catch(err => {
                     console.warn('Supabase sync failed, local data preserved:', err);
+                    throw err; // Re-throw to allow caller to handle
                 });
             }
         }
-
-        // updateDashboard(); // BUG 7: Removido daqui para evitar repintura excessiva. Chamar apenas quando necessário.
     } catch (error) {
         console.error('Error saving data:', error);
         showNotification('Erro ao salvar dados', 'error');
+        return Promise.reject(error);
     }
+    return Promise.resolve();
 }
 
 // Navigation System
@@ -1054,7 +1055,7 @@ function formatDateTime(dateString) {
 }
 
 // Helper to sync Lead Visit to Agenda
-function syncLeadVisitToAppointment(leadId) {
+async function syncLeadVisitToAppointment(leadId) {
     const lead = AppState.leads.find(l => l.id === leadId);
     if (!lead) return;
 
@@ -1072,7 +1073,8 @@ function syncLeadVisitToAppointment(leadId) {
             convertedFrom: leadId
         };
         AppState.patients.push(patient);
-        saveToStorage(STORAGE_KEYS.PATIENTS, AppState.patients);
+        // Important: Wait for patient to be saved before moving to appointment
+        await saveToStorage(STORAGE_KEYS.PATIENTS, AppState.patients);
     }
 
     // 2. Check for an open appointment to "give low" (dar baixa)
@@ -1095,7 +1097,7 @@ function syncLeadVisitToAppointment(leadId) {
 
         apt.notes = (apt.notes || '') + `\n⚠️ Baixa automática via Lead (Visita em ${dateLabel})`;
 
-        saveToStorage(STORAGE_KEYS.APPOINTMENTS, AppState.appointments);
+        await saveToStorage(STORAGE_KEYS.APPOINTMENTS, AppState.appointments);
         showNotification(`Agenda atualizada: Agendamento de ${patient.name} marcado como concluído.`, 'success');
     } else {
         // Only create a new one if NO open appointment exists
@@ -1122,7 +1124,7 @@ function syncLeadVisitToAppointment(leadId) {
                 createdAt: new Date().toISOString()
             };
             AppState.appointments.push(appointment);
-            saveToStorage(STORAGE_KEYS.APPOINTMENTS, AppState.appointments);
+            await saveToStorage(STORAGE_KEYS.APPOINTMENTS, AppState.appointments);
         }
     }
 
