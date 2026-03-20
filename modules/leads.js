@@ -83,8 +83,10 @@ function renderLeadsList() {
         return;
     }
 
-    // Preserve scroll position
+    // Preserve scroll position and focus
     const scrollPos = window.scrollY;
+    const focusedElement = document.activeElement;
+    const focusedId = focusedElement && focusedElement.id;
 
     const emptyStateContainer = document.getElementById('leads-empty-state');
 
@@ -173,7 +175,7 @@ function renderLeadsList() {
         bulkActionsContainer.innerHTML = '';
     }
 
-    // 5. Filter and Render Grid Content
+    // 5. Filter and Render Grid Content with Targeted Updates
     let filteredLeads = AppState.leads;
 
     if (LeadsState.filterStatus !== 'all') {
@@ -200,228 +202,372 @@ function renderLeadsList() {
         new Date(b.createdAt) - new Date(a.createdAt)
     );
 
-    const leadsHTML = sortedLeads.map(lead => {
-        const days = getDaysSince(lead.createdAt);
-        const isSelected = LeadsState.selectedLeads.has(lead.id);
-        const isExpanded = LeadsState.expandedLead === lead.id;
+    // Use targeted DOM updates instead of complete re-render
+    updateLeadsGrid(gridContainer, sortedLeads);
 
-        const safeName = escapeHTML(lead.name);
-        const safePhone = escapeHTML(lead.phone);
-        const safeEmail = escapeHTML(lead.email || '');
-        const safeChannel = escapeHTML(lead.channel || '');
-        const safeInterest = escapeHTML(lead.interest || '');
-        const safeMessage = escapeHTML(lead.message || '');
+    // Restore scroll position and focus
+    window.scrollTo(0, scrollPos);
 
-        return `
-            <div class="lead-card ${isSelected ? 'lead-selected' : ''} ${isExpanded ? 'lead-expanded' : ''}" data-lead-id="${lead.id}">
-                <div class="lead-header" onclick="toggleLeadExpand('${lead.id}')">
-                    <div style="display: flex; align-items: center; gap: var(--spacing-md); flex: 1;">
-                        <input type="checkbox" 
-                               ${isSelected ? 'checked' : ''} 
-                               onclick="event.stopPropagation(); toggleLeadSelection('${lead.id}')" 
-                               style="width: 20px; height: 20px; cursor: pointer;">
-                        <div style="flex: 1;">
-                            <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; flex-wrap: wrap;">
-                                <h4 style="font-size: 1.125rem; font-weight: 600; color: var(--gray-900); margin: 0;">${safeName}</h4>
-                                ${getStatusBadge(lead.status)}
-                                ${getUrgencyBadge(days)}
-                                ${lead.channel ? `<span class="badge badge-primary">📢 ${safeChannel}</span>` : ''}
-                                ${lead.saleStatus === 'sold' ? '<span class="badge badge-success">💰 Venda</span>' : ''}
-                                ${lead.saleStatus === 'lost' ? '<span class="badge badge-error">❌ Perdido</span>' : ''}
-                            </div>
-                            <p style="color: var(--gray-600); font-size: 0.875rem; margin: 0;">
-                                📱 ${safePhone} ${lead.email ? `• ✉️ ${safeEmail}` : ''}
-                                ${lead.nextContact ? ` • 📅 Retorno: <span style="color: ${new Date(lead.nextContact) < new Date() ? 'var(--error-600)' : 'var(--primary-600)'}; font-weight: 700;">${new Date(lead.nextContact).toLocaleDateString('pt-BR')}</span>` : ''}
-                            </p>
-                        </div>
+    // Restore focus if it was on a search input or similar
+    if (focusedId && document.getElementById(focusedId)) {
+        setTimeout(() => {
+            document.getElementById(focusedId).focus();
+        }, 50);
+    }
+}
+
+// Enhanced grid update function that minimizes DOM manipulation
+function updateLeadsGrid(gridContainer, leads) {
+    // Add animation prevention class during updates
+    gridContainer.classList.add('updating-grid');
+
+    // Get current cards for comparison
+    const currentCards = Array.from(gridContainer.children);
+    const currentIds = new Set(currentCards.map(card => card.dataset.leadId));
+    const newIds = new Set(leads.map(lead => lead.id));
+
+    // Find cards to remove
+    const cardsToRemove = currentCards.filter(card => !newIds.has(card.dataset.leadId));
+    cardsToRemove.forEach(card => card.remove());
+
+    // Find cards to update or create
+    const cardsToUpdate = [];
+    const cardsToCreate = [];
+
+    leads.forEach((lead, index) => {
+        const existingCard = currentCards.find(card => card.dataset.leadId === lead.id);
+        if (existingCard) {
+            cardsToUpdate.push({ element: existingCard, lead, index });
+        } else {
+            cardsToCreate.push({ lead, index });
+        }
+    });
+
+    // Update existing cards
+    cardsToUpdate.forEach(({ element, lead, index }) => {
+        updateLeadCard(element, lead);
+    });
+
+    // Create new cards
+    cardsToCreate.forEach(({ lead, index }) => {
+        const newCard = createLeadCard(lead);
+        // Insert at correct position
+        const insertBefore = gridContainer.children[index];
+        if (insertBefore) {
+            gridContainer.insertBefore(newCard, insertBefore);
+        } else {
+            gridContainer.appendChild(newCard);
+        }
+    });
+
+    // Remove animation prevention class after update
+    setTimeout(() => {
+        gridContainer.classList.remove('updating-grid');
+    }, 50);
+}
+
+// Update individual lead card with targeted changes
+function updateLeadCard(cardElement, lead) {
+    const isSelected = LeadsState.selectedLeads.has(lead.id);
+    const isExpanded = LeadsState.expandedLead === lead.id;
+
+    // Update card classes
+    cardElement.classList.toggle('lead-selected', isSelected);
+    cardElement.classList.toggle('lead-expanded', isExpanded);
+    cardElement.dataset.leadId = lead.id;
+
+    // Update header content
+    const header = cardElement.querySelector('.lead-header');
+    if (header) {
+        const checkbox = header.querySelector('input[type="checkbox"]');
+        if (checkbox) {
+            checkbox.checked = isSelected;
+        }
+
+        const nameElement = header.querySelector('h4');
+        if (nameElement) {
+            nameElement.textContent = lead.name || '';
+        }
+
+        // Update status badges
+        const badgesContainer = nameElement.parentElement;
+        if (badgesContainer) {
+            // Remove existing badges
+            badgesContainer.querySelectorAll('.badge').forEach(badge => badge.remove());
+
+            // Add new badges
+            const badgesHtml = getStatusBadge(lead.status) + getUrgencyBadge(getDaysSince(lead.createdAt));
+            if (lead.channel) {
+                badgesHtml += `<span class="badge badge-primary">📢 ${escapeHTML(lead.channel)}</span>`;
+            }
+            if (lead.saleStatus === 'sold') {
+                badgesHtml += '<span class="badge badge-success">💰 Venda</span>';
+            } else if (lead.saleStatus === 'lost') {
+                badgesHtml += '<span class="badge badge-error">❌ Perdido</span>';
+            }
+
+            nameElement.insertAdjacentHTML('afterend', badgesHtml);
+        }
+
+        // Update phone/email info
+        const infoElement = header.querySelector('p');
+        if (infoElement) {
+            infoElement.innerHTML = `📱 ${escapeHTML(lead.phone)} ${lead.email ? `• ✉️ ${escapeHTML(lead.email)}` : ''}`;
+        }
+
+        // Update expand arrow
+        const arrow = header.querySelector('span[style*="font-size: 1.5rem"]');
+        if (arrow) {
+            arrow.style.transform = `rotate(${isExpanded ? '180deg' : '0deg'})`;
+        }
+    }
+
+    // Update expanded content if visible
+    const details = cardElement.querySelector('.lead-details');
+    if (details && isExpanded) {
+        updateLeadDetails(details, lead);
+    }
+}
+
+// Create new lead card element
+function createLeadCard(lead) {
+    const days = getDaysSince(lead.createdAt);
+    const isSelected = LeadsState.selectedLeads.has(lead.id);
+    const isExpanded = LeadsState.expandedLead === lead.id;
+
+    const safeName = escapeHTML(lead.name);
+    const safePhone = escapeHTML(lead.phone);
+    const safeEmail = escapeHTML(lead.email || '');
+    const safeChannel = escapeHTML(lead.channel || '');
+    const safeInterest = escapeHTML(lead.interest || '');
+    const safeMessage = escapeHTML(lead.message || '');
+
+    const card = document.createElement('div');
+    card.className = `lead-card ${isSelected ? 'lead-selected' : ''} ${isExpanded ? 'lead-expanded' : ''}`;
+    card.dataset.leadId = lead.id;
+
+    card.innerHTML = `
+        <div class="lead-header" onclick="toggleLeadExpand('${lead.id}')">
+            <div style="display: flex; align-items: center; gap: var(--spacing-md); flex: 1;">
+                <input type="checkbox" 
+                       ${isSelected ? 'checked' : ''} 
+                       onclick="event.stopPropagation(); toggleLeadSelection('${lead.id}')" 
+                       style="width: 20px; height: 20px; cursor: pointer;">
+                <div style="flex: 1;">
+                    <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; flex-wrap: wrap;">
+                        <h4 style="font-size: 1.125rem; font-weight: 600; color: var(--gray-900); margin: 0;">${safeName}</h4>
+                        ${getStatusBadge(lead.status)}
+                        ${getUrgencyBadge(days)}
+                        ${lead.channel ? `<span class="badge badge-primary">📢 ${safeChannel}</span>` : ''}
+                        ${lead.saleStatus === 'sold' ? '<span class="badge badge-success">💰 Venda</span>' : ''}
+                        ${lead.saleStatus === 'lost' ? '<span class="badge badge-error">❌ Perdido</span>' : ''}
                     </div>
-                    <div style="display: flex; align-items: center; gap: var(--spacing-sm);">
-                        <span style="font-size: 1.5rem; transform: rotate(${isExpanded ? '180deg' : '0deg'}); transition: transform 0.3s;">▼</span>
+                    <p style="color: var(--gray-600); font-size: 0.875rem; margin: 0;">
+                        📱 ${safePhone} ${lead.email ? `• ✉️ ${safeEmail}` : ''}
+                        ${lead.nextContact ? ` • 📅 Retorno: <span style="color: ${new Date(lead.nextContact) < new Date() ? 'var(--error-600)' : 'var(--primary-600)'}; font-weight: 700;">${new Date(lead.nextContact).toLocaleDateString('pt-BR')}</span>` : ''}
+                    </p>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: var(--spacing-sm);">
+                <span style="font-size: 1.5rem; transform: rotate(${isExpanded ? '180deg' : '0deg'}); transition: transform 0.3s;">▼</span>
+            </div>
+        </div>
+        ${isExpanded ? createLeadDetailsHTML(lead) : ''}
+    `;
+
+    return card;
+}
+
+// Create lead details HTML for expanded state
+function createLeadDetailsHTML(lead) {
+    const safeName = escapeHTML(lead.name);
+    const safePhone = escapeHTML(lead.phone);
+    const safeEmail = escapeHTML(lead.email || '');
+    const safeChannel = escapeHTML(lead.channel || '');
+    const safeInterest = escapeHTML(lead.interest || '');
+    const safeMessage = escapeHTML(lead.message || '');
+
+    return `
+        <div class="lead-details">
+            <!-- Smart Workflow Section -->
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; margin-top: 1.5rem;">
+                <h5 style="margin: 0 0 1rem 0; font-weight: 600; color: var(--gray-800); font-size: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                    🚀 Fluxo de Trabalho
+                </h5>
+                
+                <div style="margin-bottom: 1rem; padding: 1rem; background: ${lead.nextContact && new Date(lead.nextContact) < new Date() ? '#fff1f2' : 'white'}; border: 1px dashed ${lead.nextContact && new Date(lead.nextContact) < new Date() ? '#fda4af' : '#cbd5e1'}; border-radius: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-size: 0.75rem; color: var(--gray-500); font-weight: 600; text-transform: uppercase;">📅 Próximo Contato (Follow-up)</div>
+                            <div style="font-weight: 600; color: var(--gray-800); margin-top: 4px;">
+                                ${lead.nextContact ? new Date(lead.nextContact).toLocaleDateString('pt-BR') : 'Não agendado'}
+                                ${lead.nextContact && new Date(lead.nextContact) < new Date() ? ' <span style="color: var(--error-600); font-size: 0.7rem;">⚠️ ATRASADO</span>' : ''}
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary btn-small" onclick="showSetNextContactModal('${lead.id}')">Agendar Retorno</button>
                     </div>
                 </div>
 
-                ${isExpanded ? `
-                    <div class="lead-details">
-                        <!-- Smart Workflow Section -->
-                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; margin-top: 1.5rem;">
-                            <h5 style="margin: 0 0 1rem 0; font-weight: 600; color: var(--gray-800); font-size: 1rem; display: flex; align-items: center; gap: 0.5rem;">
-                                🚀 Fluxo de Trabalho
-                            </h5>
-                            
-                            <div style="margin-bottom: 1rem; padding: 1rem; background: ${lead.nextContact && new Date(lead.nextContact) < new Date() ? '#fff1f2' : 'white'}; border: 1px dashed ${lead.nextContact && new Date(lead.nextContact) < new Date() ? '#fda4af' : '#cbd5e1'}; border-radius: 8px;">
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <div>
-                                        <div style="font-size: 0.75rem; color: var(--gray-500); font-weight: 600; text-transform: uppercase;">📅 Próximo Contato (Follow-up)</div>
-                                        <div style="font-weight: 600; color: var(--gray-800); margin-top: 4px;">
-                                            ${lead.nextContact ? new Date(lead.nextContact).toLocaleDateString('pt-BR') : 'Não agendado'}
-                                            ${lead.nextContact && new Date(lead.nextContact) < new Date() ? ' <span style="color: var(--error-600); font-size: 0.7rem;">⚠️ ATRASADO</span>' : ''}
-                                        </div>
-                                    </div>
-                                    <button class="btn btn-secondary btn-small" onclick="showSetNextContactModal('${lead.id}')">Agendar Retorno</button>
-                                </div>
-                            </div>
-
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
-                                <!-- Passo 1: Contato -->
-                                <div class="lead-workflow-item" style="padding: 1rem; background: white; border-radius: 8px; border: 1px solid ${lead.contactedAt ? '#bbf7d0' : '#e2e8f0'}; position: relative;">
-                                    <div style="font-size: 0.75rem; color: var(--gray-500); font-weight: 600; text-transform: uppercase;">Passo 1: Contato</div>
-                                    <div style="margin-top: 0.5rem; cursor: pointer;" onclick="${lead.contactedAt ? `editStepDate('${lead.id}', 'contactedAt')` : `updateLeadStatus('${lead.id}', 'in-contact')`}">
-                                        ${lead.contactedAt
-                    ? `<span style="color: #166534; font-weight: 600;">✅ Contatado em:</span><br>${formatDateTime(lead.contactedAt)}<br><small style="color: var(--primary-600)">Clique para alterar</small>`
-                    : `<button class="btn btn-secondary btn-small" style="width: 100%;">Marcar Contatado</button>`}
-                                    </div>
-                                    ${lead.contactedAt ? `<button onclick="revertLeadStep('${lead.id}', 1)" style="position: absolute; top: 5px; right: 5px; background: none; border: none; cursor: pointer; font-size: 0.8rem;" title="Voltar Passo">↩️</button>` : ''}
-                                </div>
-
-                                <!-- Passo 2: Agendamento -->
-                                <div class="lead-workflow-item" style="padding: 1rem; background: white; border-radius: 8px; border: 1px solid ${lead.scheduledAt ? '#bbf7d0' : '#e2e8f0'}; position: relative;">
-                                    <div style="font-size: 0.75rem; color: var(--gray-500); font-weight: 600; text-transform: uppercase; display: flex; justify-content: space-between; align-items: center;">
-                                        <span>Passo 2: Agendamento</span>
-                                        ${lead.scheduledAt ? `<button onclick="editVisitDate('${lead.id}')" style="background: none; border: none; color: var(--primary-600); font-size: 0.7rem; font-weight: 700; cursor: pointer; padding: 0;">TROCAR DATA</button>` : ''}
-                                    </div>
-                                    <div style="margin-top: 0.5rem; cursor: pointer;" onclick="${lead.scheduledAt ? `editStepDate('${lead.id}', 'scheduledAt')` : `updateLeadStatus('${lead.id}', 'scheduled')`}">
-                                        ${lead.scheduledAt
-                    ? `<span style="color: #166534; font-weight: 600;">✅ Agendado em:</span><br>${formatDateTime(lead.scheduledAt)}<br>
-                                               <span style="color: var(--primary-700); font-weight: 600;">📅 Para o dia:</span><br>${lead.visitDate ? formatDate(lead.visitDate) : 'Não definida'}<br>
-                                               <small style="color: var(--primary-600)">Clique para alterar</small>`
-                    : `<button class="btn btn-primary btn-small" style="width: 100%;">Agendar Agora</button>`}
-                                    </div>
-                                    ${lead.scheduledAt ? `<button onclick="revertLeadStep('${lead.id}', 2)" style="position: absolute; top: 5px; right: 5px; background: none; border: none; cursor: pointer; font-size: 0.8rem;" title="Voltar Passo">↩️</button>` : ''}
-                                </div>
-
-                                <!-- Step 3: Comparecimento -->
-                                <div style="padding: 1rem; background: white; border-radius: 8px; border: 1px solid ${lead.attended ? '#bbf7d0' : '#e2e8f0'}; position: relative;">
-                                    <div style="font-size: 0.75rem; color: var(--gray-500); font-weight: 600; text-transform: uppercase;">Passo 3: Comparecimento</div>
-                                    <div style="margin-top: 0.5rem;">
-                                        ${lead.attended
-                    ? `<span style="color: #166534; font-weight: 600;">✅ Compareceu</span><br><small>Sincronizado com agenda</small>`
-                    : (lead.status === 'scheduled' || lead.status === 'visit')
-                        ? `<div style="display: flex; gap: 0.5rem;">
-                                                    <button class="btn btn-success btn-small" style="flex: 1;" onclick="markAttendance('${lead.id}', true)">Sim</button>
-                                                    <button class="btn btn-error btn-small" style="flex: 1;" onclick="markAttendance('${lead.id}', false)">Não</button>
-                                                  </div>`
-                        : `<span style="color: var(--gray-400);">Aguardando agendamento</span>`}
-                                    </div>
-                                    ${lead.attended ? `<button onclick="revertLeadStep('${lead.id}', 3)" style="position: absolute; top: 5px; right: 5px; background: none; border: none; cursor: pointer; font-size: 0.8rem;" title="Voltar Passo">↩️</button>` : ''}
-                                </div>
-
-                                <!-- Step 4: Venda -->
-                                <div style="padding: 1rem; background: white; border-radius: 8px; border: 1px solid ${lead.saleStatus === 'sold' ? '#bbf7d0' : lead.saleStatus === 'lost' ? '#fecaca' : '#e2e8f0'}; position: relative;">
-                                    <div style="font-size: 0.75rem; color: var(--gray-500); font-weight: 600; text-transform: uppercase;">Passo 4: Fechamento</div>
-                                    <div style="margin-top: 0.5rem;">
-                                        ${lead.saleStatus === 'sold'
-                    ? `<span style="color: #166534; font-weight: 600;">💰 Venda Realizada!</span>`
-                    : lead.saleStatus === 'lost'
-                        ? `<span style="color: #991b1b; font-weight: 600;">❌ Sem interesse</span>`
-                        : lead.attended
-                            ? `<div style="display: flex; gap: 0.5rem;">
-                                                        <button class="btn btn-success btn-small" style="flex: 1; background: #166534;" onclick="markSale('${lead.id}', true)">Fechou</button>
-                                                        <button class="btn btn-error btn-small" style="flex: 1;" onclick="markSale('${lead.id}', false)">Perdi</button>
-                                                      </div>`
-                            : `<span style="color: var(--gray-400);">Aguardando visita</span>`}
-                                    </div>
-                                    ${lead.saleStatus ? `<button onclick="revertLeadStep('${lead.id}', 4)" style="position: absolute; top: 5px; right: 5px; background: none; border: none; cursor: pointer; font-size: 0.8rem;" title="Voltar Passo">↩️</button>` : ''}
-                                </div>
-                            </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                    <!-- Passo 1: Contato -->
+                    <div class="lead-workflow-item" style="padding: 1rem; background: white; border-radius: 8px; border: 1px solid ${lead.contactedAt ? '#bbf7d0' : '#e2e8f0'}; position: relative;">
+                        <div style="font-size: 0.75rem; color: var(--gray-500); font-weight: 600; text-transform: uppercase;">Passo 1: Contato</div>
+                        <div style="margin-top: 0.5rem; cursor: pointer;" onclick="${lead.contactedAt ? `editStepDate('${lead.id}', 'contactedAt')` : `updateLeadStatus('${lead.id}', 'in-contact')`}">
+                            ${lead.contactedAt
+            ? `<span style="color: #166534; font-weight: 600;">✅ Contatado em:</span><br>${formatDateTime(lead.contactedAt)}<br><small style="color: var(--primary-600)">Clique para alterar</small>`
+            : `<button class="btn btn-secondary btn-small" style="width: 100%;">Marcar Contatado</button>`}
                         </div>
-
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: var(--spacing-lg); margin-top: var(--spacing-lg);">
-                            <div class="form-group">
-                                <label class="form-label">Nome</label>
-                                <input type="text" class="form-input" value="${safeName}" onchange="updateLeadField('${lead.id}', 'name', this.value)">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Telefone</label>
-                                <input type="text" class="form-input" value="${safePhone}" onchange="updateLeadField('${lead.id}', 'phone', this.value)">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Email</label>
-                                <input type="email" class="form-input" value="${safeEmail}" onchange="updateLeadField('${lead.id}', 'email', this.value)">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Canal</label>
-                                <select class="form-select" onchange="updateLeadField('${lead.id}', 'channel', this.value)">
-                                    <option value="">Selecione</option>
-                                    <option value="Google Ads" ${lead.channel === 'Google Ads' ? 'selected' : ''}>Google Ads</option>
-                                    <option value="Facebook Ads" ${lead.channel === 'Facebook Ads' ? 'selected' : ''}>Facebook Ads</option>
-                                    <option value="Instagram Ads" ${lead.channel === 'Instagram Ads' ? 'selected' : ''}>Instagram Ads</option>
-                                    <option value="Organico" ${lead.channel === 'Organico' ? 'selected' : ''}>Orgânico</option>
-                                    <option value="Indicacao" ${lead.channel === 'Indicacao' ? 'selected' : ''}>Indicação</option>
-                                    <option value="WhatsApp" ${lead.channel === 'WhatsApp' ? 'selected' : ''}>WhatsApp</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Interesse</label>
-                                <input type="text" class="form-input" value="${safeInterest}" onchange="updateLeadField('${lead.id}', 'interest', this.value)" placeholder="Ex: Clareamento">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label" style="color: var(--primary-700);">📅 Data da Visita (Relatórios)</label>
-                                <input type="date" class="form-input" value="${lead.visitDate ? lead.visitDate.split('T')[0] : ''}" 
-                                       onchange="updateLeadField('${lead.id}', 'visitDate', this.value ? new Date(this.value + 'T12:00:00').toISOString() : null)"
-                                       style="border-color: var(--primary-200); background: var(--primary-50);">
-                                <small style="font-size: 0.7rem; color: var(--gray-500);">Ajuste esta data para corrigir o dia em que a visita aparece nos relatórios.</small>
-                            </div>
-                        </div>
-
-                        <div class="form-group" style="margin-top: var(--spacing-md);">
-                            <label class="form-label">Mensagem Inicial</label>
-                            <textarea class="form-textarea" rows="3" onchange="updateLeadField('${lead.id}', 'message', this.value)">${safeMessage}</textarea>
-                        </div>
-
-                        <div style="display: flex; gap: var(--spacing-sm); margin-top: var(--spacing-lg); flex-wrap: wrap;">
-                            <button class="btn btn-whatsapp btn-small" onclick="openWhatsApp('${lead.phone}', 'Olá ${safeName}! Aqui é da Odonto Company.')">
-                                💬 Abrir WhatsApp
-                            </button>
-                            ${lead.status !== 'converted' ? `
-                                <button class="btn btn-success btn-small" onclick="convertLeadToPatient('${lead.id}')">
-                                    ✅ Tornar Paciente Permanente
-                                </button>
-                            ` : ''}
-                            <button class="btn btn-secondary btn-small" onclick="deleteLead('${lead.id}')">
-                                🗑️ Deletar
-                            </button>
-                        </div>
-
-                        <div style="margin-top: var(--spacing-xl); padding-top: var(--spacing-lg); border-top: 1px solid var(--gray-200);">
-                            <h5 style="margin-bottom: var(--spacing-md); font-weight: 600; color: var(--gray-700); display: flex; justify-content: space-between; align-items: center;">
-                                📜 Histórico de Interações
-                                <button class="btn btn-small btn-secondary" onclick="event.stopPropagation(); showAddInteractionModal('${lead.id}')">+ Adicionar Nota</button>
-                            </h5>
-                            <div class="interaction-timeline" style="display: flex; flex-direction: column; gap: var(--spacing-sm);">
-                                ${lead.interactions && lead.interactions.length > 0 ?
-                    lead.interactions.map(idx => {
-                        const isChatwoot = idx.note.startsWith('💬 Chatwoot:');
-                        return `
-                            <div class="interaction-item" style="background: var(--gray-50); padding: var(--spacing-sm) var(--spacing-md); border-radius: var(--radius-md); border-left: 3px solid ${isChatwoot ? '#8b5cf6' : 'var(--primary-300)'};">
-                                <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--gray-500); margin-bottom: 0.25rem;">
-                                    <span>${formatDateTime(idx.date)}</span>
-                                    ${isChatwoot ? '<span style="color: #8b5cf6; font-weight: 700;">󱔗 CHATWOOT</span>' : ''}
-                                </div>
-                                <p style="font-size: 0.875rem; color: var(--gray-700); margin: 0;">${escapeHTML(idx.note)}</p>
-                            </div>
-                        `;
-                    }).join('')
-                    : '<p style="font-size: 0.875rem; color: var(--gray-400); font-style: italic;">Nenhuma interação registrada.</p>'
-                }
-                            </div>
-                        </div>
-
-                        <div style="margin-top: var(--spacing-md); padding-top: var(--spacing-md); border-top: 1px solid var(--gray-200);">
-                            <p style="font-size: 0.75rem; color: var(--gray-400);">
-                                📅 Cadastrado em: ${formatDateTime(lead.createdAt)} • Origem: ${lead.source}
-                                ${lead.contactedAt ? `• Contatado em: ${formatDateTime(lead.contactedAt)}` : ''}
-                            </p>
-                        </div>
+                        ${lead.contactedAt ? `<button onclick="revertLeadStep('${lead.id}', 1)" style="position: absolute; top: 5px; right: 5px; background: none; border: none; cursor: pointer; font-size: 0.8rem;" title="Voltar Passo">↩️</button>` : ''}
                     </div>
-                ` : ''}
+
+                    <!-- Passo 2: Agendamento -->
+                    <div class="lead-workflow-item" style="padding: 1rem; background: white; border-radius: 8px; border: 1px solid ${lead.scheduledAt ? '#bbf7d0' : '#e2e8f0'}; position: relative;">
+                        <div style="font-size: 0.75rem; color: var(--gray-500); font-weight: 600; text-transform: uppercase; display: flex; justify-content: space-between; align-items: center;">
+                            <span>Passo 2: Agendamento</span>
+                            ${lead.scheduledAt ? `<button onclick="editVisitDate('${lead.id}')" style="background: none; border: none; color: var(--primary-600); font-size: 0.7rem; font-weight: 700; cursor: pointer; padding: 0;">TROCAR DATA</button>` : ''}
+                        </div>
+                        <div style="margin-top: 0.5rem; cursor: pointer;" onclick="${lead.scheduledAt ? `editStepDate('${lead.id}', 'scheduledAt')` : `updateLeadStatus('${lead.id}', 'scheduled')`}">
+                            ${lead.scheduledAt
+            ? `<span style="color: #166534; font-weight: 600;">✅ Agendado em:</span><br>${formatDateTime(lead.scheduledAt)}<br>
+                                           <span style="color: var(--primary-700); font-weight: 600;">📅 Para o dia:</span><br>${lead.visitDate ? formatDate(lead.visitDate) : 'Não definida'}<br>
+                                           <small style="color: var(--primary-600)">Clique para alterar</small>`
+            : `<button class="btn btn-primary btn-small" style="width: 100%;">Agendar Agora</button>`}
+                        </div>
+                        ${lead.scheduledAt ? `<button onclick="revertLeadStep('${lead.id}', 2)" style="position: absolute; top: 5px; right: 5px; background: none; border: none; cursor: pointer; font-size: 0.8rem;" title="Voltar Passo">↩️</button>` : ''}
+                    </div>
+
+                    <!-- Step 3: Comparecimento -->
+                    <div style="padding: 1rem; background: white; border-radius: 8px; border: 1px solid ${lead.attended ? '#bbf7d0' : '#e2e8f0'}; position: relative;">
+                        <div style="font-size: 0.75rem; color: var(--gray-500); font-weight: 600; text-transform: uppercase;">Passo 3: Comparecimento</div>
+                        <div style="margin-top: 0.5rem;">
+                            ${lead.attended
+            ? `<span style="color: #166534; font-weight: 600;">✅ Compareceu</span><br><small>Sincronizado com agenda</small>`
+            : (lead.status === 'scheduled' || lead.status === 'visit')
+                ? `<div style="display: flex; gap: 0.5rem;">
+                                                <button class="btn btn-success btn-small" style="flex: 1;" onclick="markAttendance('${lead.id}', true)">Sim</button>
+                                                <button class="btn btn-error btn-small" style="flex: 1;" onclick="markAttendance('${lead.id}', false)">Não</button>
+                                              </div>`
+                : `<span style="color: var(--gray-400);">Aguardando agendamento</span>`}
+                        </div>
+                        ${lead.attended ? `<button onclick="revertLeadStep('${lead.id}', 3)" style="position: absolute; top: 5px; right: 5px; background: none; border: none; cursor: pointer; font-size: 0.8rem;" title="Voltar Passo">↩️</button>` : ''}
+                    </div>
+
+                    <!-- Step 4: Venda -->
+                    <div style="padding: 1rem; background: white; border-radius: 8px; border: 1px solid ${lead.saleStatus === 'sold' ? '#bbf7d0' : lead.saleStatus === 'lost' ? '#fecaca' : '#e2e8f0'}; position: relative;">
+                        <div style="font-size: 0.75rem; color: var(--gray-500); font-weight: 600; text-transform: uppercase;">Passo 4: Fechamento</div>
+                        <div style="margin-top: 0.5rem;">
+                            ${lead.saleStatus === 'sold'
+            ? `<span style="color: #166534; font-weight: 600;">💰 Venda Realizada!</span>`
+            : lead.saleStatus === 'lost'
+                ? `<span style="color: #991b1b; font-weight: 600;">❌ Sem interesse</span>`
+                : lead.attended
+                    ? `<div style="display: flex; gap: 0.5rem;">
+                                                    <button class="btn btn-success btn-small" style="flex: 1; background: #166534;" onclick="markSale('${lead.id}', true)">Fechou</button>
+                                                    <button class="btn btn-error btn-small" style="flex: 1;" onclick="markSale('${lead.id}', false)">Perdi</button>
+                                                  </div>`
+                    : `<span style="color: var(--gray-400);">Aguardando visita</span>`}
+                        </div>
+                        ${lead.saleStatus ? `<button onclick="revertLeadStep('${lead.id}', 4)" style="position: absolute; top: 5px; right: 5px; background: none; border: none; cursor: pointer; font-size: 0.8rem;" title="Voltar Passo">↩️</button>` : ''}
+                    </div>
+                </div>
             </div>
-        `;
-    }).join('');
 
-    gridContainer.innerHTML = leadsHTML;
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: var(--spacing-lg); margin-top: var(--spacing-lg);">
+                <div class="form-group">
+                    <label class="form-label">Nome</label>
+                    <input type="text" class="form-input" value="${safeName}" onchange="updateLeadField('${lead.id}', 'name', this.value)">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Telefone</label>
+                    <input type="text" class="form-input" value="${safePhone}" onchange="updateLeadField('${lead.id}', 'phone', this.value)">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-input" value="${safeEmail}" onchange="updateLeadField('${lead.id}', 'email', this.value)">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Canal</label>
+                    <select class="form-select" onchange="updateLeadField('${lead.id}', 'channel', this.value)">
+                        <option value="">Selecione</option>
+                        <option value="Google Ads" ${lead.channel === 'Google Ads' ? 'selected' : ''}>Google Ads</option>
+                        <option value="Facebook Ads" ${lead.channel === 'Facebook Ads' ? 'selected' : ''}>Facebook Ads</option>
+                        <option value="Instagram Ads" ${lead.channel === 'Instagram Ads' ? 'selected' : ''}>Instagram Ads</option>
+                        <option value="Organico" ${lead.channel === 'Organico' ? 'selected' : ''}>Orgânico</option>
+                        <option value="Indicacao" ${lead.channel === 'Indicacao' ? 'selected' : ''}>Indicação</option>
+                        <option value="WhatsApp" ${lead.channel === 'WhatsApp' ? 'selected' : ''}>WhatsApp</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Interesse</label>
+                    <input type="text" class="form-input" value="${safeInterest}" onchange="updateLeadField('${lead.id}', 'interest', this.value)" placeholder="Ex: Clareamento">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" style="color: var(--primary-700);">📅 Data da Visita (Relatórios)</label>
+                    <input type="date" class="form-input" value="${lead.visitDate ? lead.visitDate.split('T')[0] : ''}" 
+                           onchange="updateLeadField('${lead.id}', 'visitDate', this.value ? new Date(this.value + 'T12:00:00').toISOString() : null)"
+                           style="border-color: var(--primary-200); background: var(--primary-50);">
+                    <small style="font-size: 0.7rem; color: var(--gray-500);">Ajuste esta data para corrigir o dia em que a visita aparece nos relatórios.</small>
+                </div>
+            </div>
 
-    // Restore scroll position
-    window.scrollTo(0, scrollPos);
+            <div class="form-group" style="margin-top: var(--spacing-md);">
+                <label class="form-label">Mensagem Inicial</label>
+                <textarea class="form-textarea" rows="3" onchange="updateLeadField('${lead.id}', 'message', this.value)">${safeMessage}</textarea>
+            </div>
+
+            <div style="display: flex; gap: var(--spacing-sm); margin-top: var(--spacing-lg); flex-wrap: wrap;">
+                <button class="btn btn-whatsapp btn-small" onclick="openWhatsApp('${lead.phone}', 'Olá ${safeName}! Aqui é da Odonto Company.')">
+                    💬 Abrir WhatsApp
+                </button>
+                ${lead.status !== 'converted' ? `
+                    <button class="btn btn-success btn-small" onclick="convertLeadToPatient('${lead.id}')">
+                        ✅ Tornar Paciente Permanente
+                    </button>
+                ` : ''}
+                <button class="btn btn-secondary btn-small" onclick="deleteLead('${lead.id}')">
+                    🗑️ Deletar
+                </button>
+            </div>
+
+            <div style="margin-top: var(--spacing-xl); padding-top: var(--spacing-lg); border-top: 1px solid var(--gray-200);">
+                <h5 style="margin-bottom: var(--spacing-md); font-weight: 600; color: var(--gray-700); display: flex; justify-content: space-between; align-items: center;">
+                    📜 Histórico de Interações
+                    <button class="btn btn-small btn-secondary" onclick="event.stopPropagation(); showAddInteractionModal('${lead.id}')">+ Adicionar Nota</button>
+                </h5>
+                <div class="interaction-timeline" style="display: flex; flex-direction: column; gap: var(--spacing-sm);">
+                    ${lead.interactions && lead.interactions.length > 0 ?
+            lead.interactions.map(idx => {
+                const isChatwoot = idx.note.startsWith('💬 Chatwoot:');
+                return `
+                        <div class="interaction-item" style="background: var(--gray-50); padding: var(--spacing-sm) var(--spacing-md); border-radius: var(--radius-md); border-left: 3px solid ${isChatwoot ? '#8b5cf6' : 'var(--primary-300)'};">
+                            <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--gray-500); margin-bottom: 0.25rem;">
+                                <span>${formatDateTime(idx.date)}</span>
+                                ${isChatwoot ? '<span style="color: #8b5cf6; font-weight: 700;">󱔗 CHATWOOT</span>' : ''}
+                            </div>
+                            <p style="font-size: 0.875rem; color: var(--gray-700); margin: 0;">${escapeHTML(idx.note)}</p>
+                        </div>
+                    `;
+            }).join('')
+            : '<p style="font-size: 0.875rem; color: var(--gray-400); font-style: italic;">Nenhuma interação registrada.</p>'
+        }
+                </div>
+            </div>
+
+            <div style="margin-top: var(--spacing-md); padding-top: var(--spacing-md); border-top: 1px solid var(--gray-200);">
+                <p style="font-size: 0.75rem; color: var(--gray-400);">
+                    📅 Cadastrado em: ${formatDateTime(lead.createdAt)} • Origem: ${lead.source}
+                    ${lead.contactedAt ? `• Contatado em: ${formatDateTime(lead.contactedAt)}` : ''}
+                </p>
+            </div>
+        </div>
+    `;
+}
+
+// Update lead details content
+function updateLeadDetails(detailsElement, lead) {
+    // For now, we'll recreate the details content, but in a real implementation
+    // you could make this more granular as well
+    detailsElement.innerHTML = createLeadDetailsHTML(lead);
 }
 
 // Optimization: Refresh ONLY one specific card without rebuilding the whole grid
