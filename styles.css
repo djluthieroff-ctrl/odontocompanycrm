@@ -1,3 +1,4 @@
+:root {
     /* Colors - Green & White Palette (Odonto Company Style) */
     --primary-50: #f0fdf4;
     --primary-100: #dcfce7;
@@ -397,8 +398,15 @@
     }
 
     .stat-icon {
-        font-size: 3rem;
+        font-size: 2rem;
+        width: 3.5rem;
+        height: 3.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: var(--radius-lg);
         filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+        flex-shrink: 0;
     }
 
     .stat-content {
