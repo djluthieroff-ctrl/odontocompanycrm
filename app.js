@@ -404,7 +404,12 @@ function switchModule(moduleName) {
 
         // Clean up after transition
         setTimeout(() => {
-            currentModule.style.display = 'none';
+            document.querySelectorAll('.module').forEach(m => {
+                if (m !== nextModule) {
+                    m.style.display = 'none';
+                    m.classList.remove('active');
+                }
+            });
             nextModule.classList.add('active');
         }, 400);
     } else if (nextModule) {
