@@ -324,8 +324,14 @@ function updateLeadCard(cardElement, lead) {
 
     // Update expanded content if visible
     const details = cardElement.querySelector('.lead-details');
-    if (details && isExpanded) {
-        updateLeadDetails(details, lead);
+    if (isExpanded) {
+        if (details) {
+            updateLeadDetails(details, lead);
+        } else {
+            cardElement.insertAdjacentHTML('beforeend', createLeadDetailsHTML(lead));
+        }
+    } else if (details) {
+        details.remove();
     }
 }
 
