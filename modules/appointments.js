@@ -3,12 +3,45 @@
 
 // Initialize Appointments Module
 function initAppointmentsModule() {
-    renderAppointmentsView();
+    // Check if calendar module is available
+    if (typeof initCalendarModule === 'function') {
+        // Use calendar view as default
+        initCalendarModule();
 
-    const newAppointmentBtn = document.getElementById('newAppointmentBtn');
-    if (newAppointmentBtn && !newAppointmentBtn.hasAttribute('data-initialized')) {
-        newAppointmentBtn.addEventListener('click', showNewAppointmentForm);
-        newAppointmentBtn.setAttribute('data-initialized', 'true');
+        // Add calendar toggle button
+        const newAppointmentBtn = document.getElementById('newAppointmentBtn');
+        if (newAppointmentBtn && !newAppointmentBtn.hasAttribute('data-initialized')) {
+            newAppointmentBtn.addEventListener('click', showNewAppointmentForm);
+            newAppointmentBtn.setAttribute('data-initialized', 'true');
+        }
+
+        // Add calendar toggle button
+        const container = document.getElementById('appointmentsContent');
+        if (container) {
+            const calendarToggle = document.createElement('div');
+            calendarToggle.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding: 1rem; background: white; border-radius: 12px; border: 1px solid var(--gray-200);">
+                    <div>
+                        <h4 style="margin: 0; font-size: 1.125rem; color: var(--gray-800);">📅 Visualização de Agenda</h4>
+                        <p style="margin: 0.5rem 0 0 0; color: var(--gray-600); font-size: 0.9rem;">Use o calendário para visualizar e gerenciar seus agendamentos de forma visual</p>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn btn-secondary btn-small" onclick="switchToCalendarView()">📅 Calendário</button>
+                        <button class="btn btn-secondary btn-small" onclick="switchToTimelineView()">📋 Lista</button>
+                    </div>
+                </div>
+            `;
+            container.insertBefore(calendarToggle, container.firstChild);
+        }
+    } else {
+        // Fallback to timeline view
+        renderAppointmentsView();
+
+        const newAppointmentBtn = document.getElementById('newAppointmentBtn');
+        if (newAppointmentBtn && !newAppointmentBtn.hasAttribute('data-initialized')) {
+            newAppointmentBtn.addEventListener('click', showNewAppointmentForm);
+            newAppointmentBtn.setAttribute('data-initialized', 'true');
+        }
     }
 }
 
@@ -803,6 +836,21 @@ window.promptSaleCompletion = promptSaleCompletion;
 window.processAptSale = processAptSale;
 window.searchAppointmentDate = searchAppointmentDate;
 window.selectAppointmentResult = selectAppointmentResult;
+
+// Calendar View Toggle Functions
+window.switchToCalendarView = function () {
+    if (typeof initCalendarModule === 'function') {
+        initCalendarModule();
+        showNotification('Visualização do calendário ativada', 'success');
+    } else {
+        showNotification('Módulo de calendário não disponível', 'warning');
+    }
+};
+
+window.switchToTimelineView = function () {
+    renderAppointmentsView();
+    showNotification('Visualização da lista ativada', 'success');
+};
 
 window.showAgendaHeatmap = () => {
     const appointments = AppState.appointments;
