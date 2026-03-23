@@ -105,6 +105,11 @@ function initializeAppUI() {
         };
     }
 
+    // Initialize Advanced Modules Integration
+    if (typeof initAdvancedModulesIntegration === 'function') {
+        initAdvancedModulesIntegration();
+    }
+
     // Initialize Campaigns Module
     if (typeof initCampaignsModule === 'function') {
         initCampaignsModule();
