@@ -7,18 +7,34 @@ function initOldPatientsModule() {
 
 function getOldPatientStatusConfig(status) {
     const map = {
-        'pending': { label: 'Pendente', badgeClass: 'badge-gray', icon: '⏳' },
-        'contacted': { label: 'Em Contato', badgeClass: 'badge-primary', icon: '📞' },
-        'scheduled': { label: 'Agendado', badgeClass: 'badge-success', icon: '📅' },
-        'recovered': { label: 'Recuperado ✅', badgeClass: 'badge-success', icon: '✅' },
-        'lost': { label: 'Perdido ❌', badgeClass: 'badge-error', icon: '❌' },
-        'not-interested': { label: 'Sem Interesse', badgeClass: 'badge-error', icon: '🚫' }
+        'pending': { label: 'Pendente', badgeClass: 'badge-gray', icon: '⏳', color: '#6b7280' },
+        'contacted': { label: 'Em Contato', badgeClass: 'badge-primary', icon: '📞', color: '#2563eb' },
+        'scheduled': { label: 'Agendado', badgeClass: 'badge-success', icon: '📅', color: '#16a34a' },
+        'recovered': { label: 'Recuperado ✅', badgeClass: 'badge-success', icon: '✅', color: '#16a34a' },
+        'lost': { label: 'Perdido ❌', badgeClass: 'badge-error', icon: '❌', color: '#dc2626' },
+        'not-interested': { label: 'Sem Interesse', badgeClass: 'badge-error', icon: '🚫', color: '#991b1b' }
     };
-    return map[status] || { label: status, badgeClass: 'badge-gray', icon: '•' };
+    return map[status] || { label: status, badgeClass: 'badge-gray', icon: '•', color: '#6b7280' };
 }
+
+const OLD_PATIENT_CATEGORIES = {
+    'orto': { label: 'Ortodontia', color: '#7c3aed', icon: '🦷' },
+    'protese': { label: 'Prótese', color: '#db2777', icon: '🪥' },
+    'clinico': { label: 'Clínico Geral', color: '#0891b2', icon: '🩺' },
+    'implante': { label: 'Implantes', color: '#c026d3', icon: '🔩' },
+    'outro': { label: 'Outros', color: '#4b5563', icon: '📂' }
+};
+
+const OLD_PATIENT_PRIORITIES = {
+    'alta': { label: 'Alta Prioridade', color: '#ef4444', score: 3 },
+    'media': { label: 'Média', color: '#f59e0b', score: 2 },
+    'baixa': { label: 'Baixa', color: '#10b981', score: 1 }
+};
 
 let oldPatientsSearch = '';
 let oldPatientsStatusFilter = 'all';
+let oldPatientsCategoryFilter = 'all';
+let oldPatientsPriorityFilter = 'all';
 
 function renderOldPatients() {
     const container = document.getElementById('oldPatientsContent');
@@ -58,11 +74,19 @@ function renderOldPatients() {
         const q = oldPatientsSearch.toLowerCase();
         filtered = filtered.filter(p =>
             (p.name || '').toLowerCase().includes(q) ||
-            (p.phone || '').includes(q)
+            (p.phone || '').includes(q) ||
+            (p.lastProcedure || '').toLowerCase().includes(q) ||
+            (p.interest || '').toLowerCase().includes(q)
         );
     }
     if (oldPatientsStatusFilter !== 'all') {
         filtered = filtered.filter(p => p.status === oldPatientsStatusFilter);
+    }
+    if (oldPatientsCategoryFilter !== 'all') {
+        filtered = filtered.filter(p => (p.category || 'clinico') === oldPatientsCategoryFilter);
+    }
+    if (oldPatientsPriorityFilter !== 'all') {
+        filtered = filtered.filter(p => (p.priority || 'media') === oldPatientsPriorityFilter);
     }
 
     container.innerHTML = `
@@ -101,6 +125,25 @@ function renderOldPatients() {
                 <option value="lost" ${oldPatientsStatusFilter === 'lost' ? 'selected' : ''}>❌ Perdido</option>
                 <option value="not-interested" ${oldPatientsStatusFilter === 'not-interested' ? 'selected' : ''}>🚫 Sem Interesse</option>
             </select>
+
+            <select class="form-select" style="width:auto;" onchange="updateOldPatientsCategoryFilter(this.value)">
+                <option value="all" ${oldPatientsCategoryFilter === 'all' ? 'selected' : ''}>Todas Categorias</option>
+                ${Object.entries(OLD_PATIENT_CATEGORIES).map(([key, cfg]) => `
+                    <option value="${key}" ${oldPatientsCategoryFilter === key ? 'selected' : ''}>${cfg.icon} ${cfg.label}</option>
+                `).join('')}
+            </select>
+
+            <select class="form-select" style="width:auto;" onchange="updateOldPatientsPriorityFilter(this.value)" id="oldPatientsPriorityFilter">
+                <option value="all" ${oldPatientsPriorityFilter === 'all' ? 'selected' : ''}>Todas Prioridades</option>
+                <option value="alta" ${oldPatientsPriorityFilter === 'alta' ? 'selected' : ''}>🔥 Alta Prioridade</option>
+                <option value="media" ${oldPatientsPriorityFilter === 'media' ? 'selected' : ''}>⚡ Média</option>
+                <option value="baixa" ${oldPatientsPriorityFilter === 'baixa' ? 'selected' : ''}>❄️ Baixa</option>
+            </select>
+
+            ${(oldPatientsSearch || oldPatientsStatusFilter !== 'all' || oldPatientsCategoryFilter !== 'all' || oldPatientsPriorityFilter !== 'all') ? `
+                <button class="btn btn-secondary btn-small" onclick="clearOldPatientsFilters()" title="Limpar todos os filtros">🧹 Limpar</button>
+            ` : ''}
+
             <span style="font-size:0.85rem;color:var(--gray-500);">${filtered.length} de ${total}</span>
         </div>
 
@@ -119,49 +162,83 @@ function renderOldPatients() {
 
 function renderOldPatientCard(p) {
     const cfg = getOldPatientStatusConfig(p.status);
+    const catCfg = OLD_PATIENT_CATEGORIES[p.category || 'clinico'] || OLD_PATIENT_CATEGORIES.outro;
+    const prioCfg = OLD_PATIENT_PRIORITIES[p.priority || 'media'];
+    
     const now = new Date();
     const createdAt = p.createdAt ? new Date(p.createdAt) : null;
     const daysSince = createdAt ? Math.floor((now - createdAt) / (1000 * 60 * 60 * 24)) : null;
     const lastConsultStr = p.lastConsultation ? formatDate(p.lastConsultation) : 'Não informada';
-    const recoveredStr = p.recoveredAt ? `Recuperado em ${formatDate(p.recoveredAt)}` : '';
-
+    const lastContactStr = p.lastContactDate ? formatDate(p.lastContactDate) : 'Nunca';
+    
     const borderColor = p.status === 'recovered' ? '#16a34a' :
         p.status === 'lost' ? '#dc2626' :
-            p.status === 'scheduled' ? '#2563eb' : 'var(--gray-200)';
+            p.status === 'scheduled' ? '#2563eb' : cfg.color;
+
+    const stars = '⭐'.repeat(prioCfg.score);
 
     return `
-        <div class="list-item" style="border-left:4px solid ${borderColor};padding:1rem 1.25rem;">
+        <div class="list-item" style="border-left:5px solid ${borderColor}; padding:1.25rem; background:white; position:relative; overflow:hidden;">
+            <div style="position:absolute; right:-10px; top:-10px; font-size:4rem; opacity:0.05; pointer-events:none;">${catCfg.icon}</div>
+            
             <div class="list-item-content" style="flex:1;">
-                <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;margin-bottom:0.35rem;">
-                    <h4 style="margin:0;font-weight:700;">${escapeHTML(p.name)}</h4>
+                <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap; margin-bottom:0.5rem;">
+                    <h4 style="margin:0; font-size:1.1rem; color:var(--gray-900);">${escapeHTML(p.name)}</h4>
+                    <span class="badge" style="background:${catCfg.color}20; color:${catCfg.color}; border:1px solid ${catCfg.color}40;">
+                        ${catCfg.icon} ${catCfg.label}
+                    </span>
                     <span class="badge ${cfg.badgeClass}">${cfg.icon} ${cfg.label}</span>
-                    ${daysSince !== null ? `<span style="font-size:0.75rem;color:var(--gray-400);">Há ${daysSince} dias</span>` : ''}
+                    <span title="${prioCfg.label}" style="cursor:help;">${stars}</span>
                 </div>
-                <div style="display:flex;gap:1.25rem;font-size:0.82rem;color:var(--gray-500);flex-wrap:wrap;margin-bottom:${p.notes ? '0.5rem' : '0'};">
-                    ${p.phone ? `<span>📱 ${escapeHTML(p.phone)}</span>` : ''}
-                    <span>🦷 Última consulta: ${lastConsultStr}</span>
-                    ${p.interest ? `<span>💡 ${escapeHTML(p.interest)}</span>` : ''}
-                    ${recoveredStr ? `<span style="color:#16a34a;font-weight:600;">✅ ${recoveredStr}</span>` : ''}
+
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:0.75rem; font-size:0.85rem; color:var(--gray-600); margin-bottom:0.75rem;">
+                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                        <span>📱</span> <strong>${escapeHTML(p.phone || 'Sem fone')}</strong>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                        <span>🦷</span> <span>Última consulta: ${lastConsultStr}</span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                        <span>📞</span> <span>Último contato: ${lastContactStr}</span>
+                    </div>
                 </div>
+
+                ${p.lastProcedure ? `
+                <div style="font-size:0.85rem; margin-bottom:0.5rem; padding:8px 12px; background:var(--primary-50); border-radius:8px; border-left:3px solid var(--primary-500);">
+                    <strong style="color:var(--primary-700);">Último Procedimento:</strong> ${escapeHTML(p.lastProcedure)}
+                </div>
+                ` : ''}
+
                 ${p.notes ? `
-                <div id="oldPatientNote_${p.id}" style="font-size:0.82rem;color:var(--gray-600);background:var(--gray-50);border-radius:6px;padding:6px 10px;border:1px solid var(--gray-200);margin-top:4px;">
+                <div id="oldPatientNote_${p.id}" style="font-size:0.82rem; color:var(--gray-600); background:var(--gray-50); border-radius:8px; padding:8px 12px; border:1px solid var(--gray-200); margin-top:0.5rem;">
                     📝 ${escapeHTML(p.notes)}
                 </div>
                 ` : ''}
-                <!-- Edição inline de notas -->
-                <div id="oldPatientNoteEdit_${p.id}" style="display:none;margin-top:6px;">
-                    <textarea class="form-textarea" style="min-height:60px;font-size:0.82rem;" id="oldPatientNoteInput_${p.id}" placeholder="Anotações sobre este paciente...">${escapeHTML(p.notes || '')}</textarea>
-                    <div style="display:flex;gap:0.5rem;margin-top:4px;">
+
+                ${p.contacts && p.contacts.length > 0 ? `
+                <div style="font-size:0.75rem; color:var(--primary-600); background:var(--primary-50); border-radius:8px; padding:6px 12px; margin-top:0.5rem; display:flex; align-items:center; gap:8px;">
+                    <span>📢 <strong>Última Interação:</strong> ${escapeHTML(p.contacts[p.contacts.length-1].note)}</span>
+                    <span style="margin-left:auto; opacity:0.7; font-size:0.7rem;">${formatDate(p.contacts[p.contacts.length-1].date)}</span>
+                </div>
+                ` : ''}
+
+                <div id="oldPatientNoteEdit_${p.id}" style="display:none; margin-top:8px;">
+                    <textarea class="form-textarea" style="min-height:70px; font-size:0.85rem;" id="oldPatientNoteInput_${p.id}">${escapeHTML(p.notes || '')}</textarea>
+                    <div style="display:flex; gap:0.5rem; margin-top:6px;">
                         <button class="btn btn-primary btn-small" onclick="saveOldPatientNote('${p.id}')">💾 Salvar</button>
                         <button class="btn btn-secondary btn-small" onclick="cancelOldPatientNote('${p.id}')">Cancelar</button>
                     </div>
                 </div>
             </div>
-            <div class="list-item-actions" style="flex-shrink:0;flex-direction:column;gap:0.4rem;">
-                <!-- Status rápido -->
-                <select class="form-select btn-small" style="font-size:0.78rem;padding:4px 8px;" 
+
+            <div class="list-item-actions" style="flex-shrink:0; display:flex; flex-direction:column; gap:0.6rem; min-width:140px; border-left:1px solid var(--gray-100); padding-left:1rem; margin-left:1rem;">
+                <button class="btn btn-primary" style="width:100%; font-size:0.85rem; padding:8px;" onclick="showReactivationSuite('${p.id}')">
+                    ⚡ REATIVAR
+                </button>
+                
+                <select class="form-select btn-small" style="font-size:0.8rem; padding:6px;" 
                     onchange="quickUpdateOldPatientStatus('${p.id}', this.value)">
-                    <option value="">Mudar status...</option>
+                    <option value="">Status...</option>
                     <option value="pending">⏳ Pendente</option>
                     <option value="contacted">📞 Em Contato</option>
                     <option value="scheduled">📅 Agendado</option>
@@ -169,22 +246,134 @@ function renderOldPatientCard(p) {
                     <option value="lost">❌ Perdido</option>
                     <option value="not-interested">🚫 Sem Interesse</option>
                 </select>
-                <div style="display:flex;gap:0.4rem;">
-                    ${p.phone ? `
-                    <button class="btn btn-whatsapp btn-small" onclick="window.openWhatsApp('${escapeHTML(p.phone)}')">
-                        📱
-                    </button>
-                    ` : ''}
-                    <button class="btn btn-secondary btn-small" onclick="toggleOldPatientNote('${p.id}')" title="Editar anotação">
-                        📝
-                    </button>
-                    <button class="btn btn-secondary btn-small" onclick="showEditOldPatientForm('${p.id}')" title="Editar completo">
-                        ✏️
-                    </button>
+
+                <div style="display:flex; gap:0.4rem; justify-content:center;">
+                    <button class="btn btn-secondary btn-small" onclick="toggleOldPatientNote('${p.id}')" title="Editar anotação">📝</button>
+                    <button class="btn btn-secondary btn-small" onclick="showEditOldPatientForm('${p.id}')" title="Editar cadastro completo">✏️</button>
+                    ${p.phone ? `<button class="btn btn-whatsapp btn-small" onclick="window.openWhatsApp('${escapeHTML(p.phone)}')">📱</button>` : ''}
                 </div>
             </div>
         </div>
     `;
+}
+
+function showReactivationSuite(id) {
+    const p = AppState.oldPatients.find(item => item.id === id);
+    if (!p) return;
+
+    const lastConsult = p.lastConsultation ? new Date(p.lastConsultation).toLocaleDateString() : 'algum tempo';
+    const templates = [
+        {
+            title: '👋 Saudação & Retorno',
+            text: `Olá ${p.name.split(' ')[0]}! Tudo bem? Aqui é da Odonto Company. Vimos que sua última consulta foi em ${lastConsult} e gostaríamos de saber como está sua saúde bucal. Que tal agendarmos uma avaliação cortesia de retorno?`
+        },
+        {
+            title: '🦷 Procedimento Pendente',
+            text: `Oi ${p.name.split(' ')[0]}, como vai? Notei aqui em seu histórico que o último procedimento foi "${p.lastProcedure || 'uma consulta'}". Ficamos com saudade! Temos horários disponíveis esta semana para você continuar seu cuidado conosco.`
+        },
+        {
+            title: '🎁 Condição Especial',
+            text: `Olá ${p.name.split(' ')[0]}! Temos uma novidade para pacientes especiais como você. Preparamos uma condição exclusiva para você reativar seu tratamento nesta semana. Vamos conversar?`
+        }
+    ];
+
+    const html = `
+        <div style="display:flex; flex-direction:column; gap:1.5rem;">
+            <div style="background:var(--primary-50); padding:1rem; border-radius:12px; border:1px solid var(--primary-100);">
+                <h5 style="margin:0 0 0.5rem 0; color:var(--primary-700);">Informações para Reativação</h5>
+                <div style="font-size:0.9rem; display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
+                    <div><strong>Paciente:</strong> ${escapeHTML(p.name)}</div>
+                    <div><strong>Última Vez:</strong> ${lastConsult}</div>
+                    <div style="grid-column:span 2;"><strong>Serviço Anterior:</strong> ${escapeHTML(p.lastProcedure || 'Não especificado')}</div>
+                </div>
+            </div>
+
+            <div>
+                <h5 style="margin:0 0 0.75rem 0; font-weight:600;">Modelos de Mensagem WhatsApp</h5>
+                <div style="display:flex; flex-direction:column; gap:0.75rem;">
+                    ${templates.map(t => `
+                        <div class="template-card" style="border:1px solid var(--gray-200); border-radius:10px; padding:1rem; transition:all 0.2s; cursor:pointer; background:white;"
+                             onclick="sendOldPatientTemplate('${id}', '${t.text.replace(/'/g, "\\'")}')"
+                             onmouseover="this.style.borderColor='var(--primary-400)'; this.style.boxShadow='var(--shadow-sm)'"
+                             onmouseout="this.style.borderColor='var(--gray-200)'; this.style.boxShadow='none'">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                                <strong style="color:var(--primary-600);">${t.title}</strong>
+                                <span class="badge badge-success" style="font-size:0.7rem;">ENVIAR ➔</span>
+                            </div>
+                            <p style="font-size:0.8rem; color:var(--gray-600); margin:0; font-style:italic;">"${t.text}"</p>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+
+            <div>
+                <h5 style="margin:0 0 0.75rem 0; font-weight:600;">Registro Rápido de Contato</h5>
+                <div style="display:flex; gap:0.75rem;">
+                    <button class="btn btn-secondary" style="flex:1;" onclick="logOldPatientContact('${id}', 'Tentativa de Ligação')">📞 Tentativa Ligação</button>
+                    <button class="btn btn-secondary" style="flex:1;" onclick="logOldPatientContact('${id}', 'Mensagem Enviada')">💬 Mensagem Enviada</button>
+                </div>
+                <div style="margin-top:0.75rem;">
+                    <textarea id="quickContactNote" class="form-textarea" style="min-height:60px; font-size:0.85rem;" placeholder="Anotação rápida do contato..."></textarea>
+                    <button class="btn btn-primary" style="margin-top:0.5rem; width:100%;" onclick="logOldPatientContact('${id}', document.getElementById('quickContactNote').value)">💾 Registrar Contato Realizado</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    openModal('🚀 Central de Reativação', html, [
+        { label: 'Fechar', class: 'btn-secondary', onclick: 'closeModal()' }
+    ]);
+}
+
+async function sendOldPatientTemplate(id, text) {
+    const p = AppState.oldPatients.find(item => item.id === id);
+    if (!p || !p.phone) {
+        showNotification('Telefone não cadastrado!', 'error');
+        return;
+    }
+    
+    // Log the contact
+    await logOldPatientContact(id, 'Envio de template WhatsApp', false);
+    
+    // Open WA
+    window.openWhatsApp(p.phone, text);
+    closeModal();
+}
+
+async function logOldPatientContact(id, note, shouldClose = true) {
+    const idx = AppState.oldPatients.findIndex(p => p.id === id);
+    if (idx < 0) return;
+
+    const contactDate = new Date().toISOString();
+    const contactLog = {
+        date: contactDate,
+        note: note || 'Contato realizado',
+        user: AppState.user?.name || 'CRC'
+    };
+
+    if (!AppState.oldPatients[idx].contacts) AppState.oldPatients[idx].contacts = [];
+    AppState.oldPatients[idx].contacts.push(contactLog);
+    AppState.oldPatients[idx].lastContactDate = contactDate;
+    AppState.oldPatients[idx].updatedAt = contactDate;
+    
+    // Auto-update status to contacted if it was pending
+    if (AppState.oldPatients[idx].status === 'pending') {
+        AppState.oldPatients[idx].status = 'contacted';
+    }
+
+    await saveToStorage('odontocrm_old_patients', AppState.oldPatients);
+    
+    if (typeof isCloudConnected === 'function' && isCloudConnected()) {
+        await updateRecord('old_patients', id, { 
+            last_contact_date: contactDate,
+            status: AppState.oldPatients[idx].status,
+            notes: (AppState.oldPatients[idx].notes || '') + `\n[Log ${formatDate(contactDate)}]: ${note}`
+        });
+    }
+
+    showNotification('✅ Contato registrado!', 'success');
+    if (shouldClose) closeModal();
+    renderOldPatients();
 }
 
 // Debounced search
@@ -209,6 +398,30 @@ function updateOldPatientsSearch(value) {
 function updateOldPatientsStatusFilter(value) {
     oldPatientsStatusFilter = value;
     renderOldPatients();
+}
+
+function updateOldPatientsCategoryFilter(value) {
+    oldPatientsCategoryFilter = value;
+    renderOldPatients();
+}
+
+function updateOldPatientsPriorityFilter(value) {
+    oldPatientsPriorityFilter = value;
+    renderOldPatients();
+}
+
+function clearOldPatientsFilters() {
+    oldPatientsSearch = '';
+    oldPatientsStatusFilter = 'all';
+    oldPatientsCategoryFilter = 'all';
+    oldPatientsPriorityFilter = 'all';
+    
+    // Clear input value manually if it exists
+    const input = document.getElementById('oldPatientsSearchInput');
+    if (input) input.value = '';
+    
+    renderOldPatients();
+    showNotification('🧹 Filtros limpos', 'success');
 }
 
 function toggleOldPatientNote(id) {
@@ -290,6 +503,9 @@ function showEditOldPatientForm(id) {
 
 function buildOldPatientFormHTML(p) {
     const isEdit = !!p;
+    const cat = p ? (p.category || 'clinico') : 'clinico';
+    const prio = p ? (p.priority || 'media') : 'media';
+
     return `
         <form id="oldPatientForm">
             ${isEdit ? `<input type="hidden" name="id" value="${p.id}">` : ''}
@@ -297,6 +513,26 @@ function buildOldPatientFormHTML(p) {
                 <label class="form-label">Nome Completo *</label>
                 <input type="text" name="name" class="form-input" required value="${isEdit ? escapeHTML(p.name) : ''}">
             </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Categoria de Tratamento</label>
+                    <select name="category" class="form-select">
+                        ${Object.entries(OLD_PATIENT_CATEGORIES).map(([key, cfg]) => `
+                            <option value="${key}" ${cat === key ? 'selected' : ''}>${cfg.icon} ${cfg.label}</option>
+                        `).join('')}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Prioridade de Reativação</label>
+                    <select name="priority" class="form-select">
+                        ${Object.entries(OLD_PATIENT_PRIORITIES).map(([key, cfg]) => `
+                            <option value="${key}" ${prio === key ? 'selected' : ''}>${cfg.label}</option>
+                        `).join('')}
+                    </select>
+                </div>
+            </div>
+
             <div class="form-row">
                 <div class="form-group">
                     <label class="form-label">WhatsApp / Telefone</label>
@@ -307,10 +543,17 @@ function buildOldPatientFormHTML(p) {
                     <input type="date" name="lastConsultation" class="form-input" value="${isEdit ? (p.lastConsultation || '') : ''}">
                 </div>
             </div>
+
             <div class="form-group">
-                <label class="form-label">Procedimento / Interesse Anterior</label>
-                <input type="text" name="interest" class="form-input" placeholder="Ex: Implante, Limpeza, Prótese..." value="${isEdit ? escapeHTML(p.interest || '') : ''}">
+                <label class="form-label">Último Procedimento Realizado</label>
+                <input type="text" name="lastProcedure" class="form-input" placeholder="Ex: Canal no dente 46, Limpeza semestral, Braquetes colados..." value="${isEdit ? escapeHTML(p.lastProcedure || '') : ''}">
             </div>
+
+            <div class="form-group">
+                <label class="form-label">Interesse Original / Queixa</label>
+                <input type="text" name="interest" class="form-input" placeholder="Ex: Implante, Estética..." value="${isEdit ? escapeHTML(p.interest || '') : ''}">
+            </div>
+
             ${isEdit ? `
             <div class="form-group">
                 <label class="form-label">Status de Recuperação</label>
@@ -369,10 +612,14 @@ async function saveOldPatient(isEdit = false) {
             await updateRecord('old_patients', data.id, {
                 name: data.name, phone: data.phone, status: data.status,
                 interest: data.interest, notes: data.notes,
+                category: data.category,
+                last_procedure: data.lastProcedure,
+                priority: data.priority,
                 last_consultation: data.lastConsultation,
                 recovered_at: p.recoveredAt || null
             });
-        } else {
+        }
+ else {
             await saveToSupabase('old_patients', AppState.oldPatients);
         }
     }
@@ -424,3 +671,9 @@ window.saveOldPatientNote = saveOldPatientNote;
 window.cancelOldPatientNote = cancelOldPatientNote;
 window.updateOldPatientsSearch = updateOldPatientsSearch;
 window.updateOldPatientsStatusFilter = updateOldPatientsStatusFilter;
+window.updateOldPatientsCategoryFilter = updateOldPatientsCategoryFilter;
+window.updateOldPatientsPriorityFilter = updateOldPatientsPriorityFilter;
+window.showReactivationSuite = showReactivationSuite;
+window.sendOldPatientTemplate = sendOldPatientTemplate;
+window.logOldPatientContact = logOldPatientContact;
+window.clearOldPatientsFilters = clearOldPatientsFilters;
