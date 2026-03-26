@@ -5,6 +5,7 @@
 const RED_FOLDER_RECENT_DAYS = 60;
 let redFolderFilter = 'all'; // 'all' | 'recent' | 'old'
 let redFolderSortOrder = 'oldest'; // 'oldest' | 'recent' | 'alpha'
+let redFolderSearchTerm = ''; // Declarado aqui para evitar ReferenceError no template
 
 function initRedFolderModule() {
     renderRedFolder();
@@ -281,7 +282,7 @@ function renderRedFolderCard(entry) {
     `;
 }
 
-let redFolderSearchTerm = '';
+// redFolderSearchTerm declarado no topo do arquivo
 function searchRedFolder(term) {
     redFolderSearchTerm = term.toLowerCase();
     const all = getRedFolderEntries();
@@ -318,10 +319,7 @@ async function markRedFolderAsSold(leadId) {
     const idx = AppState.leads.indexOf(lead);
     AppState.leads[idx] = { ...lead, saleStatus: 'sold', status: 'converted' };
 
-    await saveToStorage(STORAGE_KEYS.LEADS, AppState.leads);
-    if (typeof isCloudConnected === 'function' && isCloudConnected()) {
-        await updateRecord('leads', leadId, { saleStatus: 'sold', status: 'converted' });
-    }
+    await saveToStorage(STORAGE_KEYS.LEADS, AppState.leads); // saveToStorage já sincroniza com Supabase
 
     showNotification(`✅ ${lead.name} marcado como fechado!`, 'success');
     renderRedFolder();

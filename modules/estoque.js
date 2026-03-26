@@ -271,11 +271,9 @@ window.saveInventoryItem = async function(event) {
     if (id) {
         const index = AppState.inventoryItems.findIndex(i => i.id === id);
         if (index !== -1) AppState.inventoryItems[index] = newItem;
-        if (typeof updateRecord === 'function') await updateRecord('inventory_items', newItem);
     } else {
         newItem.createdAt = new Date().toISOString();
         AppState.inventoryItems.push(newItem);
-        if (typeof insertRecord === 'function') await insertRecord('inventory_items', newItem);
     }
 
     saveToStorage(STORAGE_KEYS.INVENTORY_ITEMS, AppState.inventoryItems);
@@ -351,11 +349,9 @@ window.saveProstheticService = async function(event) {
     if (id) {
         const index = AppState.prostheticServices.findIndex(s => s.id === id);
         if (index !== -1) AppState.prostheticServices[index] = newService;
-        if (typeof updateRecord === 'function') await updateRecord('prosthetic_services', newService);
     } else {
         newService.createdAt = new Date().toISOString();
         AppState.prostheticServices.push(newService);
-        if (typeof insertRecord === 'function') await insertRecord('prosthetic_services', newService);
     }
 
     saveToStorage(STORAGE_KEYS.PROSTHETIC_SERVICES, AppState.prostheticServices);
@@ -373,7 +369,6 @@ function adjustQuantity(id) {
         item.quantity = parseFloat(val) || 0;
         item.updatedAt = new Date().toISOString();
         saveToStorage(STORAGE_KEYS.INVENTORY_ITEMS, AppState.inventoryItems);
-        if (typeof updateRecord === 'function') updateRecord('inventory_items', item);
         renderInventoryTable();
         showNotification('Quantidade ajustada!', 'success');
     }
@@ -390,7 +385,6 @@ function changeProstheticStatus(id) {
     service.status = statuses[nextIdx];
     service.updatedAt = new Date().toISOString();
     saveToStorage(STORAGE_KEYS.PROSTHETIC_SERVICES, AppState.prostheticServices);
-    if (typeof updateRecord === 'function') updateRecord('prosthetic_services', service);
     renderProstheticTable();
     showNotification(`Status alterado para ${service.status}`, 'info');
 }

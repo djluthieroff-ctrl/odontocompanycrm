@@ -567,6 +567,9 @@ function formatCurrency(value) {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(amount);
 }
 
+// Expõe globalmente para uso em outros módulos (ex: estoque.js)
+window.formatCurrency = formatCurrency;
+
 window.initFinanceiroModule = initFinanceiroModule;
 window.renderFinanceiroView = renderFinanceiroView;
 window.saveFinancePayment = saveFinancePayment;
