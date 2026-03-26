@@ -108,12 +108,15 @@ function setupGlobalEvents() {
 
 // Verificar Permissões de Módulos
 function checkModulePermissions() {
-    const userRole = AppState.currentUser?.role || 'user';
+    const user = AppState.currentUser;
+    // Extrai role de várias fontes possíveis (direto, metadata, etc.)
+    // Se estiver logado e não tiver role, tratamos como 'admin' para este ambiente (solicitação do usuário)
+    const userRole = user?.role || user?.user_metadata?.role || (user ? 'admin' : 'user');
 
     // Definir permissões por módulo
     const modulePermissions = {
         teamManagement: ['admin', 'manager'],
-        trainingKnowledge: ['admin', 'manager', 'trainer'],
+        trainingKnowledge: ['admin', 'manager', 'trainer', 'user'], // Liberado para user básico também
         goalsKpis: ['admin', 'manager'],
         qualityAudit: ['admin', 'manager', 'auditor'],
         advancedReports: ['admin', 'manager'],
@@ -127,7 +130,7 @@ function checkModulePermissions() {
         AdvancedModulesIntegration.state.permissions[moduleName] = requiredRoles.includes(userRole);
     });
 
-    console.log('🔐 Permissões de módulos verificadas:', AdvancedModulesIntegration.state.permissions);
+    console.log(`🔐 Perfil detectado: ${userRole}. Permissões:`, AdvancedModulesIntegration.state.permissions);
 }
 
 // Renderizar Interface de Módulos Avançados
