@@ -295,8 +295,7 @@ function updateLeadCard(cardElement, lead) {
             // Remove existing badges
             badgesContainer.querySelectorAll('.badge').forEach(badge => badge.remove());
 
-            // Add new badges
-            const badgesHtml = getStatusBadge(lead.status) + getUrgencyBadge(getDaysSince(lead.createdAt));
+            let badgesHtml = getStatusBadge(lead.status) + getUrgencyBadge(getDaysSince(lead.createdAt));
             if (lead.channel) {
                 badgesHtml += `<span class="badge badge-primary">📢 ${escapeHTML(lead.channel)}</span>`;
             }
@@ -305,7 +304,7 @@ function updateLeadCard(cardElement, lead) {
             } else if (lead.saleStatus === 'lost') {
                 badgesHtml += '<span class="badge badge-error">❌ Perdido</span>';
             }
-
+            
             nameElement.insertAdjacentHTML('afterend', badgesHtml);
         }
 
