@@ -27,6 +27,11 @@ function initTeamManagementModule() {
     loadTeamData();
 }
 
+// Carregar Dados da Equipe
+function loadTeamData() {
+    console.log('📦 Usando dados de Equipe do AppState...');
+}
+
 // Renderizar Dashboard de Gestão de Equipes
 function renderTeamDashboard() {
     const container = document.getElementById('teamContent');

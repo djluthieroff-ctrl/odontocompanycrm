@@ -27,6 +27,11 @@ function initQualityAuditModule() {
     loadQualityData();
 }
 
+// Carregar Dados de Qualidade
+function loadQualityData() {
+    console.log('📦 Usando dados de Qualidade do AppState...');
+}
+
 // Renderizar Dashboard de Auditoria de Qualidade
 function renderQualityDashboard() {
     const container = document.getElementById('qualityContent');

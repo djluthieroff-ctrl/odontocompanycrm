@@ -27,6 +27,11 @@ function initAdvancedReportsModule() {
     loadReportsData();
 }
 
+// Carregar Dados de Relatórios
+function loadReportsData() {
+    console.log('📦 Usando dados de Relatórios do AppState...');
+}
+
 // Renderizar Dashboard de Relatórios Avançados
 function renderReportsDashboard() {
     const container = document.getElementById('reportsContent');

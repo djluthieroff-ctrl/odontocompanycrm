@@ -27,6 +27,11 @@ function initExternalIntegrationsModule() {
     loadIntegrationsData();
 }
 
+// Carregar Dados de Integrações
+function loadIntegrationsData() {
+    console.log('📦 Usando dados de Integrações do AppState...');
+}
+
 // Renderizar Dashboard de Integrações Externas
 function renderIntegrationsDashboard() {
     const container = document.getElementById('integrationsContent');

@@ -27,6 +27,11 @@ function initGoalsKpisModule() {
     loadGoalsData();
 }
 
+// Carregar Dados de Metas
+function loadGoalsData() {
+    console.log('📦 Usando dados de Metas do AppState...');
+}
+
 // Renderizar Dashboard de Metas e KPIs
 function renderGoalsDashboard() {
     const container = document.getElementById('goalsContent');

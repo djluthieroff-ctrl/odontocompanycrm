@@ -27,6 +27,11 @@ function initAdvancedSettingsModule() {
     loadAdvancedSettingsData();
 }
 
+// Carregar Dados de Configurações
+function loadAdvancedSettingsData() {
+    console.log('📦 Usando dados de Configurações do AppState...');
+}
+
 // Renderizar Dashboard de Configurações Avançadas
 function renderAdvancedSettingsDashboard() {
     const container = document.getElementById('advancedSettingsContent');
