@@ -22,7 +22,17 @@ const AppState = {
     },
     inventoryItems: [],
     prostheticServices: [],
-    activities: []
+    activities: [],
+    // Módulos Avançados
+    teams: [],
+    members: [],
+    roles: [],
+    goals: [],
+    kpis: [],
+    audits: [],
+    trainingModules: [],
+    integrations: [],
+    advancedSettings: []
 };
 
 // LocalStorage Keys

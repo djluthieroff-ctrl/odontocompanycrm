@@ -5,6 +5,12 @@
 function initAuth() {
     if (!isSupabaseReady || (typeof isSupabaseReady === 'function' && !isSupabaseReady())) {
         console.warn('⚠️ Supabase não configurado. Entrando em modo LocalStorage.');
+        
+        // Define usuário admin padrão para modo local para permitir acesso aos módulos avançados
+        if (typeof AppState !== 'undefined') {
+            AppState.currentUser = { email: 'admin@local', role: 'admin' };
+        }
+
         showApp();
         if (typeof loadDataFromStorage === 'function') loadDataFromStorage();
         if (typeof initializeAppUI === 'function') initializeAppUI();
@@ -172,6 +178,11 @@ function hideAuthAlert() {
 async function onLoginSuccess(user) {
     const loginScreen = document.getElementById('authScreen');
     if (loginScreen) loginScreen.style.display = 'none';
+
+    // Salva o usuário no AppState para uso global (ex: permissões de módulos avançados)
+    if (typeof AppState !== 'undefined') {
+        AppState.currentUser = user;
+    }
 
     showApp();
     if (typeof loadDataFromStorage === 'function') loadDataFromStorage();

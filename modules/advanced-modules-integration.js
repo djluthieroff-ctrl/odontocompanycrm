@@ -662,6 +662,7 @@ function exportAdvancedModulesData() {
 
 // Funções Globais
 window.initAdvancedModulesIntegration = initAdvancedModulesIntegration;
+window.initAdvancedModulesModule = initAdvancedModulesIntegration; // Alias para compatibilidade com app.js
 window.loadAdvancedModules = loadAdvancedModules;
 window.setupGlobalEvents = setupGlobalEvents;
 window.checkModulePermissions = checkModulePermissions;
