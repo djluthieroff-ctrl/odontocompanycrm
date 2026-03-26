@@ -192,6 +192,11 @@ async function onLoginSuccess(user) {
     const loaded = await loadDataFromSupabase();
     if (loaded) updateDashboard();
 
+    // Atualiza módulos avançados se o integrador estiver disponível
+    if (typeof refreshAdvancedModules === 'function') {
+        refreshAdvancedModules();
+    }
+
     if (typeof showNotification === 'function') {
         showNotification(`Bem-vindo(a), ${user.email}!`, 'success');
     }

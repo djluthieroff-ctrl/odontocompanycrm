@@ -109,14 +109,30 @@ function setupGlobalEvents() {
 // Verificar Permissões de Módulos
 function checkModulePermissions() {
     const user = AppState.currentUser;
-    // Extrai role de várias fontes possíveis (direto, metadata, etc.)
-    // Se estiver logado e não tiver role, tratamos como 'admin' para este ambiente (solicitação do usuário)
-    const userRole = user?.role || user?.user_metadata?.role || (user ? 'admin' : 'user');
+    console.log('🔍 [Debug Permissions] Verificando usuário:', user);
+
+    // Extrai role de várias fontes possíveis
+    let userRole = 'user'; // Fallback padrão
+    
+    if (user) {
+        // Tenta capturar de metadados (mais provável para roles customizadas)
+        const metadataRole = user?.user_metadata?.role || user?.app_metadata?.role;
+        const directRole = user?.role;
+        
+        userRole = metadataRole || directRole || 'admin';
+        
+        // Se o Supabase retornar 'authenticated' (padrão), tratamos como admin para liberar o acesso solicitado
+        if (userRole === 'authenticated') {
+            userRole = 'admin';
+        }
+    }
+
+    userRole = userRole.toLowerCase();
 
     // Definir permissões por módulo
     const modulePermissions = {
         teamManagement: ['admin', 'manager'],
-        trainingKnowledge: ['admin', 'manager', 'trainer', 'user'], // Liberado para user básico também
+        trainingKnowledge: ['admin', 'manager', 'trainer', 'user'],
         goalsKpis: ['admin', 'manager'],
         qualityAudit: ['admin', 'manager', 'auditor'],
         advancedReports: ['admin', 'manager'],
@@ -127,10 +143,13 @@ function checkModulePermissions() {
     // Verificar permissões do usuário
     Object.keys(modulePermissions).forEach(moduleName => {
         const requiredRoles = modulePermissions[moduleName];
-        AdvancedModulesIntegration.state.permissions[moduleName] = requiredRoles.includes(userRole);
+        const isAllowed = requiredRoles.includes(userRole);
+        AdvancedModulesIntegration.state.permissions[moduleName] = isAllowed;
+        
+        console.log(`- Módulo ${moduleName}: ${isAllowed ? '✅ LIBERADO' : '❌ BLOQUEADO'} (Requer: ${requiredRoles.join(', ')})`);
     });
 
-    console.log(`🔐 Perfil detectado: ${userRole}. Permissões:`, AdvancedModulesIntegration.state.permissions);
+    console.log(`🔐 Perfil final detectado: ${userRole}`);
 }
 
 // Renderizar Interface de Módulos Avançados
