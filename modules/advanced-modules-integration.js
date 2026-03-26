@@ -320,6 +320,35 @@ function renderAdvancedModulesInterface() {
                 text-transform: uppercase;
                 letter-spacing: 0.05em;
             }
+
+            .module-navigation-header {
+                display: flex;
+                align-items: center;
+                margin-bottom: 2rem;
+                padding-bottom: 1rem;
+                border-bottom: 1px solid var(--gray-200);
+            }
+
+            .btn-back-module {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                background: white;
+                border: 1px solid var(--gray-300);
+                padding: 0.75rem 1.25rem;
+                border-radius: 12px;
+                color: var(--gray-700);
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.2s;
+                box-shadow: var(--shadow-sm);
+            }
+
+            .btn-back-module:hover {
+                background: var(--gray-50);
+                border-color: var(--gray-400);
+                transform: translateX(-4px);
+            }
         </style>
 
         <!-- Header de Módulos Avançados -->
@@ -454,68 +483,97 @@ function getModuleStats(moduleName) {
 // Abrir Módulo Avançado
 function openAdvancedModule(moduleName) {
     if (!AdvancedModulesIntegration.state.permissions[moduleName]) {
-        showNotification('Acesso negado: Permissões insuficientes', 'error');
+        if (typeof showNotification === 'function') {
+            showNotification('Acesso negado: Permissões insuficientes', 'error');
+        } else {
+            alert('Acesso negado: Permissões insuficientes');
+        }
         return;
     }
 
     AdvancedModulesIntegration.state.activeModule = moduleName;
 
-    const contentContainer = document.getElementById('advancedModuleContent');
-    contentContainer.style.display = 'block';
+    // Ocultar a grade e o header principal para foco total
+    const grid = document.querySelector('.advanced-modules-grid');
+    const header = document.querySelector('.advanced-modules-header');
+    if (grid) grid.style.display = 'none';
+    if (header) header.style.display = 'none';
 
-    // Carregar conteúdo do módulo
+    const contentContainer = document.getElementById('advancedModuleContent');
+    if (!contentContainer) return;
+    
+    contentContainer.style.display = 'block';
+    
+    // Template do botão de voltar
+    const backBtnHtml = `
+        <div class="module-navigation-header">
+            <button class="btn-back-module" onclick="closeAdvancedModule()">
+                ⬅️ Voltar para Módulos
+            </button>
+        </div>
+    `;
+
+    console.log(`🚀 Abrindo módulo avançado: ${moduleName}`);
+
+    // Carregar conteúdo do módulo com IDs e funções sincronizadas
     switch (moduleName) {
         case 'teamManagement':
-            if (typeof renderTeamManagementDashboard === 'function') {
-                contentContainer.innerHTML = '<div id="teamManagementContent"></div>';
-                renderTeamManagementDashboard();
-            }
+            contentContainer.innerHTML = backBtnHtml + '<div id="teamContent"></div>';
+            if (typeof renderTeamDashboard === 'function') renderTeamDashboard();
             break;
 
         case 'trainingKnowledge':
-            if (typeof renderTrainingKnowledgeDashboard === 'function') {
-                contentContainer.innerHTML = '<div id="trainingKnowledgeContent"></div>';
-                renderTrainingKnowledgeDashboard();
-            }
+            contentContainer.innerHTML = backBtnHtml + '<div id="trainingContent"></div>';
+            if (typeof renderTrainingDashboard === 'function') renderTrainingDashboard();
             break;
 
         case 'goalsKpis':
-            if (typeof renderGoalsKpisDashboard === 'function') {
-                contentContainer.innerHTML = '<div id="goalsKpisContent"></div>';
-                renderGoalsKpisDashboard();
-            }
+            contentContainer.innerHTML = backBtnHtml + '<div id="goalsContent"></div>';
+            if (typeof renderGoalsDashboard === 'function') renderGoalsDashboard();
             break;
 
         case 'qualityAudit':
-            if (typeof renderQualityAuditDashboard === 'function') {
-                contentContainer.innerHTML = '<div id="qualityAuditContent"></div>';
-                renderQualityAuditDashboard();
-            }
+            contentContainer.innerHTML = backBtnHtml + '<div id="qualityContent"></div>';
+            if (typeof renderQualityDashboard === 'function') renderQualityDashboard();
             break;
 
         case 'advancedReports':
-            if (typeof renderAdvancedReportsDashboard === 'function') {
-                contentContainer.innerHTML = '<div id="advancedReportsContent"></div>';
-                renderAdvancedReportsDashboard();
-            }
+            contentContainer.innerHTML = backBtnHtml + '<div id="reportsContent"></div>';
+            if (typeof renderReportsDashboard === 'function') renderReportsDashboard();
             break;
 
         case 'externalIntegrations':
-            if (typeof renderIntegrationsDashboard === 'function') {
-                contentContainer.innerHTML = '<div id="integrationsContent"></div>';
-                renderIntegrationsDashboard();
-            }
+            contentContainer.innerHTML = backBtnHtml + '<div id="integrationsContent"></div>';
+            if (typeof renderIntegrationsDashboard === 'function') renderIntegrationsDashboard();
             break;
 
         case 'advancedSettings':
-            if (typeof renderAdvancedSettingsDashboard === 'function') {
-                contentContainer.innerHTML = '<div id="advancedSettingsContent"></div>';
-                renderAdvancedSettingsDashboard();
-            }
+            contentContainer.innerHTML = backBtnHtml + '<div id="advancedSettingsContent"></div>';
+            if (typeof renderAdvancedSettingsDashboard === 'function') renderAdvancedSettingsDashboard();
             break;
     }
 
-    showNotification(`Módulo ${moduleName} aberto com sucesso!`, 'success');
+    if (typeof showNotification === 'function') {
+        showNotification(`Módulo aberto com sucesso!`, 'success');
+    }
+}
+
+// Fechar Módulo Avançado e retornar à lista
+function closeAdvancedModule() {
+    console.log('🔙 Fechando módulo avançado e retornando à grade...');
+    
+    const contentContainer = document.getElementById('advancedModuleContent');
+    if (contentContainer) {
+        contentContainer.style.display = 'none';
+        contentContainer.innerHTML = '';
+    }
+
+    const grid = document.querySelector('.advanced-modules-grid');
+    const header = document.querySelector('.advanced-modules-header');
+    if (grid) grid.style.display = 'grid';
+    if (header) header.style.display = 'block';
+
+    AdvancedModulesIntegration.state.activeModule = null;
 }
 
 // Ver Detalhes do Módulo
