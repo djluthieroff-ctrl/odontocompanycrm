@@ -27,12 +27,51 @@ const AppState = {
     teams: [],
     members: [],
     roles: [],
+    rolesPermissions: [],
+    teamSchedules: [],
+    teamPerformance: [],
+    teamTraining: [],
+    teamCommunications: [],
+    
     goals: [],
     kpis: [],
+    targets: [],
+    measurements: [],
+    
+    reports: [],
+    dashboards: [],
+    charts: [],
+    reportsFilters: [],
+    reportsSchedules: [],
+    reportsExports: [],
+    reportsTemplates: [],
+    reportsAnalytics: [],
+    
     audits: [],
+    auditChecklists: [],
+    compliance: [],
+    qualityMetrics: [],
+    incidents: [],
+    improvements: [],
+    
+    courses: [],
     trainingModules: [],
+    lessons: [],
+    certifications: [],
+    trainingProgress: [],
+    assessments: [],
+    trainingResources: [],
+    trainingFeedback: [],
+    
     integrations: [],
-    advancedSettings: []
+    webhooks: [],
+    apiKeys: [],
+    syncSettings: [],
+    
+    advancedSettings: [],
+    securitySettings: [],
+    displaySettings: [],
+    backupSettings: []
 };
 
 // LocalStorage Keys

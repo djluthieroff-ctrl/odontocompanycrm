@@ -27,6 +27,11 @@ function initTrainingKnowledgeModule() {
     loadTrainingData();
 }
 
+// Carregar Dados de Treinamento
+function loadTrainingData() {
+    console.log('📦 Usando dados de Treinamento do AppState...');
+}
+
 // Renderizar Dashboard de Treinamento e Conhecimento
 function renderTrainingDashboard() {
     const container = document.getElementById('trainingContent');
