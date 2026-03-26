@@ -383,7 +383,7 @@ function createLeadCard(lead) {
     return card;
 }
 
-// Create lead details HTML for expanded state
+// Create lead details HTML for expanded state (Redesigned - Compact & Premium)
 function createLeadDetailsHTML(lead) {
     const safeName = escapeHTML(lead.name);
     const safePhone = escapeHTML(lead.phone);
@@ -392,107 +392,95 @@ function createLeadDetailsHTML(lead) {
     const safeInterest = escapeHTML(lead.interest || '');
     const safeMessage = escapeHTML(lead.message || '');
 
+    const isAtrasado = lead.nextContact && new Date(lead.nextContact) < new Date();
+
     return `
-        <div class="lead-details">
-            <!-- Smart Workflow Section -->
-            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; margin-top: 1.5rem;">
-                <h5 style="margin: 0 0 1rem 0; font-weight: 600; color: var(--gray-800); font-size: 1rem; display: flex; align-items: center; gap: 0.5rem;">
-                    🚀 Fluxo de Trabalho
-                </h5>
-                
-                <div style="margin-bottom: 1rem; padding: 1rem; background: ${lead.nextContact && new Date(lead.nextContact) < new Date() ? '#fff1f2' : 'white'}; border: 1px dashed ${lead.nextContact && new Date(lead.nextContact) < new Date() ? '#fda4af' : '#cbd5e1'}; border-radius: 8px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <div style="font-size: 0.75rem; color: var(--gray-500); font-weight: 600; text-transform: uppercase;">📅 Próximo Contato (Follow-up)</div>
-                            <div style="font-weight: 600; color: var(--gray-800); margin-top: 4px;">
-                                ${lead.nextContact ? new Date(lead.nextContact).toLocaleDateString('pt-BR') : 'Não agendado'}
-                                ${lead.nextContact && new Date(lead.nextContact) < new Date() ? ' <span style="color: var(--error-600); font-size: 0.7rem;">⚠️ ATRASADO</span>' : ''}
-                            </div>
-                        </div>
-                        <button class="btn btn-secondary btn-small" onclick="showSetNextContactModal('${lead.id}')">Agendar Retorno</button>
-                    </div>
+        <div class="lead-details" style="padding: 1.25rem; background: #fff; border-top: 1px solid var(--gray-100); animation: fadeIn 0.3s ease;">
+            
+            <!-- 1. Top Summary / Follow-up -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--gray-100);">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <div style="width: 8px; height: 8px; border-radius: 50%; background: ${isAtrasado ? '#ef4444' : '#10b981'};"></div>
+                    <span style="font-size: 0.85rem; font-weight: 600; color: var(--gray-600);">
+                        ${lead.nextContact ? `Retorno: ${new Date(lead.nextContact).toLocaleDateString('pt-BR')}` : 'Sem retorno agendado'}
+                    </span>
+                    ${isAtrasado ? '<span style="font-size: 0.7rem; color: #ef4444; font-weight: 800; text-transform: uppercase;">⚠️ Atrasado</span>' : ''}
                 </div>
+                <button class="btn btn-secondary btn-small" onclick="showSetNextContactModal('${lead.id}')" style="font-size: 0.75rem; padding: 4px 10px;">📅 Agendar Retorno</button>
+            </div>
 
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
-                    <!-- Passo 1: Contato -->
-                    <div class="lead-workflow-item" style="padding: 1rem; background: white; border-radius: 8px; border: 1px solid ${lead.contactedAt ? '#bbf7d0' : '#e2e8f0'}; position: relative;">
-                        <div style="font-size: 0.75rem; color: var(--gray-500); font-weight: 600; text-transform: uppercase;">Passo 1: Contato</div>
-                        <div style="margin-top: 0.5rem; cursor: pointer;" onclick="${lead.contactedAt ? `editStepDate('${lead.id}', 'contactedAt')` : `updateLeadStatus('${lead.id}', 'in-contact')`}">
-                            ${lead.contactedAt
-            ? `<span style="color: #166534; font-weight: 600;">✅ Contatado em:</span><br>${formatDateTime(lead.contactedAt)}<br><small style="color: var(--primary-600)">Clique para alterar</small>`
-            : `<button class="btn btn-secondary btn-small" style="width: 100%;">Marcar Contatado</button>`}
+            <!-- 2. Workflow Stepper (Horizontal & Compact) -->
+            <div style="margin-bottom: 2rem;">
+                <h6 style="font-size: 0.7rem; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-weight: 700;">Progresso do Lead</h6>
+                <div style="display: flex; justify-content: space-between; position: relative;">
+                    <!-- Background Line -->
+                    <div style="position: absolute; top: 12px; left: 5%; right: 5%; height: 2px; background: #e2e8f0; z-index: 1;"></div>
+                    
+                    <!-- Step 1 -->
+                    <div style="z-index: 2; text-align: center; flex: 1;">
+                        <div onclick="${lead.contactedAt ? `editStepDate('${lead.id}', 'contactedAt')` : `updateLeadStatus('${lead.id}', 'in-contact')`}" 
+                             style="width: 24px; height: 24px; border-radius: 50%; background: ${lead.contactedAt ? '#10b981' : '#fff'}; border: 2px solid ${lead.contactedAt ? '#10b981' : '#cbd5e1'}; margin: 0 auto; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;">
+                            ${lead.contactedAt ? '✓' : ''}
                         </div>
-                        ${lead.contactedAt ? `<button onclick="revertLeadStep('${lead.id}', 1)" style="position: absolute; top: 5px; right: 5px; background: none; border: none; cursor: pointer; font-size: 0.8rem;" title="Voltar Passo">↩️</button>` : ''}
+                        <div style="font-size: 0.65rem; font-weight: 700; color: ${lead.contactedAt ? '#059669' : '#64748b'}; margin-top: 6px;">CONTATO</div>
                     </div>
 
-                    <!-- Passo 2: Agendamento -->
-                    <div class="lead-workflow-item" style="padding: 1rem; background: white; border-radius: 8px; border: 1px solid ${lead.scheduledAt ? '#bbf7d0' : '#e2e8f0'}; position: relative;">
-                        <div style="font-size: 0.75rem; color: var(--gray-500); font-weight: 600; text-transform: uppercase; display: flex; justify-content: space-between; align-items: center;">
-                            <span>Passo 2: Agendamento</span>
-                            ${lead.scheduledAt ? `<button onclick="editVisitDate('${lead.id}')" style="background: none; border: none; color: var(--primary-600); font-size: 0.7rem; font-weight: 700; cursor: pointer; padding: 0;">TROCAR DATA</button>` : ''}
+                    <!-- Step 2 -->
+                    <div style="z-index: 2; text-align: center; flex: 1;">
+                        <div onclick="${lead.scheduledAt ? `editStepDate('${lead.id}', 'scheduledAt')` : `updateLeadStatus('${lead.id}', 'scheduled')`}" 
+                             style="width: 24px; height: 24px; border-radius: 50%; background: ${lead.scheduledAt ? '#10b981' : '#fff'}; border: 2px solid ${lead.scheduledAt ? '#10b981' : '#cbd5e1'}; margin: 0 auto; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                            ${lead.scheduledAt ? '✓' : ''}
                         </div>
-                        <div style="margin-top: 0.5rem; cursor: pointer;" onclick="${lead.scheduledAt ? `editStepDate('${lead.id}', 'scheduledAt')` : `updateLeadStatus('${lead.id}', 'scheduled')`}">
-                            ${lead.scheduledAt
-            ? `<span style="color: #166534; font-weight: 600;">✅ Agendado em:</span><br>${formatDateTime(lead.scheduledAt)}<br>
-                                           <span style="color: var(--primary-700); font-weight: 600;">📅 Para o dia:</span><br>${lead.visitDate ? formatDate(lead.visitDate) : 'Não definida'}<br>
-                                           <small style="color: var(--primary-600)">Clique para alterar</small>`
-            : `<button class="btn btn-primary btn-small" style="width: 100%;">Agendar Agora</button>`}
-                        </div>
-                        ${lead.scheduledAt ? `<button onclick="revertLeadStep('${lead.id}', 2)" style="position: absolute; top: 5px; right: 5px; background: none; border: none; cursor: pointer; font-size: 0.8rem;" title="Voltar Passo">↩️</button>` : ''}
+                        <div style="font-size: 0.65rem; font-weight: 700; color: ${lead.scheduledAt ? '#059669' : '#64748b'}; margin-top: 6px;">AGENDA</div>
                     </div>
 
-                    <!-- Step 3: Comparecimento -->
-                    <div style="padding: 1rem; background: white; border-radius: 8px; border: 1px solid ${lead.attended ? '#bbf7d0' : '#e2e8f0'}; position: relative;">
-                        <div style="font-size: 0.75rem; color: var(--gray-500); font-weight: 600; text-transform: uppercase;">Passo 3: Comparecimento</div>
-                        <div style="margin-top: 0.5rem;">
-                            ${lead.attended
-            ? `<span style="color: #166534; font-weight: 600;">✅ Compareceu</span><br><small>Sincronizado com agenda</small>`
-            : (lead.status === 'scheduled' || lead.status === 'visit')
-                ? `<div style="display: flex; gap: 0.5rem;">
-                                                <button class="btn btn-success btn-small" style="flex: 1;" onclick="markAttendance('${lead.id}', true)">Sim</button>
-                                                <button class="btn btn-error btn-small" style="flex: 1;" onclick="markAttendance('${lead.id}', false)">Não</button>
-                                              </div>`
-                : `<span style="color: var(--gray-400);">Aguardando agendamento</span>`}
+                    <!-- Step 3 -->
+                    <div style="z-index: 2; text-align: center; flex: 1;">
+                        <div style="width: 24px; height: 24px; border-radius: 50%; background: ${lead.attended ? '#10b981' : '#fff'}; border: 2px solid ${lead.attended ? '#10b981' : '#cbd5e1'}; margin: 0 auto; display: flex; align-items: center; justify-content: center;">
+                            ${lead.attended ? '✓' : ''}
                         </div>
-                        ${lead.attended ? `<button onclick="revertLeadStep('${lead.id}', 3)" style="position: absolute; top: 5px; right: 5px; background: none; border: none; cursor: pointer; font-size: 0.8rem;" title="Voltar Passo">↩️</button>` : ''}
+                        <div style="font-size: 0.65rem; font-weight: 700; color: ${lead.attended ? '#059669' : '#64748b'}; margin-top: 6px;">VISITA</div>
+                        ${(!lead.attended && lead.status === 'scheduled') ? `
+                            <div style="display: flex; gap: 4px; justify-content: center; margin-top: 4px;">
+                                <button onclick="markAttendance('${lead.id}', true)" style="border:none; cursor:pointer; background:#10b981; color:white; border-radius:3px; padding:2px 4px; font-size:10px;">Sim</button>
+                                <button onclick="markAttendance('${lead.id}', false)" style="border:none; cursor:pointer; background:#ef4444; color:white; border-radius:3px; padding:2px 4px; font-size:10px;">Não</button>
+                            </div>
+                        ` : ''}
                     </div>
 
-                    <!-- Step 4: Venda -->
-                    <div style="padding: 1rem; background: white; border-radius: 8px; border: 1px solid ${lead.saleStatus === 'sold' ? '#bbf7d0' : lead.saleStatus === 'lost' ? '#fecaca' : '#e2e8f0'}; position: relative;">
-                        <div style="font-size: 0.75rem; color: var(--gray-500); font-weight: 600; text-transform: uppercase;">Passo 4: Fechamento</div>
-                        <div style="margin-top: 0.5rem;">
-                            ${lead.saleStatus === 'sold'
-            ? `<span style="color: #166534; font-weight: 600;">💰 Venda Realizada!</span>`
-            : lead.saleStatus === 'lost'
-                ? `<span style="color: #991b1b; font-weight: 600;">❌ Sem interesse</span>`
-                : lead.attended
-                    ? `<div style="display: flex; gap: 0.5rem;">
-                                                    <button class="btn btn-success btn-small" style="flex: 1; background: #166534;" onclick="markSale('${lead.id}', true)">Fechou</button>
-                                                    <button class="btn btn-error btn-small" style="flex: 1;" onclick="markSale('${lead.id}', false)">Perdi</button>
-                                                  </div>`
-                    : `<span style="color: var(--gray-400);">Aguardando visita</span>`}
+                    <!-- Step 4 -->
+                    <div style="z-index: 2; text-align: center; flex: 1;">
+                        <div style="width: 24px; height: 24px; border-radius: 50%; background: ${lead.saleStatus === 'sold' ? '#10b981' : lead.saleStatus === 'lost' ? '#ef4444' : '#fff'}; border: 2px solid ${lead.saleStatus ? (lead.saleStatus === 'sold' ? '#10b981' : '#ef4444') : '#cbd5e1'}; margin: 0 auto; display: flex; align-items: center; justify-content: center;">
+                            ${lead.saleStatus === 'sold' ? '💰' : lead.saleStatus === 'lost' ? '✗' : ''}
                         </div>
-                        ${lead.saleStatus ? `<button onclick="revertLeadStep('${lead.id}', 4)" style="position: absolute; top: 5px; right: 5px; background: none; border: none; cursor: pointer; font-size: 0.8rem;" title="Voltar Passo">↩️</button>` : ''}
+                        <div style="font-size: 0.65rem; font-weight: 700; color: ${lead.saleStatus === 'sold' ? '#059669' : lead.saleStatus === 'lost' ? '#b91c1c' : '#64748b'}; margin-top: 6px;">VENDA</div>
+                        ${(!lead.saleStatus && lead.attended) ? `
+                             <div style="display: flex; gap: 4px; justify-content: center; margin-top: 4px;">
+                                <button onclick="markSale('${lead.id}', true)" style="border:none; cursor:pointer; background:#10b981; color:white; border-radius:3px; padding:2px 4px; font-size:10px;">$</button>
+                                <button onclick="markSale('${lead.id}', false)" style="border:none; cursor:pointer; background:#ef4444; color:white; border-radius:3px; padding:2px 4px; font-size:10px;">✗</button>
+                            </div>
+                        ` : ''}
                     </div>
                 </div>
             </div>
 
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: var(--spacing-lg); margin-top: var(--spacing-lg);">
-                <div class="form-group">
-                    <label class="form-label">Nome</label>
-                    <input type="text" class="form-input" value="${safeName}" onchange="updateLeadField('${lead.id}', 'name', this.value)">
+            <!-- 3. Information Grid -->
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+                <div class="form-group" style="margin: 0;">
+                    <label style="font-size: 0.7rem; color: var(--gray-400); font-weight: 700; margin-bottom: 4px; display: block;">NOME COMPLETO</label>
+                    <input type="text" value="${safeName}" class="form-input" style="padding: 6px 10px; font-size: 0.9rem;" onchange="updateLeadField('${lead.id}', 'name', this.value)">
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Telefone</label>
-                    <input type="text" class="form-input" value="${safePhone}" onchange="updateLeadField('${lead.id}', 'phone', this.value)">
+                <div class="form-group" style="margin: 0;">
+                    <label style="font-size: 0.7rem; color: var(--gray-400); font-weight: 700; margin-bottom: 4px; display: block;">TELEFONE</label>
+                    <input type="text" value="${safePhone}" class="form-input" style="padding: 6px 10px; font-size: 0.9rem;" onchange="updateLeadField('${lead.id}', 'phone', this.value)">
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Email</label>
-                    <input type="email" class="form-input" value="${safeEmail}" onchange="updateLeadField('${lead.id}', 'email', this.value)">
+                <div class="form-group" style="margin: 0;">
+                    <label style="font-size: 0.7rem; color: var(--gray-400); font-weight: 700; margin-bottom: 4px; display: block;">EMAIL</label>
+                    <input type="email" value="${safeEmail}" class="form-input" style="padding: 6px 10px; font-size: 0.9rem;" onchange="updateLeadField('${lead.id}', 'email', this.value)">
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Canal</label>
-                    <select class="form-select" onchange="updateLeadField('${lead.id}', 'channel', this.value)">
+                <div class="form-group" style="margin: 0;">
+                    <label style="font-size: 0.7rem; color: var(--gray-400); font-weight: 700; margin-bottom: 4px; display: block;">CANAL</label>
+                    <select class="form-select" style="padding: 6px 10px; font-size: 0.9rem;" onchange="updateLeadField('${lead.id}', 'channel', this.value)">
                         <option value="">Selecione</option>
                         <option value="Google Ads" ${lead.channel === 'Google Ads' ? 'selected' : ''}>Google Ads</option>
                         <option value="Facebook Ads" ${lead.channel === 'Facebook Ads' ? 'selected' : ''}>Facebook Ads</option>
@@ -502,66 +490,56 @@ function createLeadDetailsHTML(lead) {
                         <option value="WhatsApp" ${lead.channel === 'WhatsApp' ? 'selected' : ''}>WhatsApp</option>
                     </select>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Interesse</label>
-                    <input type="text" class="form-input" value="${safeInterest}" onchange="updateLeadField('${lead.id}', 'interest', this.value)" placeholder="Ex: Clareamento">
+                <div class="form-group" style="margin: 0;">
+                    <label style="font-size: 0.7rem; color: var(--gray-400); font-weight: 700; margin-bottom: 4px; display: block;">INTERESSE</label>
+                    <input type="text" value="${safeInterest}" class="form-input" style="padding: 6px 10px; font-size: 0.9rem;" placeholder="Ex: Clareamento" onchange="updateLeadField('${lead.id}', 'interest', this.value)">
                 </div>
-                <div class="form-group">
-                    <label class="form-label" style="color: var(--primary-700);">📅 Data da Visita (Relatórios)</label>
-                    <input type="date" class="form-input" value="${lead.visitDate ? lead.visitDate.split('T')[0] : ''}" 
-                           onchange="updateLeadField('${lead.id}', 'visitDate', this.value ? new Date(this.value + 'T12:00:00').toISOString() : null)"
-                           style="border-color: var(--primary-200); background: var(--primary-50);">
-                    <small style="font-size: 0.7rem; color: var(--gray-500);">Ajuste esta data para corrigir o dia em que a visita aparece nos relatórios.</small>
+                <div class="form-group" style="margin: 0;">
+                    <label style="font-size: 0.7rem; color: var(--gray-400); font-weight: 700; margin-bottom: 4px; display: block;">DATA DA VISITA</label>
+                    <input type="date" value="${lead.visitDate ? lead.visitDate.split('T')[0] : ''}" 
+                           class="form-input" style="padding: 5px 10px; font-size: 0.9rem; border-color: #bee3f8; background: #ebf8ff;"
+                           onchange="updateLeadField('${lead.id}', 'visitDate', this.value ? new Date(this.value + 'T12:00:00').toISOString() : null)">
                 </div>
             </div>
 
-            <div class="form-group" style="margin-top: var(--spacing-md);">
-                <label class="form-label">Mensagem Inicial</label>
-                <textarea class="form-textarea" rows="3" onchange="updateLeadField('${lead.id}', 'message', this.value)">${safeMessage}</textarea>
-            </div>
-
-            <div style="display: flex; gap: var(--spacing-sm); margin-top: var(--spacing-lg); flex-wrap: wrap;">
-                <button class="btn btn-whatsapp btn-small" onclick="openWhatsApp('${lead.phone}', 'Olá ${safeName}! Aqui é da Odonto Company.')">
-                    💬 Abrir WhatsApp
+            <!-- 4. Quick Actions Row -->
+            <div style="display: flex; gap: 8px; margin-bottom: 1.5rem; flex-wrap: wrap;">
+                <button class="btn btn-whatsapp btn-small" onclick="openWhatsApp('${lead.phone}', 'Olá ${safeName}! Aqui é da Odonto Company.')" style="flex: 1; min-width: 140px;">
+                    💬 WhatsApp
                 </button>
-                ${lead.status !== 'converted' ? `
-                    <button class="btn btn-success btn-small" onclick="convertLeadToPatient('${lead.id}')">
-                        ✅ Tornar Paciente Permanente
-                    </button>
-                ` : ''}
-                <button class="btn btn-secondary btn-small" onclick="deleteLead('${lead.id}')">
-                    🗑️ Deletar
+                <button class="btn btn-secondary btn-small" onclick="convertLeadToPatient('${lead.id}')" style="flex: 1; min-width: 140px;">
+                    👤 Paciente
+                </button>
+                <button class="btn btn-secondary btn-small" onclick="showAddInteractionModal('${lead.id}')" style="flex: 0.5; min-width: 100px;">
+                    ✍️ Nota
+                </button>
+                <button class="btn btn-small" style="background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; min-width: 44px;" onclick="deleteLead('${lead.id}')" title="Deletar Lead">
+                    🗑️
                 </button>
             </div>
 
-            <div style="margin-top: var(--spacing-xl); padding-top: var(--spacing-lg); border-top: 1px solid var(--gray-200);">
-                <h5 style="margin-bottom: var(--spacing-md); font-weight: 600; color: var(--gray-700); display: flex; justify-content: space-between; align-items: center;">
-                    📜 Histórico de Interações
-                    <button class="btn btn-small btn-secondary" onclick="event.stopPropagation(); showAddInteractionModal('${lead.id}')">+ Adicionar Nota</button>
-                </h5>
-                <div class="interaction-timeline" style="display: flex; flex-direction: column; gap: var(--spacing-sm);">
+            <!-- 5. Message & Interactions (Collapsible-like) -->
+            <div style="background: var(--gray-50); border-radius: 8px; padding: 1rem;">
+                 <h6 style="font-size: 0.65rem; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; font-weight: 700;">Mensagem / Histórico</h6>
+                 <p style="font-size: 0.85rem; color: var(--gray-700); margin: 0 0 1rem 0; font-style: italic; border-bottom: 1px solid var(--gray-200); padding-bottom: 0.5rem;">
+                    "${safeMessage || 'Sem mensagem inicial.'}"
+                 </p>
+                 
+                 <div style="max-height: 120px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
                     ${lead.interactions && lead.interactions.length > 0 ?
-            lead.interactions.map(idx => {
-                const isChatwoot = idx.note.startsWith('💬 Chatwoot:');
-                return `
-                        <div class="interaction-item" style="background: var(--gray-50); padding: var(--spacing-sm) var(--spacing-md); border-radius: var(--radius-md); border-left: 3px solid ${isChatwoot ? '#8b5cf6' : 'var(--primary-300)'};">
-                            <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--gray-500); margin-bottom: 0.25rem;">
-                                <span>${formatDateTime(idx.date)}</span>
-                                ${isChatwoot ? '<span style="color: #8b5cf6; font-weight: 700;">󱔗 CHATWOOT</span>' : ''}
-                            </div>
-                            <p style="font-size: 0.875rem; color: var(--gray-700); margin: 0;">${escapeHTML(idx.note)}</p>
+            lead.interactions.map(idx => `
+                        <div style="font-size: 0.8rem; border-left: 2px solid var(--primary-300); padding-left: 8px;">
+                            <div style="font-size: 0.65rem; color: var(--gray-400);">${formatDateTime(idx.date)}</div>
+                            <div style="color: var(--gray-700);">${escapeHTML(idx.note)}</div>
                         </div>
-                    `;
-            }).join('')
-            : '<p style="font-size: 0.875rem; color: var(--gray-400); font-style: italic;">Nenhuma interação registrada.</p>'
+                    `).join('') : '<p style="font-size: 0.75rem; color: var(--gray-400);">Sem notas registradas.</p>'
         }
-                </div>
+                 </div>
             </div>
 
-            <div style="margin-top: var(--spacing-md); padding-top: var(--spacing-md); border-top: 1px solid var(--gray-200);">
-                <p style="font-size: 0.75rem; color: var(--gray-400);">
-                    📅 Cadastrado em: ${formatDateTime(lead.createdAt)} • Origem: ${lead.source}
-                    ${lead.contactedAt ? `• Contatado em: ${formatDateTime(lead.contactedAt)}` : ''}
+            <div style="margin-top: 1rem; text-align: center;">
+                <p style="font-size: 0.65rem; color: var(--gray-400);">
+                    Cadastrado em: ${formatDateTime(lead.createdAt)} • Origem: ${lead.source}
                 </p>
             </div>
         </div>
