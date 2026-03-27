@@ -140,12 +140,6 @@ window.showNotification = showNotification;
 function debounce(func, wait) {
     let timeout;
     return function executedFunction(...args) {
-        // Rate limiting check
-        if (!SecurityUtils.checkRateLimit('debounce_' + func.name, 10, 10000)) {
-            console.warn('Rate limit exceeded for debounced function');
-            return;
-        }
-
         const later = () => {
             clearTimeout(timeout);
             func(...args);

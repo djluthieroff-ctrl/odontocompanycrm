@@ -178,7 +178,7 @@ function renderOldPatientCard(p) {
     const stars = '⭐'.repeat(prioCfg.score);
 
     return `
-        <div class="list-item" style="border-left:5px solid ${borderColor}; padding:1.25rem; background:white; position:relative; overflow:hidden;">
+        <div class="list-item" data-old-patient-id="${p.id}" style="border-left:5px solid ${borderColor}; padding:1.25rem; background:white; position:relative; overflow:hidden;">
             <div style="position:absolute; right:-10px; top:-10px; font-size:4rem; opacity:0.05; pointer-events:none;">${catCfg.icon}</div>
             
             <div class="list-item-content" style="flex:1;">

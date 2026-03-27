@@ -78,7 +78,7 @@ function initializeSmoothScrolling() {
             originalNavigateToPatient.call(this, id);
             // Add a small delay to ensure the element is rendered
             setTimeout(() => {
-                const element = document.querySelector(`[data-id="${id}"]`);
+                const element = document.querySelector(`[data-patient-id="${id}"]`);
                 if (element) {
                     element.scrollIntoView({
                         behavior: 'smooth',
@@ -94,7 +94,7 @@ function initializeSmoothScrolling() {
         window.navigateToLead = function (id) {
             originalNavigateToLead.call(this, id);
             setTimeout(() => {
-                const element = document.querySelector(`[data-id="${id}"]`);
+                const element = document.querySelector(`[data-lead-id="${id}"]`);
                 if (element) {
                     element.scrollIntoView({
                         behavior: 'smooth',

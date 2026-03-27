@@ -597,7 +597,7 @@ window.navigateToLead = (id) => {
     switchModule('leads');
     // Scroll to lead or open it if possible
     setTimeout(() => {
-        const leadEl = document.querySelector(`[data-id="${id}"]`);
+        const leadEl = document.querySelector(`[data-lead-id="${id}"]`);
         if (leadEl) leadEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, 100);
 };

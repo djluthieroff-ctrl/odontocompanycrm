@@ -39,7 +39,7 @@ function renderPatientsList() {
         const safeComplaint = escapeHTML(patient.mainComplaint || '');
 
         return `
-            <div class="list-item">
+            <div class="list-item" data-patient-id="${patient.id}">
                 <div class="list-item-content">
                     <h4 style="font-size: 1.125rem; font-weight: 600; color: var(--gray-900); margin-bottom: 0.5rem;">
                         ${safeName}
@@ -200,6 +200,7 @@ function viewPatientDetails(patientId) {
     const patient = AppState.patients.find(p => p.id === patientId);
     if (!patient) return;
 
+    window.lastViewedPatientId = patientId;
     const safeName = escapeHTML(patient.name);
 
     const detailsHTML = `
