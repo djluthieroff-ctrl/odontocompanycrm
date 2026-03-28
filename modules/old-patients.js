@@ -1,5 +1,5 @@
-// Module: Pacientes Antigos
-// Sistema de recuperação de pacientes antigos com rastreamento de resultado
+// Module State
+let isSavingOldPatient = false;
 
 function initOldPatientsModule() {
     renderOldPatients();
@@ -576,57 +576,67 @@ function buildOldPatientFormHTML(p) {
 }
 
 async function saveOldPatient(isEdit = false) {
-    const form = document.getElementById('oldPatientForm');
-    const formData = new FormData(form);
-    const data = Object.fromEntries(formData.entries());
-
-    if (!data.name || !data.name.trim()) {
-        showNotification('Nome é obrigatório', 'error');
-        return;
+    if (isSavingOldPatient) return;
+    
+    // UI Feedback: Desabilitar botão para evitar múltiplos cliques
+    const saveBtn = document.querySelector('.modal-footer .btn-primary');
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '⌛ Salvando...';
     }
 
-    if (!data.lastConsultation) data.lastConsultation = null;
+    try {
+        isSavingOldPatient = true;
+        const form = document.getElementById('oldPatientForm');
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
 
-    if (isEdit) {
-        const idx = AppState.oldPatients.findIndex(p => p.id === data.id);
-        if (idx < 0) return;
-        const updates = { ...AppState.oldPatients[idx], ...data, updatedAt: new Date().toISOString() };
-        if (data.status === 'recovered' && !AppState.oldPatients[idx].recoveredAt) {
-            updates.recoveredAt = new Date().toISOString();
+        if (!data.name || !data.name.trim()) {
+            showNotification('Nome é obrigatório', 'error');
+            // Reabilitar botão se validação falhar
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '💾 Salvar';
+            }
+            return;
         }
-        AppState.oldPatients[idx] = updates;
-    } else {
-        AppState.oldPatients.push({
-            ...data,
-            id: generateId(),
-            status: 'pending',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-        });
-    }
 
-    await saveToStorage('odontocrm_old_patients', AppState.oldPatients);
-    if (typeof isCloudConnected === 'function' && isCloudConnected()) {
+        if (!data.lastConsultation) data.lastConsultation = null;
+
         if (isEdit) {
-            const p = AppState.oldPatients.find(p => p.id === data.id);
-            await updateRecord('old_patients', data.id, {
-                name: data.name, phone: data.phone, status: data.status,
-                interest: data.interest, notes: data.notes,
-                category: data.category,
-                last_procedure: data.lastProcedure,
-                priority: data.priority,
-                last_consultation: data.lastConsultation,
-                recovered_at: p.recoveredAt || null
+            const idx = AppState.oldPatients.findIndex(p => p.id === data.id);
+            if (idx < 0) return;
+            const updates = { ...AppState.oldPatients[idx], ...data, updatedAt: new Date().toISOString() };
+            if (data.status === 'recovered' && !AppState.oldPatients[idx].recoveredAt) {
+                updates.recoveredAt = new Date().toISOString();
+            }
+            AppState.oldPatients[idx] = updates;
+        } else {
+            AppState.oldPatients.push({
+                ...data,
+                id: generateId(),
+                status: 'pending',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
             });
         }
- else {
-            await saveToSupabase('old_patients', AppState.oldPatients);
-        }
-    }
 
-    closeModal();
-    renderOldPatients();
-    showNotification(isEdit ? '✅ Registro atualizado' : '✅ Paciente adicionado', 'success');
+        await saveToStorage('odontocrm_old_patients', AppState.oldPatients);
+
+        closeModal();
+        renderOldPatients();
+        showNotification(isEdit ? '✅ Registro atualizado' : '✅ Paciente adicionado', 'success');
+    } catch (error) {
+        console.error('Erro ao salvar paciente antigo:', error);
+        showNotification('❌ Erro ao salvar dados', 'error');
+        // Reabilitar botão em caso de erro
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '💾 Salvar';
+        }
+    } finally {
+        isSavingOldPatient = false;
+    }
 }
 
 async function deleteOldPatient(id) {
