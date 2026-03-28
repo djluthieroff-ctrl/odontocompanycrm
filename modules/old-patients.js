@@ -75,6 +75,7 @@ function renderOldPatients() {
         filtered = filtered.filter(p =>
             (p.name || '').toLowerCase().includes(q) ||
             (p.phone || '').includes(q) ||
+            (p.fileNumber || '').toLowerCase().includes(q) ||
             (p.lastProcedure || '').toLowerCase().includes(q) ||
             (p.interest || '').toLowerCase().includes(q)
         );
@@ -184,6 +185,7 @@ function renderOldPatientCard(p) {
             <div class="list-item-content" style="flex:1;">
                 <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap; margin-bottom:0.5rem;">
                     <h4 style="margin:0; font-size:1.1rem; color:var(--gray-900);">${escapeHTML(p.name)}</h4>
+                    ${p.fileNumber ? `<span class="badge" style="background:var(--gray-100); color:var(--gray-700); border:1px solid var(--gray-300); font-weight:700;">📂 Ficha: ${escapeHTML(p.fileNumber)}</span>` : ''}
                     <span class="badge" style="background:${catCfg.color}20; color:${catCfg.color}; border:1px solid ${catCfg.color}40;">
                         ${catCfg.icon} ${catCfg.label}
                     </span>
@@ -509,9 +511,15 @@ function buildOldPatientFormHTML(p) {
     return `
         <form id="oldPatientForm">
             ${isEdit ? `<input type="hidden" name="id" value="${p.id}">` : ''}
-            <div class="form-group">
-                <label class="form-label">Nome Completo *</label>
-                <input type="text" name="name" class="form-input" required value="${isEdit ? escapeHTML(p.name) : ''}">
+            <div class="form-row">
+                <div class="form-group" style="flex:2;">
+                    <label class="form-label">Nome Completo *</label>
+                    <input type="text" name="name" class="form-input" required value="${isEdit ? escapeHTML(p.name) : ''}">
+                </div>
+                <div class="form-group" style="flex:1;">
+                    <label class="form-label">Número da Ficha</label>
+                    <input type="text" name="fileNumber" class="form-input" placeholder="Ex: 1234" value="${isEdit ? escapeHTML(p.fileNumber || '') : ''}">
+                </div>
             </div>
             
             <div class="form-row">
@@ -654,6 +662,7 @@ function exportOldPatientsToExcel() {
     if (!AppState.oldPatients.length) return;
     const cfg = getOldPatientStatusConfig;
     const exportData = AppState.oldPatients.map(p => ({
+        'Ficha': p.fileNumber || '',
         'Nome': p.name,
         'Telefone': p.phone || '',
         'Status': cfg(p.status).label,
