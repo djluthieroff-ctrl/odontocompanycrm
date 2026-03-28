@@ -112,7 +112,7 @@ const DB_COLUMNS = {
     ],
     old_patients: [
         'id', 'user_id', 'name', 'phone', 'last_consultation', 'interest',
-        'status', 'notes', 'recovered_at', 'file_number', 'created_at', 'updated_at'
+        'status', 'notes', 'recovered_at', 'file_number', 'last_procedure', 'created_at', 'updated_at'
     ],
     received_payments: [
         'id', 'legacy_id', 'user_id', 'patient_name', 'origin', 'category',
@@ -251,6 +251,7 @@ const FIELD_MAP = {
     old_patients: {
         toDb: {
             lastConsultation: 'last_consultation',
+            lastProcedure: 'last_procedure',
             recoveredAt: 'recovered_at',
             fileNumber: 'file_number',
             createdAt: 'created_at',
@@ -258,6 +259,7 @@ const FIELD_MAP = {
         },
         toApp: {
             last_consultation: 'lastConsultation',
+            last_procedure: 'lastProcedure',
             recovered_at: 'recoveredAt',
             file_number: 'fileNumber',
             created_at: 'createdAt',
