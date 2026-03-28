@@ -112,7 +112,8 @@ const DB_COLUMNS = {
     ],
     old_patients: [
         'id', 'user_id', 'name', 'phone', 'last_consultation', 'interest',
-        'status', 'notes', 'recovered_at', 'file_number', 'last_procedure', 'created_at', 'updated_at'
+        'status', 'notes', 'recovered_at', 'file_number', 'last_procedure',
+        'category', 'priority', 'created_at', 'updated_at'
     ],
     received_payments: [
         'id', 'legacy_id', 'user_id', 'patient_name', 'origin', 'category',
@@ -401,12 +402,19 @@ function mapToDb(table, obj) {
         }
     }
 
-    // 🔥 ENSURE NOT NULL COLUMNS
+    // 🔥 ENSURE NOT NULL COLUMNS AND VALID STATUS
     const criticalFields = ['name', 'patient_name', 'status', 'source', 'channel'];
     criticalFields.forEach(field => {
         if (allowedColumns.includes(field)) {
             if (result[field] === null || result[field] === undefined || result[field] === '') {
-                result[field] = result[field] || '';
+                // Default value for status to avoid CHECK constraint failure
+                if (field === 'status') {
+                    if (table === 'old_patients' || table === 'patients') result[field] = 'pending';
+                    else if (table === 'leads') result[field] = 'new';
+                    else result[field] = '';
+                } else {
+                    result[field] = '';
+                }
             }
         }
     });

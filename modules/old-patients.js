@@ -562,19 +562,17 @@ function buildOldPatientFormHTML(p) {
                 <input type="text" name="interest" class="form-input" placeholder="Ex: Implante, Estética..." value="${isEdit ? escapeHTML(p.interest || '') : ''}">
             </div>
 
-            ${isEdit ? `
             <div class="form-group">
                 <label class="form-label">Status de Recuperação</label>
                 <select name="status" class="form-select">
-                    <option value="pending" ${p.status === 'pending' ? 'selected' : ''}>⏳ Pendente</option>
-                    <option value="contacted" ${p.status === 'contacted' ? 'selected' : ''}>📞 Em Contato</option>
-                    <option value="scheduled" ${p.status === 'scheduled' ? 'selected' : ''}>📅 Agendado</option>
-                    <option value="recovered" ${p.status === 'recovered' ? 'selected' : ''}>✅ Recuperado</option>
-                    <option value="lost" ${p.status === 'lost' ? 'selected' : ''}>❌ Perdido</option>
-                    <option value="not-interested" ${p.status === 'not-interested' ? 'selected' : ''}>🚫 Sem Interesse</option>
+                    <option value="pending" ${!isEdit || p.status === 'pending' ? 'selected' : ''}>⏳ Pendente</option>
+                    <option value="contacted" ${isEdit && p.status === 'contacted' ? 'selected' : ''}>📞 Em Contato</option>
+                    <option value="scheduled" ${isEdit && p.status === 'scheduled' ? 'selected' : ''}>📅 Agendado</option>
+                    <option value="recovered" ${isEdit && p.status === 'recovered' ? 'selected' : ''}>✅ Recuperado</option>
+                    <option value="lost" ${isEdit && p.status === 'lost' ? 'selected' : ''}>❌ Perdido</option>
+                    <option value="not-interested" ${isEdit && p.status === 'not-interested' ? 'selected' : ''}>🚫 Sem Interesse</option>
                 </select>
             </div>
-            ` : ''}
             <div class="form-group">
                 <label class="form-label">Observações / Motivo da Saída</label>
                 <textarea name="notes" class="form-textarea" placeholder="Ex: Saiu por preço. Possui convênio. Retornar em março com proposta de implante...">${isEdit ? escapeHTML(p.notes || '') : ''}</textarea>
@@ -620,13 +618,16 @@ async function saveOldPatient(isEdit = false) {
             }
             AppState.oldPatients[idx] = updates;
         } else {
-            AppState.oldPatients.push({
+            const newPatient = {
                 ...data,
                 id: generateId(),
-                status: 'pending',
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString()
-            });
+            };
+            if (data.status === 'recovered') {
+                newPatient.recoveredAt = new Date().toISOString();
+            }
+            AppState.oldPatients.push(newPatient);
         }
 
         await saveToStorage('odontocrm_old_patients', AppState.oldPatients);
